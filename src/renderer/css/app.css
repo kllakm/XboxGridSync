@@ -2124,3 +2124,123 @@ input:checked + .slider:before {
   display: flex;
   gap: 8px;
 }
+
+/* ==========================================================================
+   Controller Navigation Mode & Context HUD Overlay
+   ========================================================================== */
+
+/* Hide mouse cursor across the entire app when operating via controller */
+body.controller-mode,
+body.controller-mode * {
+  cursor: none !important;
+}
+
+/* Faint glow over the selected / focused items in controller mode */
+body.controller-mode .controller-focused,
+body.controller-mode :focus-visible {
+  outline: 2px solid #00FF87 !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 16px rgba(0, 255, 135, 0.45), 0 0 4px rgba(0, 255, 135, 0.7) !important;
+  transform: translateY(-2px) scale(1.02);
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s ease, outline 0.15s ease;
+  z-index: 20;
+}
+
+/* Extra focus enhancement for game cards */
+body.controller-mode .game-card.controller-focused {
+  border-color: rgba(0, 255, 135, 0.6) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 255, 135, 0.4) !important;
+}
+
+/* Switches & toggles in controller mode */
+body.controller-mode .switch input:focus + .slider,
+body.controller-mode .switch input.controller-focused + .slider {
+  box-shadow: 0 0 14px rgba(0, 255, 135, 0.6) !important;
+  border-color: #00FF87 !important;
+}
+
+/* Context-Sensitive Controller HUD in Bottom Right */
+.controller-hud-overlay {
+  position: fixed;
+  bottom: 22px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 16px;
+  background: rgba(10, 13, 18, 0.88);
+  backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 16px rgba(0, 208, 94, 0.15);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(12px) scale(0.96);
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.controller-mode .controller-hud-overlay {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.controller-hud-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: #e2e8f0;
+}
+
+/* Authentic Xbox Controller Button Glyphs */
+.btn-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.btn-badge-a {
+  background: #107c10;
+  color: #fff;
+  border: 1px solid #16a316;
+}
+
+.btn-badge-b {
+  background: #d83b01;
+  color: #fff;
+  border: 1px solid #ea4a0f;
+}
+
+.btn-badge-x {
+  background: #0078d4;
+  color: #fff;
+  border: 1px solid #1890f0;
+}
+
+.btn-badge-y {
+  background: #ffb900;
+  color: #000;
+  border: 1px solid #ffc83b;
+}
+
+.btn-badge-pill {
+  width: auto;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #252e3d;
+  color: #cbd5e1;
+  font-size: 9px;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}

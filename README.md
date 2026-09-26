@@ -182,6 +182,22 @@ npm run pack
 
 ## Changelog
 
+### [v1.8.4] - 2026-09-26
+- **Native Controller & Gamepad Navigation Engine:**
+  - Implemented automatic gamepad detection and utilization (Xbox controllers, ROG Ally built-in gamepad, Legion Go, DualSense, etc.).
+  - Moving the thumbstick or pressing any controller button seamlessly engages **Controller Mode**:
+    - The mouse cursor is completely hidden across the entire application interface.
+    - Active items receive an elegant, faint Xbox-green halo glow and visual elevation.
+    - Smooth spatial directional navigation (D-Pad and Left Thumbstick) automatically tracks rows and columns across the game grid and interface controls.
+  - Moving the mouse immediately disengages Controller Mode: the mouse cursor reappears and focus glows disappear, returning effortlessly to native mouse navigation.
+- **Context-Sensitive Bottom-Right HUD Overlay:**
+  - Floating pill overlay on the bottom right dynamically displays controller button mappings based on what you are doing:
+    - *Library Card View:* `(A) Change Cover`, `(X) Sync Game`, `(B) Jump to Top`, `(LB/RB) Filter Tabs`, `(Start) Settings`.
+    - *Header View:* `(A) Select`, `(X) Sync All Artwork`, `(LB/RB) Cycle Tabs`, `(Start) Settings`.
+    - *Settings View:* `(A) Toggle / Select`, `(B) Back to Library`.
+    - *Modals:* `(A) Select / Confirm`, `(B) Close`.
+  - Supports quick actions: `X` button directly syncs the highlighted game, `A` opens the cover picker, `LB`/`RB` cycles filter tabs, and `Start` toggles Settings.
+
 ### [v1.8.3] - 2026-09-26
 - **Exclusive Fullscreen Experience (FSE) for Handheld Gaming PCs:**
   - Added an interactive FSE toggle button in the top titlebar (next to the Buy Me a Coffee button).
