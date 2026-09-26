@@ -208,8 +208,8 @@ ipcMain.handle('art:resolveAll', async (event, games, options = {}) => {
   return results;
 });
 
-ipcMain.handle('art:searchAlternatives', async (event, title) => {
-  return await artResolver.searchAlternatives(title);
+ipcMain.handle('art:searchAlternatives', async (event, title, appId) => {
+  return await artResolver.searchAlternatives(title, appId);
 });
 
 ipcMain.handle('art:applyCustomCover', async (event, gameId, dataUrlOrPath, metadata = {}) => {

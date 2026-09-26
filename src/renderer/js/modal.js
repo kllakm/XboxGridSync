@@ -273,7 +273,7 @@ window.ModalManager = {
       listEl.innerHTML = '<div style="padding: 14px; color: var(--text-muted); font-size: 12px; text-align: center;">Searching Steam &amp; SteamGridDB for square and cover art...</div>';
 
       try {
-        const matches = await window.api.searchAlternatives(query);
+        const matches = await window.api.searchAlternatives(query, this.currentOverrideGame?.appId);
         this.rawMatches = matches || [];
         this.filterAndRenderMatches();
       } catch (err) {

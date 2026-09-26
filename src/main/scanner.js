@@ -4,6 +4,7 @@ const os = require('os');
 const { execSync } = require('child_process');
 const vault = require('./vault');
 const config = require('./config');
+const artResolver = require('./artResolver');
 
 // Dictionary of known Steam App IDs so cached entries immediately have recognizable titles
 const KNOWN_STEAM_TITLES = {
@@ -732,12 +733,12 @@ class GameScanner {
     }
 
     // Process Sync Status & Artwork availability for each game
-    const processedGames = allGames.map(game => {
+    const processedGames = await Promise.all(allGames.map(async (game) => {
       const hasVaultCover = vault.hasCover(game.id);
       const vaultMeta = vault.getMetadata(game.id);
       let coverUrl = hasVaultCover ? vault.getCoverAsDataUrl(game.id) : null;
 
-      // Fallback: If no Vault cover yet, check local currentThumbnail
+      // Fallback 1: If no Vault cover yet, check local currentThumbnail (from Xbox cache)
       if (!coverUrl && game.currentThumbnail && fs.existsSync(game.currentThumbnail)) {
         try {
           const buf = fs.readFileSync(game.currentThumbnail);
@@ -747,9 +748,19 @@ class GameScanner {
         } catch (e) {}
       }
 
-      // Fallback: If still no cover and game is a known Steam title, use official Steam library artwork
-      if (!coverUrl && game.appId) {
-        coverUrl = `https://cdn.akamai.steamstatic.com/steam/apps/${game.appId}/library_600x900_2x.jpg`;
+      // Default Priority: Query SteamGridDB for highest resolution & highest rated square icon
+      if (!coverUrl) {
+        try {
+          const artInfo = await artResolver.getBestSquareCoverUrl(game);
+          if (artInfo && artInfo.url) {
+            coverUrl = artInfo.url;
+          }
+        } catch (e) {
+          // If network error, fallback to Steam Store CDN if appId is known
+          if (game.appId) {
+            coverUrl = `https://cdn.akamai.steamstatic.com/steam/apps/${game.appId}/library_600x900_2x.jpg`;
+          }
+        }
       }
 
       let status = 'Pending';
@@ -767,7 +778,7 @@ class GameScanner {
         status, // 'Synced' | 'Pending' | 'Needs Review'
         resolvedAppId: game.appId || vault.getCachedAppId(this.cleanGameTitle(game.title))
       };
-    });
+    }));
 
     const elapsed = Date.now() - startTime;
     console.log(`[Scanner] Discovery complete in ${elapsed}ms. Found ${processedGames.length} games.`);

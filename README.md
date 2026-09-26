@@ -175,6 +175,11 @@ npm run pack
 
 ## Changelog
 
+### [v1.5.3] - 2026-09-26
+- **Default SteamGridDB Square Icon Resolution:** When scanning the library and resolving artwork, the app now queries SteamGridDB first for native 1:1 square artwork, automatically selecting the highest-resolution (1024x1024 / 512x512) and highest-rated community square icon or grid.
+- **Graceful Steam Store 2:3 Fallback:** If no 1:1 square artwork exists on SteamGridDB for a given title, the resolver seamlessly defaults to the Steam Store's official 2:3 vertical cover (`library_600x900_2x.jpg`), which is intelligently cropped to a 1:1 square for Xbox App injection.
+- **Enhanced Studio Alternatives Search:** The Manual Artwork Studio now queries SteamGridDB directly by Steam AppID as well as title, placing verified 1024x1024 square grids and icons at the very top of the alternative artwork picker.
+
 ### [v1.5.2] - 2026-09-26
 - **Comprehensive Xbox App Image Cache Scanning:** The scanner now thoroughly inspects all cached artwork files (`.png`, `.jpg`, `.jpeg`, `.webp`) across `ThirdPartyLibraries` launcher directories (`steam`, `epic`, `gog`, etc.), `LocalState\CustomLibraryManagement`, and `LocalCache\Roaming\Microsoft\XboxPCApp`. Any game recognized or cached by the Xbox PC App is now automatically imported into Xbox Grid Sync even if it lacks a formal manifest.
 - **SteamVR & Expanded Tool Discovery:** Removed SteamVR (`AppID 250820`) from the scanner's tool blacklist, added a built-in title dictionary for common tools and games, and expanded Steam library scanning across all local drives (`C:`, `D:`, `E:`, `F:`, `G:`, `H:`) so SteamVR and non-traditional titles tracked by the Xbox App are properly discovered.
