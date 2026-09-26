@@ -756,9 +756,20 @@ window.ModalManager = {
         if (!confirm('Are you absolutely sure? All artwork data will be lost.')) return;
         try {
           const res = await window.api.clearAllData();
-          window.showToast('Factory Reset Complete', `Removed ${res.removedCovers} vault entries and ${res.removedXboxFiles} Xbox App files. Rescan your library to start fresh.`, 'success');
-          // Trigger a fresh rescan
-          if (window.rescanLibrary) window.rescanLibrary();
+          window.showToast('Factory Reset Complete', `Removed ${res.removedCovers} vault entries and restored original artwork in Xbox App.`, 'success');
+
+          // Reset UI in-memory state immediately
+          if (window.state) {
+            window.state.games = [];
+            if (window.updateCounts) window.updateCounts();
+            if (window.renderGames) window.renderGames();
+          }
+
+          // Close modal
+          window.ModalManager.closeSettingsModal();
+
+          // Rescan cleanly
+          if (window.rescanLibrary) await window.rescanLibrary();
         } catch (err) {
           window.showToast('Error', err.message, 'error');
         }

@@ -124,6 +124,7 @@ class VaultManager {
         size: pngBuffer.length,
         format: 'png',
         aspectRatio: '1:1',
+        targetImagePath: metadata.targetImagePath || null,
         ...metadata
       };
 
@@ -188,7 +189,8 @@ class VaultManager {
               savedAt: meta.savedAt || null,
               title: meta.title || gameId,
               launcher: meta.launcher || 'unknown',
-              appId: meta.appId || null
+              appId: meta.appId || null,
+              targetImagePath: meta.targetImagePath || null
             });
           }
         }
@@ -259,7 +261,7 @@ class VaultManager {
     return { removedCovers, removedCache };
   }
 
-  // Clear Xbox App's cached thumbnails from ThirdPartyLibraries
+  // Clear Xbox App's cached thumbnails from ThirdPartyLibraries and restore original backups
   clearXboxAppCache() {
     const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
     const thirdPartyDir = path.join(
@@ -270,49 +272,82 @@ class VaultManager {
       'ThirdPartyLibraries'
     );
     const customLibDir = path.join(thirdPartyDir, 'CustomLibraryManagement');
+    const altCustomLibDir = path.join(
+      localAppData,
+      'Packages',
+      'Microsoft.GamingApp_8wekyb3d8bbwe',
+      'LocalState',
+      'CustomLibraryManagement'
+    );
 
     let removedFiles = 0;
+    let restoredFiles = 0;
 
-    // Clear image files injected by our app inside CustomLibraryManagement
-    try {
-      if (fs.existsSync(customLibDir)) {
-        const files = fs.readdirSync(customLibDir);
+    const providers = ['steam', 'epic', 'gog', 'bnet', 'ea', 'ubi', 'CustomLibraryManagement'];
+    for (const prov of providers) {
+      const provDir = path.join(thirdPartyDir, prov);
+      if (!fs.existsSync(provDir)) continue;
+
+      try {
+        const files = fs.readdirSync(provDir);
+
+        // 1. First restore all .bak files to .png
         for (const file of files) {
-          const ext = path.extname(file).toLowerCase();
-          if (['.png', '.jpg', '.jpeg', '.webp'].includes(ext)) {
+          if (file.toLowerCase().endsWith('.bak')) {
+            const bakPath = path.join(provDir, file);
+            const originalPngPath = path.join(provDir, file.replace(/\.bak$/i, '.png'));
             try {
-              fs.unlinkSync(path.join(customLibDir, file));
+              fs.copyFileSync(bakPath, originalPngPath);
+              fs.unlinkSync(bakPath);
+              restoredFiles++;
+            } catch (e) {}
+          }
+        }
+
+        // 2. Remove .new, .tmp, stray _cover.png, and injected custom files
+        const recheckFiles = fs.readdirSync(provDir);
+        for (const file of recheckFiles) {
+          const lower = file.toLowerCase();
+          const ext = path.extname(lower);
+          const isStray = lower.endsWith('.new') ||
+                          lower.endsWith('.tmp') ||
+                          lower.includes('_cover.') ||
+                          (prov === 'CustomLibraryManagement' && ['.png', '.jpg', '.jpeg', '.webp'].includes(ext));
+
+          if (isStray) {
+            try {
+              fs.unlinkSync(path.join(provDir, file));
               removedFiles++;
             } catch (e) {}
           }
         }
+      } catch (err) {
+        console.warn(`[Vault] Error cleaning ${provDir}:`, err.message);
       }
-    } catch (err) {
-      console.error('[Vault] Error clearing CustomLibraryManagement images:', err.message);
     }
 
-    // Clear image files from launcher-specific subfolders (steam/, epic/, etc.)
-    const providers = ['steam', 'epic', 'gog', 'bnet', 'ea', 'ubi'];
-    for (const prov of providers) {
-      const provDir = path.join(thirdPartyDir, prov);
-      try {
-        if (fs.existsSync(provDir)) {
-          const files = fs.readdirSync(provDir);
-          for (const file of files) {
-            const ext = path.extname(file).toLowerCase();
-            if (['.png', '.jpg', '.jpeg', '.webp'].includes(ext)) {
-              try {
-                fs.unlinkSync(path.join(provDir, file));
-                removedFiles++;
-              } catch (e) {}
-            }
-          }
-        }
-      } catch (err) {}
+    // 3. Reset CustomLibraryManagement.manifest in both locations to a clean state
+    const cleanManifestJson = JSON.stringify({
+      version: 1,
+      provider: { version: 1, enabled: true },
+      gameCache: {}
+    }, null, 2);
+
+    const clmCandidates = [
+      path.join(customLibDir, 'CustomLibraryManagement.manifest'),
+      path.join(altCustomLibDir, 'CustomLibraryManagement.manifest')
+    ];
+
+    for (const clmPath of clmCandidates) {
+      if (fs.existsSync(clmPath)) {
+        try {
+          fs.writeFileSync(clmPath, cleanManifestJson, 'utf8');
+        } catch (e) {}
+      }
     }
 
-    console.log(`[Vault] Xbox App cache cleared. Removed ${removedFiles} injected image files.`);
-    return { removedFiles };
+    console.log(`[Vault] Xbox App cache reset. Removed ${removedFiles} injected files, restored ${restoredFiles} original backups.`);
+    return { removedFiles, restoredFiles };
   }
 }
 

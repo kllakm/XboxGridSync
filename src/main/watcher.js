@@ -72,8 +72,8 @@ class BackgroundWatcher {
     if (!config.get('autoRestore')) return;
     if (this.isRestoring) return;
 
-    // Ignore temporary files, locks, or log files
-    if (filename && (filename.endsWith('.tmp') || filename.endsWith('.log') || filename.startsWith('~'))) {
+    // Ignore temporary files, locks, backups, or log files
+    if (filename && (filename.endsWith('.tmp') || filename.endsWith('.log') || filename.endsWith('.bak') || filename.endsWith('.new') || filename.startsWith('~'))) {
       return;
     }
 

@@ -6,7 +6,10 @@ const vault = require('./vault');
 const config = require('./config');
 const artResolver = require('./artResolver');
 
-// Dictionary of known Steam App IDs so cached entries immediately have recognizable titles
+// Built-in SteamGridDB API key for community metadata queries
+const BUILTIN_SGDB_KEY = Buffer.from('NzIyMzUxYWRkYTUxMjZjNjhjMTM4ZjE1OGU1Y2U5OTM=', 'base64').toString('utf8');
+
+// Dictionary of known Steam App IDs for instant resolution
 const KNOWN_STEAM_TITLES = {
   '250820': 'SteamVR',
   '1091500': 'Cyberpunk 2077',
@@ -76,12 +79,6 @@ class GameScanner {
       this.xboxThirdPartyDir,
       'CustomLibraryManagement'
     );
-    this.xboxImageCacheDir = path.join(
-      this.xboxPackagePath,
-      'LocalCache',
-      'ImageCache'
-    );
-    // Alternate legacy roaming location for Xbox PC App
     this.xboxRoamingThirdPartyDir = path.join(
       this.xboxPackagePath,
       'LocalCache',
@@ -90,240 +87,48 @@ class GameScanner {
       'XboxPCApp',
       'ThirdPartyLibraries'
     );
+
+    // In-memory cache for external name lookups
+    this.uplayCache = null;
+    this.nameCache = new Map();
   }
 
-  // 1. Scan Xbox App Cache, Registered Manifests, and Cached Cover Images
-  scanXboxAppRegistry() {
-    const xboxGames = [];
-    const seenIds = new Set();
+  // 1. Build local launcher indices for fast offline name and metadata enrichment
+  buildLocalEnrichmentIndices() {
+    const epicMap = new Map();
+    const steamMap = new Map();
+    const gogMap = new Map();
 
-    const addEntry = (entry) => {
-      if (!entry || !entry.id) return;
-      if (seenIds.has(entry.id)) return;
-      seenIds.add(entry.id);
-      xboxGames.push(entry);
-    };
-
+    // A. Local Epic Games manifests (.item files)
     try {
-      // Possible base directories where Xbox App stores third-party libraries and custom covers
-      const candidateThirdPartyDirs = [
-        this.xboxThirdPartyDir,
-        this.xboxRoamingThirdPartyDir,
-        path.join(this.xboxPackagePath, 'LocalState', 'CustomLibraryManagement')
-      ].filter(d => fs.existsSync(d));
-
-      const providers = ['steam', 'epic', 'gog', 'bnet', 'ea', 'ubi', 'CustomLibraryManagement'];
-
-      for (const baseDir of candidateThirdPartyDirs) {
-        // 1A. Check manifests in baseDir
-        const manifestCandidates = [
-          path.join(baseDir, 'CustomLibraryManagement.manifest'),
-          path.join(baseDir, 'CustomLibraryManagement', 'CustomLibraryManagement.manifest')
-        ];
-
-        for (const clmPath of manifestCandidates) {
-          if (fs.existsSync(clmPath)) {
-            try {
-              const raw = fs.readFileSync(clmPath, 'utf8').trim().replace(/^\uFEFF/, '');
-              if (!raw) continue;
-              const data = JSON.parse(raw);
-              if (data && data.gameCache && Array.isArray(data.gameCache.games)) {
-                for (const g of data.gameCache.games) {
-                  const gameId = g.id || g.productId || g.title;
-                  addEntry({
-                    id: `xbox_${vault.sanitizeIdentifier(gameId)}`,
-                    originalId: gameId,
-                    title: g.title || g.displayName || 'Unknown Game',
-                    launcher: (g.provider || g.source || 'Shortcut').toUpperCase(),
-                    source: 'xbox_registry',
-                    installPath: g.installPath || g.launchUri || '',
-                    currentThumbnail: g.thumbnailPath || g.imageUri || null,
-                    rawManifest: g
-                  });
-                }
-              }
-            } catch (err) {
-              console.warn('[Scanner] Warning reading CustomLibraryManagement.manifest:', err.message);
-            }
-          }
-        }
-
-        // 1B. Scan provider folders for manifests AND cached cover artwork
-        for (const prov of providers) {
-          const provDir = path.join(baseDir, prov);
-          if (!fs.existsSync(provDir)) continue;
-
-          let files = [];
+      const manifestsDir = path.join(this.programData, 'Epic', 'EpicGamesLauncher', 'Data', 'Manifests');
+      if (fs.existsSync(manifestsDir)) {
+        const files = fs.readdirSync(manifestsDir);
+        for (const file of files) {
+          if (!file.endsWith('.item')) continue;
           try {
-            files = fs.readdirSync(provDir);
-          } catch (e) {
-            continue;
-          }
-
-          for (const file of files) {
-            const fullPath = path.join(provDir, file);
-
-            // Manifest / JSON parsing
-            if (file.endsWith('.manifest') || file.endsWith('.json')) {
-              try {
-                const content = fs.readFileSync(fullPath, 'utf8').trim().replace(/^\uFEFF/, '');
-                if (!content) continue;
-                const parsed = JSON.parse(content);
-                const items = Array.isArray(parsed) ? parsed : (parsed.games || [parsed]);
-                for (const item of items) {
-                  if (item && (item.title || item.name)) {
-                    const title = item.title || item.name;
-                    const gameAppId = item.appId || (prov === 'steam' ? item.id : null);
-                    addEntry({
-                      id: `${prov}_${vault.sanitizeIdentifier(item.id || item.appId || title)}`,
-                      originalId: item.id || item.appId || title,
-                      appId: gameAppId,
-                      title: title,
-                      launcher: prov === 'CustomLibraryManagement' ? 'CUSTOM' : prov.toUpperCase(),
-                      source: 'xbox_registry',
-                      installPath: item.installPath || '',
-                      currentThumbnail: item.thumbnailPath || null
-                    });
-                  }
-                }
-              } catch (e) {
-                // skip malformed
-              }
+            const raw = fs.readFileSync(path.join(manifestsDir, file), 'utf8');
+            const data = JSON.parse(raw);
+            if (data && data.DisplayName) {
+              const entry = {
+                title: data.DisplayName,
+                installPath: data.InstallLocation || '',
+                appName: data.AppName || '',
+                catalogItemId: data.CatalogItemId || '',
+                namespace: data.CatalogNamespace || ''
+              };
+              if (data.CatalogItemId) epicMap.set(data.CatalogItemId.toLowerCase(), entry);
+              if (data.CatalogNamespace) epicMap.set(data.CatalogNamespace.toLowerCase(), entry);
+              if (data.AppName) epicMap.set(data.AppName.toLowerCase(), entry);
             }
-
-            // Image file discovery (e.g. steam_250820.png, 250820.png, steam_1091500.png, etc.)
-            const imgMatch = file.match(/^(.+?)\.(png|jpg|jpeg|webp)$/i);
-            if (imgMatch) {
-              const baseName = imgMatch[1];
-              // Strip trailing _cover if present
-              const cleanBase = baseName.replace(/_cover$/i, '');
-
-              // Check if steam game
-              let isSteam = prov === 'steam' || cleanBase.startsWith('steam_') || /^\d+$/.test(cleanBase);
-              let parsedAppId = null;
-
-              if (cleanBase.startsWith('steam_')) {
-                const afterSteam = cleanBase.slice(6);
-                if (/^\d+$/.test(afterSteam)) {
-                  parsedAppId = afterSteam;
-                  isSteam = true;
-                }
-              } else if (/^\d+$/.test(cleanBase)) {
-                parsedAppId = cleanBase;
-                isSteam = true;
-              }
-
-              if (isSteam && parsedAppId) {
-                const title = KNOWN_STEAM_TITLES[parsedAppId] || `Steam App ${parsedAppId}`;
-                addEntry({
-                  id: `steam_${parsedAppId}`,
-                  originalId: parsedAppId,
-                  appId: parsedAppId,
-                  title: title,
-                  launcher: 'STEAM',
-                  source: 'xbox_cache',
-                  installPath: '',
-                  currentThumbnail: fullPath
-                });
-              } else if (prov === 'epic' || cleanBase.startsWith('epic_')) {
-                const epicId = cleanBase.replace(/^epic_/i, '');
-                const cleanTitle = epicId.replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                addEntry({
-                  id: `epic_${vault.sanitizeIdentifier(epicId)}`,
-                  originalId: epicId,
-                  title: cleanTitle,
-                  launcher: 'EPIC',
-                  source: 'xbox_cache',
-                  installPath: '',
-                  currentThumbnail: fullPath
-                });
-              } else if (prov === 'gog' || cleanBase.startsWith('gog_')) {
-                const gogId = cleanBase.replace(/^gog_/i, '');
-                const cleanTitle = gogId.replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                addEntry({
-                  id: `gog_${vault.sanitizeIdentifier(gogId)}`,
-                  originalId: gogId,
-                  title: cleanTitle,
-                  launcher: 'GOG',
-                  source: 'xbox_cache',
-                  installPath: '',
-                  currentThumbnail: fullPath
-                });
-              } else {
-                const cleanTitle = cleanBase.replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                addEntry({
-                  id: `xbox_${vault.sanitizeIdentifier(cleanBase)}`,
-                  originalId: cleanBase,
-                  title: cleanTitle,
-                  launcher: 'CUSTOM',
-                  source: 'xbox_cache',
-                  installPath: '',
-                  currentThumbnail: fullPath
-                });
-              }
-            }
-          }
+          } catch (e) {}
         }
       }
+    } catch (e) {}
 
-      // 1C. Scan ExternalAppShortcut folder if it exists
-      const externalShortcutDir = path.join(this.xboxPackagePath, 'LocalState', 'ExternalAppShortcut');
-      if (fs.existsSync(externalShortcutDir)) {
-        try {
-          const files = fs.readdirSync(externalShortcutDir);
-          for (const file of files) {
-            if (file.endsWith('.json') || file.endsWith('.manifest')) {
-              try {
-                const content = fs.readFileSync(path.join(externalShortcutDir, file), 'utf8');
-                const parsed = JSON.parse(content);
-                const title = parsed.title || parsed.name || path.parse(file).name;
-                addEntry({
-                  id: `shortcut_${vault.sanitizeIdentifier(parsed.id || title)}`,
-                  originalId: parsed.id || title,
-                  title: title,
-                  launcher: 'SHORTCUT',
-                  source: 'xbox_registry',
-                  installPath: parsed.targetPath || parsed.installPath || '',
-                  currentThumbnail: parsed.iconPath || null
-                });
-              } catch (e) {
-                // skip
-              }
-            }
-          }
-        } catch (e) {}
-      }
-
-      // 1D. Scan Vault entries to make sure anything synced or customized is included
-      try {
-        const vaultEntries = vault.getAllVaultEntries();
-        for (const ve of vaultEntries) {
-          addEntry({
-            id: ve.gameId,
-            originalId: ve.appId || ve.gameId,
-            appId: ve.appId || (ve.gameId.startsWith('steam_') ? ve.gameId.replace('steam_', '') : null),
-            title: ve.title || ve.gameId,
-            launcher: (ve.launcher || 'CUSTOM').toUpperCase(),
-            source: 'vault',
-            installPath: '',
-            currentThumbnail: ve.coverPath
-          });
-        }
-      } catch (e) {}
-
-    } catch (err) {
-      console.error('[Scanner] Error scanning Xbox App registry:', err.message);
-    }
-    return xboxGames;
-  }
-
-  // 2. Scan Steam Libraries & Manifests
-  scanSteamLibraries() {
-    const steamGames = [];
-    const steamPaths = new Set();
-
-    // Registry query
+    // B. Local Steam Library manifests (appmanifest_*.acf)
     try {
+      const steamPaths = new Set();
       const queries = [
         'reg query "HKCU\\Software\\Valve\\Steam" /v SteamPath',
         'reg query "HKLM\\Software\\WOW6432Node\\Valve\\Steam" /v InstallPath',
@@ -335,453 +140,531 @@ class GameScanner {
           const match = out.match(/REG_SZ\s+(.+)$/m);
           if (match && match[1]) {
             const cleanPath = match[1].trim();
-            if (fs.existsSync(cleanPath)) {
-              steamPaths.add(cleanPath);
-            }
+            if (fs.existsSync(cleanPath)) steamPaths.add(cleanPath);
           }
-        } catch (e) {
-          // ignore not found
+        } catch (e) {}
+      }
+
+      ['C:\\Program Files (x86)\\Steam', 'C:\\Program Files\\Steam', 'D:\\Steam', 'D:\\SteamLibrary', 'E:\\SteamLibrary'].forEach(p => {
+        if (fs.existsSync(p)) steamPaths.add(p);
+      });
+
+      const allLibraryFolders = new Set();
+      for (const sPath of steamPaths) {
+        allLibraryFolders.add(sPath);
+        const vdfPath = path.join(sPath, 'steamapps', 'libraryfolders.vdf');
+        if (fs.existsSync(vdfPath)) {
+          try {
+            const content = fs.readFileSync(vdfPath, 'utf8');
+            const regex = /"path"\s+"([^"]+)"/g;
+            let m;
+            while ((m = regex.exec(content)) !== null) {
+              const libPath = m[1].replace(/\\\\/g, '\\');
+              if (fs.existsSync(libPath)) allLibraryFolders.add(libPath);
+            }
+          } catch (e) {}
         }
       }
-    } catch (err) {
-      // ignore
-    }
 
-    // Default paths fallback
-    const defaultPaths = [
-      'C:\\Program Files (x86)\\Steam',
-      'C:\\Program Files\\Steam',
-      'D:\\Steam',
-      'D:\\SteamLibrary',
-      'E:\\Steam',
-      'E:\\SteamLibrary',
-      'F:\\Steam',
-      'F:\\SteamLibrary',
-      'G:\\Steam',
-      'G:\\SteamLibrary'
-    ];
-    for (const p of defaultPaths) {
-      if (fs.existsSync(p)) {
-        steamPaths.add(p);
-      }
-    }
-
-    // Check all drive roots for SteamLibrary
-    ['C', 'D', 'E', 'F', 'G', 'H'].forEach(letter => {
-      const p = `${letter}:\\SteamLibrary`;
-      if (fs.existsSync(p)) steamPaths.add(p);
-    });
-
-    // Process all Steam root directories
-    const allLibraryFolders = new Set();
-    for (const sPath of steamPaths) {
-      allLibraryFolders.add(sPath);
-      const vdfPath = path.join(sPath, 'steamapps', 'libraryfolders.vdf');
-      if (fs.existsSync(vdfPath)) {
+      for (const libPath of allLibraryFolders) {
+        const steamAppsDir = path.join(libPath, 'steamapps');
+        if (!fs.existsSync(steamAppsDir)) continue;
         try {
-          const content = fs.readFileSync(vdfPath, 'utf8');
-          const regex = /"path"\s+"([^"]+)"/g;
-          let m;
-          while ((m = regex.exec(content)) !== null) {
-            const libPath = m[1].replace(/\\\\/g, '\\');
-            if (fs.existsSync(libPath)) {
-              allLibraryFolders.add(libPath);
+          const files = fs.readdirSync(steamAppsDir);
+          for (const file of files) {
+            const match = file.match(/^appmanifest_(\d+)\.acf$/i);
+            if (match) {
+              const appId = match[1];
+              try {
+                const acfContent = fs.readFileSync(path.join(steamAppsDir, file), 'utf8');
+                const nameMatch = acfContent.match(/"name"\s+"([^"]+)"/);
+                const dirMatch = acfContent.match(/"installdir"\s+"([^"]+)"/);
+                if (nameMatch && nameMatch[1]) {
+                  steamMap.set(appId, {
+                    title: nameMatch[1],
+                    installPath: dirMatch ? path.join(steamAppsDir, 'common', dirMatch[1]) : ''
+                  });
+                }
+              } catch (e) {}
             }
           }
-        } catch (err) {
-          console.warn('[Scanner] Failed parsing libraryfolders.vdf:', err.message);
+        } catch (e) {}
+      }
+    } catch (e) {}
+
+    // C. Local GOG Registry
+    try {
+      const gogCmd = 'reg query "HKLM\\Software\\WOW6432Node\\GOG.com\\Games"';
+      const out = execSync(gogCmd, { stdio: ['pipe', 'pipe', 'ignore'], encoding: 'utf8' });
+      const subKeys = out.match(/HKEY_LOCAL_MACHINE\\Software\\WOW6432Node\\GOG\.com\\Games\\\d+/gi) || [];
+      for (const key of subKeys) {
+        try {
+          const detail = execSync(`reg query "${key}"`, { stdio: ['pipe', 'pipe', 'ignore'], encoding: 'utf8' });
+          const nameMatch = detail.match(/GAMENAME\s+REG_SZ\s+(.+)$/m);
+          const idMatch = detail.match(/GAMEID\s+REG_SZ\s+(.+)$/m);
+          const pathMatch = detail.match(/PATH\s+REG_SZ\s+(.+)$/m);
+          const gameId = idMatch ? idMatch[1].trim() : path.basename(key);
+          if (nameMatch && nameMatch[1]) {
+            gogMap.set(gameId, {
+              title: nameMatch[1].trim(),
+              installPath: pathMatch ? pathMatch[1].trim() : ''
+            });
+          }
+        } catch (e) {}
+      }
+    } catch (e) {}
+
+    return { epic: epicMap, steam: steamMap, gog: gogMap };
+  }
+
+  // 2. Fetch and cache Ubisoft game list from Haoose repository
+  async getUbisoftGameName(ubiId) {
+    if (!ubiId) return null;
+    if (this.uplayCache && this.uplayCache.has(String(ubiId))) {
+      return this.uplayCache.get(String(ubiId));
+    }
+
+    if (!this.uplayCache) {
+      try {
+        const res = await fetch('https://raw.githubusercontent.com/Haoose/UPLAY_GAME_ID/refs/heads/master/README.md', {
+          signal: AbortSignal.timeout(4000)
+        });
+        if (res.ok) {
+          const text = await res.text();
+          this.uplayCache = new Map();
+          for (const line of text.split('\n')) {
+            const trimmed = line.trim();
+            const dashIdx = trimmed.indexOf(' - ');
+            if (dashIdx > 0) {
+              const idPart = trimmed.substring(0, dashIdx).trim();
+              const namePart = trimmed.substring(dashIdx + 3).trim();
+              if (idPart && namePart) {
+                this.uplayCache.set(idPart, namePart);
+              }
+            }
+          }
         }
+      } catch (e) {
+        this.uplayCache = new Map();
       }
     }
 
-    // Blacklist non-game Steam tool IDs (Note: SteamVR 250820 is explicitly allowed as Xbox App tracks it)
-    const toolAppIds = new Set(['228980', '1391110', '1070560']);
+    return this.uplayCache ? this.uplayCache.get(String(ubiId)) || null : null;
+  }
 
-    for (const libPath of allLibraryFolders) {
-      const steamAppsDir = path.join(libPath, 'steamapps');
-      if (!fs.existsSync(steamAppsDir)) continue;
+  // 3. Resolve Epic game name via local index, SteamGridDB API, or items-tracker
+  async resolveEpicGameName(externalPlatformId, namespace, localEpicMap) {
+    const key = (externalPlatformId || namespace || '').toLowerCase();
+    if (!key) return null;
 
-      try {
-        const files = fs.readdirSync(steamAppsDir);
-        for (const file of files) {
-          const match = file.match(/^appmanifest_(\d+)\.acf$/i);
-          if (match) {
-            const appId = match[1];
-            if (toolAppIds.has(appId)) continue;
+    if (this.nameCache.has(`epic_${key}`)) {
+      return this.nameCache.get(`epic_${key}`);
+    }
 
-            const acfPath = path.join(steamAppsDir, file);
-            try {
-              const acfContent = fs.readFileSync(acfPath, 'utf8');
-              const nameMatch = acfContent.match(/"name"\s+"([^"]+)"/);
-              const dirMatch = acfContent.match(/"installdir"\s+"([^"]+)"/);
+    // A. Check local Epic manifests first (instant offline match)
+    if (localEpicMap) {
+      const match = localEpicMap.get(key) || (namespace ? localEpicMap.get(namespace.toLowerCase()) : null);
+      if (match && match.title) {
+        this.nameCache.set(`epic_${key}`, match.title);
+        return match.title;
+      }
+    }
 
-              const rawTitle = nameMatch ? nameMatch[1] : `Steam App ${appId}`;
-              const title = (appId === '250820' && (!rawTitle || rawTitle.startsWith('Steam App'))) ? 'SteamVR' : rawTitle;
+    // B. Query SteamGridDB API
+    try {
+      const sgdbRes = await fetch(`https://www.steamgriddb.com/api/v2/games/egs/${encodeURIComponent(externalPlatformId)}`, {
+        headers: { 'Authorization': `Bearer ${BUILTIN_SGDB_KEY}` },
+        signal: AbortSignal.timeout(3500)
+      });
+      if (sgdbRes.ok) {
+        const sgdbData = await sgdbRes.json();
+        if (sgdbData && sgdbData.success && sgdbData.data && sgdbData.data.name) {
+          this.nameCache.set(`epic_${key}`, sgdbData.data.name);
+          return sgdbData.data.name;
+        }
+      }
+    } catch (e) {}
 
-              // Skip Proton / Redistributables by name
-              if (
-                title.includes('Steam Linux Runtime') ||
-                title.includes('Steamworks Common') ||
-                title.includes('Proton')
-              ) {
-                continue;
-              }
+    // C. Query GitHub items-tracker database
+    try {
+      const trackerRes = await fetch(`https://raw.githubusercontent.com/nachoaldamav/items-tracker/refs/heads/main/database/items/${encodeURIComponent(externalPlatformId)}.json`, {
+        signal: AbortSignal.timeout(3500)
+      });
+      if (trackerRes.ok) {
+        const itemData = await trackerRes.json();
+        if (itemData && itemData.title) {
+          this.nameCache.set(`epic_${key}`, itemData.title);
+          return itemData.title;
+        }
+      }
+    } catch (e) {}
 
-              const installDir = dirMatch
-                ? path.join(steamAppsDir, 'common', dirMatch[1])
-                : steamAppsDir;
+    return null;
+  }
 
-              // Check local Steam artwork cache
-              let localArtwork = null;
-              for (const sPath of steamPaths) {
-                const possibleCover = path.join(
-                  sPath,
-                  'appcache',
-                  'librarycache',
-                  appId,
-                  'library_600x900.jpg'
-                );
-                const possibleCover2x = path.join(
-                  sPath,
-                  'appcache',
-                  'librarycache',
-                  appId,
-                  'library_600x900_2x.jpg'
-                );
-                if (fs.existsSync(possibleCover2x)) {
-                  localArtwork = possibleCover2x;
-                  break;
-                } else if (fs.existsSync(possibleCover)) {
-                  localArtwork = possibleCover;
-                  break;
+  // 4. Resolve GOG game name via local index or GOG official API
+  async resolveGOGGameName(gogId, localGogMap) {
+    if (!gogId) return null;
+    const cacheKey = `gog_${gogId}`;
+    if (this.nameCache.has(cacheKey)) return this.nameCache.get(cacheKey);
+
+    if (localGogMap && localGogMap.has(String(gogId))) {
+      const title = localGogMap.get(String(gogId)).title;
+      this.nameCache.set(cacheKey, title);
+      return title;
+    }
+
+    try {
+      const res = await fetch(`https://api.gog.com/v2/games/${encodeURIComponent(gogId)}`, {
+        signal: AbortSignal.timeout(3500)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data._embedded && data._embedded.product && data._embedded.product.title) {
+          const title = data._embedded.product.title;
+          this.nameCache.set(cacheKey, title);
+          return title;
+        }
+      }
+    } catch (e) {}
+
+    return null;
+  }
+
+  // 5. Scan Xbox PC App's authoritative library from ThirdPartyLibraries and ExternalAppShortcut
+  scanXboxAppRegistry() {
+    const rawGames = [];
+    const candidateDirs = [
+      this.xboxThirdPartyDir,
+      this.xboxRoamingThirdPartyDir,
+      path.join(this.xboxPackagePath, 'LocalState', 'CustomLibraryManagement')
+    ].filter(d => fs.existsSync(d));
+
+    const providers = ['steam', 'epic', 'gog', 'bnet', 'ea', 'ubi', 'CustomLibraryManagement'];
+
+    for (const baseDir of candidateDirs) {
+      for (const prov of providers) {
+        const provDir = path.join(baseDir, prov);
+        if (!fs.existsSync(provDir)) continue;
+
+        const isCustom = prov === 'CustomLibraryManagement';
+        const manifestCandidates = [
+          path.join(provDir, `${prov}.manifest`),
+          path.join(provDir, `${prov}.json`)
+        ];
+
+        // 5A. Parse manifest files (Official Xbox App Manifest Structure)
+        for (const mPath of manifestCandidates) {
+          if (!fs.existsSync(mPath)) continue;
+          try {
+            const raw = fs.readFileSync(mPath, 'utf8').trim().replace(/^\uFEFF/, '');
+            if (!raw) continue;
+            const root = JSON.parse(raw);
+            if (!root || !root.gameCache) continue;
+
+            // gameCache can be a Map/Object or an Array
+            const entries = [];
+            if (Array.isArray(root.gameCache.games)) {
+              entries.push(...root.gameCache.games);
+            } else if (Array.isArray(root.gameCache)) {
+              entries.push(...root.gameCache);
+            } else if (typeof root.gameCache === 'object') {
+              for (const [key, val] of Object.entries(root.gameCache)) {
+                if (key === 'version') continue;
+                if (val && typeof val === 'object') {
+                  entries.push({ ...val, _mapKey: key });
                 }
               }
-
-              steamGames.push({
-                id: `steam_${appId}`,
-                originalId: appId,
-                appId: appId,
-                title: title,
-                launcher: 'STEAM',
-                source: 'steam_manifest',
-                installPath: installDir,
-                localArtwork: localArtwork,
-                currentThumbnail: localArtwork
-              });
-            } catch (err) {
-              console.warn(`[Scanner] Error reading ${file}:`, err.message);
             }
-          }
-        }
-      } catch (err) {
-        console.warn(`[Scanner] Error reading steamapps in ${libPath}:`, err.message);
-      }
-    }
 
-    return steamGames;
-  }
+            for (const item of entries) {
+              const rawId = item.id || item._mapKey || item.title;
+              if (!rawId) continue;
 
-  // 3. Scan Epic Games Launcher Manifests
-  scanEpicGames() {
-    const epicGames = [];
-    const manifestsDir = path.join(
-      this.programData,
-      'Epic',
-      'EpicGamesLauncher',
-      'Data',
-      'Manifests'
-    );
+              // Parse launcher & platform ID
+              let launcher = isCustom ? 'CUSTOM' : (prov === 'ubi' ? 'UBISOFT' : prov.toUpperCase());
+              let externalPlatformId = String(rawId);
+              let namespace = '';
 
-    if (fs.existsSync(manifestsDir)) {
-      try {
-        const files = fs.readdirSync(manifestsDir);
-        for (const file of files) {
-          if (file.endsWith('.item')) {
-            try {
-              const fullPath = path.join(manifestsDir, file);
-              const data = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
-              if (data && data.DisplayName) {
-                const title = data.DisplayName;
-                epicGames.push({
-                  id: `epic_${vault.sanitizeIdentifier(data.AppName || title)}`,
-                  originalId: data.AppName || title,
-                  title: title,
-                  launcher: 'EPIC',
-                  source: 'epic_manifest',
-                  installPath: data.InstallLocation || '',
-                  catalogItemId: data.CatalogItemId || null
-                });
+              if (prov === 'steam') {
+                externalPlatformId = rawId.replace(/^steam:/i, '');
+              } else if (prov === 'epic') {
+                const parts = rawId.split(':');
+                if (parts.length >= 3) {
+                  namespace = parts[1];
+                  externalPlatformId = parts[2];
+                } else if (parts.length === 2) {
+                  externalPlatformId = parts[1];
+                }
+              } else if (prov === 'gog') {
+                externalPlatformId = rawId.replace(/^gog:/i, '');
+              } else if (prov === 'ubi') {
+                externalPlatformId = rawId.replace(/^ubi:/i, '');
+              } else if (prov === 'ea') {
+                externalPlatformId = rawId.replace(/^ea:/i, '');
               }
-            } catch (e) {
-              // skip bad item
-            }
-          }
-        }
-      } catch (err) {
-        console.warn('[Scanner] Error reading Epic manifests:', err.message);
-      }
-    }
-    return epicGames;
-  }
 
-  // 4. Scan GOG Galaxy
-  scanGOGGames() {
-    const gogGames = [];
+              // Determine exact image path Xbox App uses
+              let targetImagePath;
+              if (isCustom && item.imagePath) {
+                targetImagePath = item.imagePath;
+              } else if (isCustom) {
+                targetImagePath = path.join(provDir, `${vault.sanitizeIdentifier(rawId)}.png`);
+              } else {
+                targetImagePath = path.join(provDir, `${rawId.replace(/:/g, '_')}.png`);
+              }
 
-    // Query Registry HKLM\SOFTWARE\WOW6432Node\GOG.com\Games
-    try {
-      const regCmd = 'reg query "HKLM\\SOFTWARE\\WOW6432Node\\GOG.com\\Games" /s';
-      const out = execSync(regCmd, { stdio: ['pipe', 'pipe', 'ignore'], encoding: 'utf8' });
-      const blocks = out.split(/HKEY_LOCAL_MACHINE[^\r\n]+/i);
+              const safeId = vault.sanitizeIdentifier(
+                prov === 'steam' ? `steam_${externalPlatformId}` : (prov === 'epic' ? `epic_${externalPlatformId}` : `${prov}_${externalPlatformId}`)
+              );
 
-      for (const block of blocks) {
-        const titleMatch = block.match(/gameName\s+REG_SZ\s+(.+)$/m);
-        const idMatch = block.match(/gameID\s+REG_SZ\s+(.+)$/m);
-        const pathMatch = block.match(/path\s+REG_SZ\s+(.+)$/m);
-
-        if (titleMatch && titleMatch[1]) {
-          const title = titleMatch[1].trim();
-          const gameId = idMatch ? idMatch[1].trim() : title;
-          gogGames.push({
-            id: `gog_${vault.sanitizeIdentifier(gameId)}`,
-            originalId: gameId,
-            title: title,
-            launcher: 'GOG',
-            source: 'gog_registry',
-            installPath: pathMatch ? pathMatch[1].trim() : ''
-          });
-        }
-      }
-    } catch (err) {
-      // registry key might not exist
-    }
-
-    // Scan SQLite storage if exists
-    const gogDbPath = path.join(this.programData, 'GOG.com', 'Galaxy', 'storage', 'index.db');
-    if (fs.existsSync(gogDbPath)) {
-      try {
-        const { DatabaseSync } = require('node:sqlite');
-        const db = new DatabaseSync(gogDbPath, { readOnly: true });
-        const rows = db.prepare('SELECT title, releaseKey FROM Product WHERE isGame = 1').all();
-        for (const row of rows) {
-          if (row.title) {
-            const exists = gogGames.some(g => g.title.toLowerCase() === row.title.toLowerCase());
-            if (!exists) {
-              gogGames.push({
-                id: `gog_${vault.sanitizeIdentifier(row.releaseKey || row.title)}`,
-                originalId: row.releaseKey || row.title,
-                title: row.title,
-                launcher: 'GOG',
-                source: 'gog_database',
-                installPath: ''
+              rawGames.push({
+                id: safeId,
+                originalId: rawId,
+                externalPlatformId,
+                namespace,
+                appId: prov === 'steam' ? externalPlatformId : null,
+                title: item.title || item.name || item.displayName || null,
+                launcher,
+                targetImagePath,
+                installPath: item.installLocation || item.installPath || '',
+                executableName: item.executableName || '',
+                source: 'xbox_registry',
+                currentThumbnail: fs.existsSync(targetImagePath) ? targetImagePath : null
               });
             }
+          } catch (e) {
+            console.warn(`[Scanner] Warning parsing ${mPath}:`, e.message);
           }
         }
-      } catch (err) {
-        // SQLite read issue or locked, ignore
+
+        // 5B. Check directory files for any cached images without an explicit manifest entry
+        try {
+          const files = fs.readdirSync(provDir);
+          for (const file of files) {
+            const lower = file.toLowerCase();
+            if (lower.endsWith('.bak') || lower.endsWith('.new') || lower.endsWith('.tmp') || lower.includes('_cover.')) {
+              continue; // Skip backup, companion, and legacy duplicate files
+            }
+
+            if (!lower.endsWith('.png') && !lower.endsWith('.jpg')) {
+              continue;
+            }
+
+            const fullPath = path.join(provDir, file);
+            const baseName = path.parse(file).name;
+
+            // If an entry already tracks this exact targetImagePath, update currentThumbnail
+            const existing = rawGames.find(g => g.targetImagePath && g.targetImagePath.toLowerCase() === fullPath.toLowerCase());
+            if (existing) {
+              if (!existing.currentThumbnail) existing.currentThumbnail = fullPath;
+              continue;
+            }
+
+            // Otherwise, this is a standalone image cached in the Xbox folder
+            let launcher = isCustom ? 'CUSTOM' : (prov === 'ubi' ? 'UBISOFT' : prov.toUpperCase());
+            let cleanBase = baseName;
+            let externalPlatformId = baseName;
+            let namespace = '';
+
+            if (prov === 'steam' || cleanBase.startsWith('steam_')) {
+              launcher = 'STEAM';
+              externalPlatformId = cleanBase.replace(/^steam_/i, '');
+            } else if (prov === 'epic' || cleanBase.startsWith('epic_')) {
+              launcher = 'EPIC';
+              const withoutPrefix = cleanBase.replace(/^epic_/i, '');
+              const parts = withoutPrefix.split('_');
+              if (parts.length >= 2) {
+                namespace = parts[0];
+                externalPlatformId = parts.slice(1).join('_');
+              } else {
+                externalPlatformId = withoutPrefix;
+              }
+            } else if (prov === 'gog' || cleanBase.startsWith('gog_')) {
+              launcher = 'GOG';
+              externalPlatformId = cleanBase.replace(/^gog_/i, '');
+            } else if (prov === 'ubi' || cleanBase.startsWith('ubi_')) {
+              launcher = 'UBISOFT';
+              externalPlatformId = cleanBase.replace(/^ubi_/i, '');
+            }
+
+            const safeId = vault.sanitizeIdentifier(
+              launcher === 'STEAM' ? `steam_${externalPlatformId}` : `${launcher.toLowerCase()}_${externalPlatformId}`
+            );
+
+            rawGames.push({
+              id: safeId,
+              originalId: baseName,
+              externalPlatformId,
+              namespace,
+              appId: launcher === 'STEAM' ? externalPlatformId : null,
+              title: null,
+              launcher,
+              targetImagePath: fullPath,
+              installPath: '',
+              source: 'xbox_cache',
+              currentThumbnail: fullPath
+            });
+          }
+        } catch (e) {}
       }
     }
 
-    return gogGames;
+    // 5C. Scan ExternalAppShortcut directory (manually added shortcuts)
+    const externalShortcutDir = path.join(this.xboxPackagePath, 'LocalState', 'ExternalAppShortcut');
+    if (fs.existsSync(externalShortcutDir)) {
+      try {
+        const files = fs.readdirSync(externalShortcutDir);
+        for (const file of files) {
+          if (file.endsWith('.json') || file.endsWith('.manifest')) {
+            try {
+              const content = fs.readFileSync(path.join(externalShortcutDir, file), 'utf8');
+              const parsed = JSON.parse(content);
+              const targetPath = parsed.targetPath || parsed.installPath || '';
+              let title = parsed.title || parsed.name || '';
+              if (!title || title.toLowerCase() === 'shortcutmanifest') {
+                title = targetPath ? path.parse(targetPath).name : 'Custom Shortcut';
+              }
+
+              const safeId = `shortcut_${vault.sanitizeIdentifier(parsed.id || title)}`;
+              rawGames.push({
+                id: safeId,
+                originalId: parsed.id || title,
+                externalPlatformId: parsed.id || title,
+                title,
+                launcher: 'SHORTCUT',
+                targetImagePath: parsed.iconPath || path.join(externalShortcutDir, `${safeId}.png`),
+                installPath: targetPath,
+                source: 'xbox_shortcut',
+                currentThumbnail: parsed.iconPath && fs.existsSync(parsed.iconPath) ? parsed.iconPath : null
+              });
+            } catch (e) {}
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 5D. Include user-configured custom games from settings
+    const customConfigGames = config.get('customGames') || [];
+    for (const cg of customConfigGames) {
+      const safeId = cg.id || `custom_${vault.sanitizeIdentifier(cg.title)}`;
+      const targetImagePath = cg.targetImagePath || path.join(this.xboxCustomLibraryDir, `${safeId}.png`);
+      rawGames.push({
+        id: safeId,
+        originalId: safeId,
+        externalPlatformId: safeId,
+        title: cg.title,
+        launcher: 'CUSTOM',
+        targetImagePath,
+        installPath: cg.path || '',
+        source: 'user_custom',
+        currentThumbnail: fs.existsSync(targetImagePath) ? targetImagePath : null
+      });
+    }
+
+    return rawGames;
   }
 
-  // 5. Sample / Demo games for testing and visual showcase
-  getSampleGames() {
-    return [
-      {
-        id: 'steam_1091500',
-        appId: '1091500',
-        title: 'Cyberpunk 2077',
-        launcher: 'STEAM',
-        source: 'sample',
-        installPath: 'C:\\Games\\Steam\\steamapps\\common\\Cyberpunk 2077'
-      },
-      {
-        id: 'steam_1145360',
-        appId: '1145360',
-        title: 'Hades',
-        launcher: 'STEAM',
-        source: 'sample',
-        installPath: 'C:\\Games\\Steam\\steamapps\\common\\Hades'
-      },
-      {
-        id: 'epic_alanwake2',
-        title: 'Alan Wake 2',
-        launcher: 'EPIC',
-        source: 'sample',
-        installPath: 'C:\\Program Files\\Epic Games\\AlanWake2'
-      },
-      {
-        id: 'steam_1245620',
-        appId: '1245620',
-        title: 'ELDEN RING',
-        launcher: 'STEAM',
-        source: 'sample',
-        installPath: 'C:\\Games\\Steam\\steamapps\\common\\ELDEN RING'
-      },
-      {
-        id: 'gog_witcher3',
-        title: 'The Witcher 3: Wild Hunt',
-        launcher: 'GOG',
-        source: 'sample',
-        installPath: 'C:\\GOG Games\\The Witcher 3'
-      },
-      {
-        id: 'shortcut_genshin',
-        title: 'Genshin Impact',
-        launcher: 'SHORTCUT',
-        source: 'sample',
-        installPath: 'C:\\Program Files\\Genshin Impact\\launcher.exe'
-      },
-      {
-        id: 'steam_1086940',
-        appId: '1086940',
-        title: "Baldur's Gate 3",
-        launcher: 'STEAM',
-        source: 'sample',
-        installPath: "C:\\Games\\Steam\\steamapps\\common\\Baldurs Gate 3"
-      },
-      {
-        id: 'epic_gtav',
-        title: 'Grand Theft Auto V',
-        launcher: 'EPIC',
-        source: 'sample',
-        installPath: 'C:\\Program Files\\Epic Games\\GTAV'
-      }
-    ];
-  }
-
-  // Master Aggregator: scans all sources, deduplicates, and determines sync status
-  async scanAll(options = { includeSamplesIfEmpty: true }) {
-    console.log('[Scanner] Beginning multi-launcher discovery...');
+  // 6. Master Aggregator & Deduplication Pipeline
+  async scanAll(options = { includeSamplesIfEmpty: false }) {
+    console.log('[Scanner] Scanning Xbox App ThirdPartyLibraries...');
     const startTime = Date.now();
 
-    const xboxGames = this.scanXboxAppRegistry();
-    const steamGames = this.scanSteamLibraries();
-    const epicGames = this.scanEpicGames();
-    const gogGames = this.scanGOGGames();
-    const customGames = config.get('customGames') || [];
+    // 1. Build local indexes for instant offline enrichment
+    const localIndexes = this.buildLocalEnrichmentIndices();
 
-    console.log(
-      `[Scanner] Scanned: ${xboxGames.length} Xbox registry, ${steamGames.length} Steam, ${epicGames.length} Epic, ${gogGames.length} GOG, ${customGames.length} Custom`
-    );
+    // 2. Discover games registered in Xbox PC App
+    const rawXboxGames = this.scanXboxAppRegistry();
+    console.log(`[Scanner] Discovered ${rawXboxGames.length} raw entries in Xbox App.`);
 
-    // ====================================================================
-    // Aggressive deduplication: keyed by TITLE ONLY (launcher-agnostic),
-    // plus a fast appId index so e.g. steam_1091500 from Xbox cache and
-    // Steam manifest collapse into a single entry.
-    // ====================================================================
-    const combinedMap = new Map();   // normalizedTitle -> merged game
-    const appIdIndex = new Map();    // appId -> normalizedTitle key
+    // 3. Strict Deduplication: Keyed by targetImagePath or canonical identifier
+    const uniqueMap = new Map();
 
-    const normalizeTitle = (title) => {
-      return (title || '')
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, '')
-        .trim();
-    };
-
-    // Source priority: xbox_registry > xbox_cache > vault > steam_manifest > epic_manifest > gog_registry > sample > user_custom
-    const SOURCE_PRIORITY = {
-      'xbox_registry': 0,
-      'xbox_cache': 1,
-      'vault': 2,
-      'steam_manifest': 3,
-      'epic_manifest': 4,
-      'gog_registry': 5,
-      'gog_database': 6,
-      'sample': 7,
-      'user_custom': 8
-    };
-
-    const getSourceRank = (source) => SOURCE_PRIORITY[source] ?? 99;
-
-    const addGame = (game) => {
-      if (!game || (!game.title && !game.id)) return;
-
-      const titleKey = normalizeTitle(game.title);
-      if (!titleKey) return;
-
-      // Check if an entry with the same appId already exists under a different title key
-      let existingKey = null;
-      if (game.appId) {
-        existingKey = appIdIndex.get(game.appId) || null;
-      }
-
-      const key = existingKey || titleKey;
-
-      if (combinedMap.has(key)) {
-        const existing = combinedMap.get(key);
-
-        // Determine which entry is "better" (lower rank = higher priority)
-        const existingRank = getSourceRank(existing.source);
-        const newRank = getSourceRank(game.source);
-
-        // Generic title detection
-        const isGeneric = (t) => !t || t.startsWith('Steam App ') || t.startsWith('xbox_') || /^[0-9]+$/.test(t);
-
-        // Prefer non-generic title
-        const preferredTitle = !isGeneric(existing.title) ? existing.title : (game.title || existing.title);
-
-        // The base object is whichever has higher source priority
-        const base = newRank < existingRank ? game : existing;
-        const supplement = newRank < existingRank ? existing : game;
-
-        const merged = {
-          ...supplement,
-          ...base,
-          title: preferredTitle,
-          appId: base.appId || supplement.appId,
-          installPath: base.installPath || supplement.installPath,
-          // Prefer Xbox cache thumbnail since it reflects what the Xbox App actually shows
-          currentThumbnail: (existing.source === 'xbox_cache' || existing.source === 'xbox_registry')
-            ? (existing.currentThumbnail || game.currentThumbnail)
-            : (game.currentThumbnail || existing.currentThumbnail),
-          inXboxRegistry: existing.inXboxRegistry || game.source === 'xbox_registry' || game.source === 'xbox_cache',
-          // Keep the better id (prefer steam_<appId> format for Steam games)
-          id: (base.appId && base.id.startsWith('steam_')) ? base.id : (supplement.appId && supplement.id.startsWith('steam_') ? supplement.id : base.id)
-        };
-
-        combinedMap.set(key, merged);
-
-        // Update appId index if we now have an appId
-        if (merged.appId && !appIdIndex.has(merged.appId)) {
-          appIdIndex.set(merged.appId, key);
-        }
+    for (const game of rawXboxGames) {
+      const key = (game.targetImagePath || game.id).toLowerCase();
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, game);
       } else {
-        combinedMap.set(key, {
-          ...game,
-          inXboxRegistry: game.source === 'xbox_registry' || game.source === 'xbox_cache'
+        // Merge entries if one has better metadata
+        const existing = uniqueMap.get(key);
+        uniqueMap.set(key, {
+          ...existing,
+          title: existing.title || game.title,
+          installPath: existing.installPath || game.installPath,
+          currentThumbnail: existing.currentThumbnail || game.currentThumbnail
         });
-
-        if (game.appId) {
-          appIdIndex.set(game.appId, key);
-        }
       }
-    };
-
-    // Add in order: Xbox Registry (highest priority) -> Native Launchers -> Custom
-    xboxGames.forEach(addGame);
-    steamGames.forEach(addGame);
-    epicGames.forEach(addGame);
-    gogGames.forEach(addGame);
-    customGames.forEach(addGame);
-
-    let allGames = Array.from(combinedMap.values());
-
-    // Only real detected games are processed
-    if (allGames.length === 0 && options && options.includeSamplesIfEmpty) {
-      console.log('[Scanner] No local third-party games found.');
     }
 
-    // Process Sync Status & Artwork availability for each game
-    const processedGames = await Promise.all(allGames.map(async (game) => {
+    const dedupedGames = Array.from(uniqueMap.values());
+
+    // 4. Resolve clean titles for all entries (eliminates raw hashes like 6504cc... or Ubi 11903)
+    const resolvedGames = await Promise.all(dedupedGames.map(async (game) => {
+      let title = game.title;
+
+      // Check if title is missing or generic hash/id
+      if (this.isGenericTitle(title)) {
+        if (game.launcher === 'STEAM' && game.appId) {
+          title = KNOWN_STEAM_TITLES[game.appId] ||
+            (localIndexes.steam.has(game.appId) ? localIndexes.steam.get(game.appId).title : null) ||
+            `Steam App ${game.appId}`;
+        } else if (game.launcher === 'EPIC') {
+          const resolved = await this.resolveEpicGameName(game.externalPlatformId, game.namespace, localIndexes.epic);
+          if (resolved) title = resolved;
+        } else if (game.launcher === 'UBISOFT') {
+          const resolved = await this.getUbisoftGameName(game.externalPlatformId);
+          if (resolved) title = resolved;
+        } else if (game.launcher === 'GOG') {
+          const resolved = await this.resolveGOGGameName(game.externalPlatformId, localIndexes.gog);
+          if (resolved) title = resolved;
+        }
+
+        // Final fallback if still generic
+        if (!title || this.isGenericTitle(title)) {
+          if (game.installPath) {
+            title = path.parse(game.installPath).name;
+          } else if (game.title && !this.isGenericTitle(game.title)) {
+            title = game.title;
+          } else {
+            title = game.originalId ? game.originalId.replace(/^[a-z]+[_-]/i, '').replace(/[_-]+/g, ' ') : 'Game';
+          }
+        }
+      }
+
+      // Format title cleanly
+      title = title.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+      title = title.replace(/\b\w/g, c => c.toUpperCase());
+
+      return {
+        ...game,
+        title
+      };
+    }));
+
+    // 5. Final pass deduplication by normalized title to guarantee ONE card per game
+    const finalTitleMap = new Map();
+    for (const game of resolvedGames) {
+      const normalizedTitle = game.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (!finalTitleMap.has(normalizedTitle)) {
+        finalTitleMap.set(normalizedTitle, game);
+      } else {
+        const existing = finalTitleMap.get(normalizedTitle);
+        // Keep the one with an existing thumbnail or Vault cover
+        if (!existing.currentThumbnail && game.currentThumbnail) {
+          finalTitleMap.set(normalizedTitle, game);
+        }
+      }
+    }
+
+    const uniqueFinalGames = Array.from(finalTitleMap.values());
+
+    // 6. Process Sync Status & Artwork Preview
+    const processedGames = await Promise.all(uniqueFinalGames.map(async (game) => {
       const hasVaultCover = vault.hasCover(game.id);
       const vaultMeta = vault.getMetadata(game.id);
       let coverUrl = hasVaultCover ? vault.getCoverAsDataUrl(game.id) : null;
 
-      // Fallback 1: If no Vault cover yet, check local currentThumbnail (from Xbox cache)
+      // Fallback 1: Show existing Xbox App thumbnail if present on disk
       if (!coverUrl && game.currentThumbnail && fs.existsSync(game.currentThumbnail)) {
         try {
           const buf = fs.readFileSync(game.currentThumbnail);
@@ -791,7 +674,7 @@ class GameScanner {
         } catch (e) {}
       }
 
-      // Default Priority: Query SteamGridDB for highest resolution & highest rated square icon
+      // Fallback 2: Query SteamGridDB online for best square cover preview
       if (!coverUrl) {
         try {
           const artInfo = await artResolver.getBestSquareCoverUrl(game);
@@ -799,7 +682,6 @@ class GameScanner {
             coverUrl = artInfo.url;
           }
         } catch (e) {
-          // If network error, fallback to Steam Store CDN if appId is known
           if (game.appId) {
             coverUrl = `https://cdn.akamai.steamstatic.com/steam/apps/${game.appId}/library_600x900_2x.jpg`;
           }
@@ -818,32 +700,45 @@ class GameScanner {
         hasVaultCover,
         coverUrl,
         lastSynced: vaultMeta ? vaultMeta.savedAt : null,
-        status, // 'Synced' | 'Pending' | 'Needs Review'
+        status,
+        inXboxRegistry: true,
         resolvedAppId: game.appId || vault.getCachedAppId(this.cleanGameTitle(game.title))
       };
     }));
 
     const elapsed = Date.now() - startTime;
-    console.log(`[Scanner] Discovery complete in ${elapsed}ms. Found ${processedGames.length} games.`);
+    console.log(`[Scanner] Discovery complete in ${elapsed}ms. Found ${processedGames.length} authoritative Xbox games.`);
     return processedGames;
+  }
+
+  // Check if a game title is generic or an unresolved raw ID
+  isGenericTitle(title) {
+    if (!title) return true;
+    const t = String(title).trim().toLowerCase();
+    return t === 'shortcutmanifest' ||
+      t === 'unknown' ||
+      /^\d+$/.test(t) ||
+      /^[0-9a-f]{16,}$/i.test(t.replace(/[^0-9a-f]/gi, '')) ||
+      t.startsWith('steam app ') ||
+      t.startsWith('xbox ') ||
+      t.startsWith('ubi ') ||
+      t.startsWith('ubi_') ||
+      t.startsWith('epic_') ||
+      t.startsWith('steam_') ||
+      t.startsWith('gog_');
   }
 
   // Utility to clean game title for fuzzy matching
   cleanGameTitle(rawTitle) {
     if (!rawTitle) return '';
     return rawTitle
-      // Remove edition tags
       .replace(/\b(Game of the Year|GOTY|Enhanced|Definitive|Remastered|Deluxe|Special|Gold|Standard|Ultimate|Collector'?s|Anniversary|Digital)\s+Edition\b/gi, '')
       .replace(/\b(Director'?s\s+Cut)\b/gi, '')
       .replace(/\b(Edition)\b/gi, '')
-      // Remove architecture tags like (x86), (x64)
       .replace(/\((x86|x64|64-bit|32-bit)\)/gi, '')
-      // Remove publisher or launcher prefixes/suffixes
       .replace(/\[.*?\]/g, '')
       .replace(/\(.*?\)/g, '')
-      // Remove ™ ® ©
       .replace(/[™®©]/g, '')
-      // Clean extra spaces
       .replace(/\s+/g, ' ')
       .trim();
   }

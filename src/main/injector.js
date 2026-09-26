@@ -74,53 +74,41 @@ class XboxAppInjector {
     }
   }
 
-  // Update or insert into CustomLibraryManagement.manifest
-  updateManifestGame(game, injectedImagePath) {
+  // Update or insert into CustomLibraryManagement.manifest for Custom / Shortcut games only
+  updateCustomManifestGame(game, injectedImagePath) {
     try {
       this.ensureDirectories();
       let manifest = {
         version: 1,
         provider: { version: 1, enabled: true },
-        gameCache: { version: 1, games: [] }
+        gameCache: {}
       };
 
       if (fs.existsSync(this.clmManifestPath)) {
         try {
           const raw = fs.readFileSync(this.clmManifestPath, 'utf8');
           manifest = JSON.parse(raw);
-          if (!manifest.gameCache) manifest.gameCache = { version: 1, games: [] };
-          if (!Array.isArray(manifest.gameCache.games)) manifest.gameCache.games = [];
+          if (!manifest.gameCache || typeof manifest.gameCache !== 'object') {
+            manifest.gameCache = {};
+          }
         } catch (e) {
           // ignore corrupted manifest
         }
       }
 
-      const games = manifest.gameCache.games;
-      const safeId = vault.sanitizeIdentifier(game.id || game.originalId || game.title);
+      const safeId = game.originalId || vault.sanitizeIdentifier(game.id || game.title);
       const cleanTitle = game.title || 'Game';
 
-      const existingIdx = games.findIndex(g =>
-        (g.id && g.id === safeId) ||
-        (g.title && g.title.toLowerCase() === cleanTitle.toLowerCase())
-      );
-
-      const gameEntry = {
+      manifest.gameCache[safeId] = {
         id: safeId,
         title: cleanTitle,
         provider: (game.launcher || 'CUSTOM').toLowerCase(),
-        installPath: game.installPath || '',
-        launchUri: game.installPath || '',
-        imageUri: injectedImagePath,
-        thumbnailPath: injectedImagePath,
-        iconUri: injectedImagePath,
+        installLocation: game.installPath || '',
+        executableName: game.executableName || '',
+        imagePath: injectedImagePath,
+        addedDate: Date.now().toString(),
         lastUpdated: new Date().toISOString()
       };
-
-      if (existingIdx >= 0) {
-        games[existingIdx] = { ...games[existingIdx], ...gameEntry };
-      } else {
-        games.push(gameEntry);
-      }
 
       fs.writeFileSync(this.clmManifestPath, JSON.stringify(manifest, null, 2), 'utf8');
       console.log(`[Injector] Updated CustomLibraryManagement.manifest for "${cleanTitle}"`);
@@ -147,6 +135,40 @@ class XboxAppInjector {
     return false;
   }
 
+  // Resolve the exact filesystem path that Xbox App expects for a game cover
+  resolveTargetImagePath(game) {
+    if (game.targetImagePath) {
+      return game.targetImagePath;
+    }
+
+    const launcher = (game.launcher || 'custom').toLowerCase();
+    const safeId = vault.sanitizeIdentifier(game.id);
+
+    if (launcher === 'steam') {
+      const appId = game.appId || safeId.replace(/^steam_/i, '');
+      return path.join(this.thirdPartyDir, 'steam', `steam_${appId}.png`);
+    }
+    if (launcher === 'epic') {
+      const epicId = game.originalId ? game.originalId.replace(/:/g, '_') : safeId;
+      return path.join(this.thirdPartyDir, 'epic', epicId.startsWith('epic_') ? `${epicId}.png` : `epic_${epicId}.png`);
+    }
+    if (launcher === 'gog') {
+      const gogId = game.appId || safeId.replace(/^gog_/i, '');
+      return path.join(this.thirdPartyDir, 'gog', `gog_${gogId}.png`);
+    }
+    if (launcher === 'ubi' || launcher === 'ubisoft') {
+      const ubiId = game.appId || safeId.replace(/^ubi_/i, '');
+      return path.join(this.thirdPartyDir, 'ubi', `ubi_${ubiId}.png`);
+    }
+    if (launcher === 'ea') {
+      const eaId = game.appId || safeId.replace(/^ea_/i, '');
+      return path.join(this.thirdPartyDir, 'ea', `ea_${eaId}.png`);
+    }
+
+    // Default to CustomLibraryManagement
+    return path.join(this.customLibraryDir, `${safeId}.png`);
+  }
+
   // Inject a single game cover from Vault into Xbox App
   injectGame(game) {
     if (!vault.hasCover(game.id)) {
@@ -157,63 +179,57 @@ class XboxAppInjector {
     this.lastWriteTime = Date.now();
 
     const coverBuffer = vault.getCoverBuffer(game.id);
-    const safeId = vault.sanitizeIdentifier(game.id);
+    const targetImagePath = this.resolveTargetImagePath(game);
+    const targetDir = path.dirname(targetImagePath);
 
-    // 1. Primary target inside CustomLibraryManagement is .png
-    const targetPng = path.join(this.customLibraryDir, `${safeId}.png`);
-    const targetCoverPng = path.join(this.customLibraryDir, `${safeId}_cover.png`);
-    const targetJpg = path.join(this.customLibraryDir, `${safeId}.jpg`);
-
-    this.writeFileWithRetry(targetPng, coverBuffer);
-    this.writeFileWithRetry(targetCoverPng, coverBuffer);
-    this.writeFileWithRetry(targetJpg, coverBuffer);
-
-    // If game has appId (e.g. 1091500), also write by appId
-    if (game.appId) {
-      const appIdPng = path.join(this.customLibraryDir, `${game.appId}.png`);
-      this.writeFileWithRetry(appIdPng, coverBuffer);
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
     }
 
-    // 2. If launcher is steam/epic/gog/bnet/ea/ubi, place inside their respective subfolder as .png
-    const launcherFolder = (game.launcher || '').toLowerCase();
-    if (['steam', 'epic', 'gog', 'bnet', 'ea', 'ubi'].includes(launcherFolder)) {
-      const provDir = path.join(this.thirdPartyDir, launcherFolder);
-      if (fs.existsSync(provDir)) {
-        try {
-          // Write primary launcher filename e.g. steam_1091500.png
-          const provTargetPng = path.join(provDir, `${safeId}.png`);
-          this.writeFileWithRetry(provTargetPng, coverBuffer);
-
-          // If game has appId, also write appId.png (e.g. 1091500.png)
-          if (game.appId) {
-            const provAppIdPng = path.join(provDir, `${game.appId}.png`);
-            this.writeFileWithRetry(provAppIdPng, coverBuffer);
-          }
-
-          // Clean up old .jpg in provider folder so Xbox App doesn't grab stale jpg
-          const oldProvJpg = path.join(provDir, `${safeId}.jpg`);
-          if (fs.existsSync(oldProvJpg)) {
-            try { fs.unlinkSync(oldProvJpg); } catch (e) {}
-          }
-          if (game.appId) {
-            const oldAppIdJpg = path.join(provDir, `${game.appId}.jpg`);
-            if (fs.existsSync(oldAppIdJpg)) {
-              try { fs.unlinkSync(oldAppIdJpg); } catch (e) {}
-            }
-          }
-        } catch (e) {
-          console.warn(`[Injector] Warning writing to ${provDir}:`, e.message);
-        }
+    // 1. Create .bak backup of original Xbox artwork if it exists and backup doesn't already exist
+    const backupPath = targetImagePath.replace(/\.png$/i, '.bak');
+    if (!fs.existsSync(backupPath) && fs.existsSync(targetImagePath)) {
+      try {
+        fs.copyFileSync(targetImagePath, backupPath);
+        console.log(`[Injector] Backed up original artwork to ${backupPath}`);
+      } catch (e) {
+        console.warn('[Injector] Could not create .bak backup:', e.message);
       }
     }
 
-    // 3. Update CustomLibraryManagement.manifest with targetPng
-    this.updateManifestGame(game, targetPng);
+    // 2. Write the new image directly to targetImagePath
+    this.writeFileWithRetry(targetImagePath, coverBuffer);
 
-    console.log(`[Injector] Successfully injected PNG artwork for "${game.title}" -> ${targetPng}`);
+    // 3. Write companion .new file (compatible with SteamGridDB widget)
+    const newPath = targetImagePath.replace(/\.png$/i, '.new');
+    this.writeFileWithRetry(newPath, coverBuffer);
+
+    // 4. Clean up any stale legacy duplicate files in the target directory (e.g. .jpg, _cover.png)
+    const baseName = path.parse(targetImagePath).name;
+    const strayPatterns = [
+      path.join(targetDir, `${baseName}.jpg`),
+      path.join(targetDir, `${baseName}_cover.png`),
+      path.join(targetDir, `${baseName}_cover.jpg`)
+    ];
+    for (const sf of strayPatterns) {
+      if (fs.existsSync(sf)) {
+        try { fs.unlinkSync(sf); } catch (e) {}
+      }
+    }
+
+    // 5. Update CustomLibraryManagement.manifest ONLY if this is a custom game
+    const isCustom = (game.launcher || '').toLowerCase() === 'custom' ||
+                     (game.launcher || '').toLowerCase() === 'shortcut' ||
+                     targetImagePath.includes('CustomLibraryManagement');
+
+    if (isCustom) {
+      this.updateCustomManifestGame(game, targetImagePath);
+    }
+
+    console.log(`[Injector] Successfully injected artwork for "${game.title}" -> ${targetImagePath}`);
     return {
       success: true,
-      injectedPath: targetPng,
+      injectedPath: targetImagePath,
       gameId: game.id,
       title: game.title
     };
@@ -252,44 +268,43 @@ class XboxAppInjector {
     this.lastWriteTime = Date.now();
 
     const entries = vault.getAllVaultEntries();
-    console.log(`[Injector] Restoring ${entries.length} PNG covers from Vault to Xbox App...`);
+    console.log(`[Injector] Restoring ${entries.length} covers from Vault to Xbox App...`);
     let restored = 0;
 
     for (const entry of entries) {
       try {
         const coverBuffer = vault.getCoverBuffer(entry.gameId);
         if (coverBuffer) {
-          const safeId = vault.sanitizeIdentifier(entry.gameId);
-          const targetPng = path.join(this.customLibraryDir, `${safeId}.png`);
-          const targetCoverPng = path.join(this.customLibraryDir, `${safeId}_cover.png`);
-          const targetJpg = path.join(this.customLibraryDir, `${safeId}.jpg`);
-
-          this.writeFileWithRetry(targetPng, coverBuffer);
-          this.writeFileWithRetry(targetCoverPng, coverBuffer);
-          this.writeFileWithRetry(targetJpg, coverBuffer);
-
-          const launcherFolder = (entry.launcher || '').toLowerCase();
-          if (['steam', 'epic', 'gog', 'bnet', 'ea', 'ubi'].includes(launcherFolder)) {
-            const provDir = path.join(this.thirdPartyDir, launcherFolder);
-            if (fs.existsSync(provDir)) {
-              try {
-                const provTargetPng = path.join(provDir, `${safeId}.png`);
-                this.writeFileWithRetry(provTargetPng, coverBuffer);
-
-                // Clean old jpg
-                const oldJpg = path.join(provDir, `${safeId}.jpg`);
-                if (fs.existsSync(oldJpg)) {
-                  try { fs.unlinkSync(oldJpg); } catch (e) {}
-                }
-              } catch (e) {}
-            }
-          }
-
-          this.updateManifestGame({
+          const gameStub = {
             id: entry.gameId,
             title: entry.title,
-            launcher: entry.launcher
-          }, targetPng);
+            launcher: entry.launcher,
+            appId: entry.appId,
+            targetImagePath: entry.targetImagePath || null
+          };
+
+          const targetImagePath = this.resolveTargetImagePath(gameStub);
+          const targetDir = path.dirname(targetImagePath);
+          if (!fs.existsSync(targetDir)) {
+            fs.mkdirSync(targetDir, { recursive: true });
+          }
+
+          // Backup if not yet backed up
+          const backupPath = targetImagePath.replace(/\.png$/i, '.bak');
+          if (!fs.existsSync(backupPath) && fs.existsSync(targetImagePath)) {
+            try { fs.copyFileSync(targetImagePath, backupPath); } catch (e) {}
+          }
+
+          this.writeFileWithRetry(targetImagePath, coverBuffer);
+          const newPath = targetImagePath.replace(/\.png$/i, '.new');
+          this.writeFileWithRetry(newPath, coverBuffer);
+
+          const isCustom = (entry.launcher || '').toLowerCase() === 'custom' ||
+                           (entry.launcher || '').toLowerCase() === 'shortcut' ||
+                           targetImagePath.includes('CustomLibraryManagement');
+          if (isCustom) {
+            this.updateCustomManifestGame(gameStub, targetImagePath);
+          }
 
           restored++;
         }
@@ -298,7 +313,7 @@ class XboxAppInjector {
       }
     }
 
-    console.log(`[Injector] Restored ${restored}/${entries.length} covers as .png.`);
+    console.log(`[Injector] Restored ${restored}/${entries.length} covers.`);
     return { total: entries.length, restored };
   }
 }

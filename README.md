@@ -175,6 +175,16 @@ npm run pack
 
 ## Changelog
 
+### [v1.7.0] - 2026-09-26
+- **Xbox App-Centric Architecture (Zero Duplicates):** Shifted the primary library discovery exclusively to the Xbox PC App's authoritative registry and cache (`ThirdPartyLibraries` and `ExternalAppShortcut`). Instead of crawling whole hard drives for arbitrary games, the app directly mirrors the Xbox App's library, completely eliminating duplicate tiles, phantom DLC entries, and cross-launcher confusion.
+- **Precision Target Artwork Injection:** Artwork injection now writes directly and exclusively to the exact file path expected by the Xbox PC App (e.g. `epic_<namespace>_<catalogId>.png`, `steam_<appId>.png`), creating `.bak` backups of original artwork and `.new` companion markers compatible with SteamGridDB Game Bar widget standards without spraying redundant files across folders or polluting `CustomLibraryManagement.manifest`.
+- **Intelligent Multi-Stage Title Resolution:** Raw identifier hashes and folder codes are now automatically resolved into clean, official game titles:
+  - Epic Games raw hashes (such as `6504cc61472e...`) are cross-referenced with local Epic `.item` manifests, SteamGridDB API, and community databases to instantly identify titles like **The Outlast Trials**.
+  - Ubisoft numerical IDs (e.g. `11903`) are automatically mapped via the Haoose Uplay directory to official titles (e.g. **Tom Clancy's Ghost Recon® Breakpoint**).
+  - Steam IDs are resolved via local `.acf` manifests, the built-in dictionary, and Steam store metadata.
+- **True Factory Reset & Backup Restoration:** Factory Reset now thoroughly restores all original `.bak` artwork files across all provider directories, wipes `.new` and stray files, resets `CustomLibraryManagement.manifest` to a clean empty state, clears the in-memory UI state immediately, and re-renders with a clean slate.
+- **Watcher & Synchronization Hardening:** The background filesystem shield ignores `.bak`, `.new`, and temporary files during sync operations to avoid false-positive loops.
+
 ### [v1.6.0] - 2026-09-26
 - **Aggressive Library Deduplication Engine:** Replaced launcher-keyed deduplication with title-only normalization plus a fast AppID cross-index. Games from Xbox registry, Steam manifests, and cache image files now correctly collapse into a single unified entry instead of appearing as duplicates.
 - **Source Priority Merging:** When the same game is detected from multiple sources, entries are ranked by source priority (Xbox Registry > Xbox Cache > Vault > Steam Manifest > Epic Manifest > GOG Registry) so the most relevant metadata (thumbnail, install path) is preserved.

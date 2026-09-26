@@ -8,6 +8,7 @@ const state = {
   searchQuery: '',
   isSyncing: false
 };
+window.state = state;
 
 // ============================================================================
 // Toast Notification Utility
@@ -114,6 +115,7 @@ function updateCounts() {
   document.getElementById('countShortcut').textContent = shortcut;
   document.getElementById('countPending').textContent = pending;
 }
+window.updateCounts = updateCounts;
 
 function filterGames() {
   return state.games.filter(game => {
@@ -227,6 +229,7 @@ function renderGames() {
     grid.appendChild(card);
   });
 }
+window.renderGames = renderGames;
 
 function onGameCoverUpdated(gameId, newCoverUrl) {
   const g = state.games.find(item => item.id === gameId);
