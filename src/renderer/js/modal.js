@@ -851,15 +851,21 @@ window.ModalManager = {
     const modal = document.getElementById('tutorialModal');
     if (modal) {
       modal.style.display = 'flex';
+      // Force layout reflow before adding .open for fluent acrylic fade-in
+      modal.offsetHeight;
+      modal.classList.add('open');
       const sheet = modal.querySelector('.modal-sheet');
       if (sheet) {
-        sheet.style.transform = 'scale(0.95)';
-        sheet.style.opacity = '0';
-        requestAnimationFrame(() => {
-          sheet.style.transition = 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)';
-          sheet.style.transform = 'scale(1)';
-          sheet.style.opacity = '1';
-        });
+        sheet.style.transform = '';
+        sheet.style.opacity = '';
+        sheet.style.transition = '';
+      }
+      if (window.ControllerNav) {
+        setTimeout(() => {
+          if (window.ControllerNav && window.ControllerNav.focusDefaultElement) {
+            window.ControllerNav.focusDefaultElement();
+          }
+        }, 60);
       }
     }
   },
@@ -867,7 +873,19 @@ window.ModalManager = {
   closeTutorialModal() {
     const modal = document.getElementById('tutorialModal');
     if (modal) {
-      modal.style.display = 'none';
+      modal.classList.remove('open');
+      setTimeout(() => {
+        if (!modal.classList.contains('open')) {
+          modal.style.display = 'none';
+        }
+      }, 220);
+      if (window.ControllerNav) {
+        setTimeout(() => {
+          if (window.ControllerNav && window.ControllerNav.focusDefaultElement) {
+            window.ControllerNav.focusDefaultElement();
+          }
+        }, 60);
+      }
     }
   },
 

@@ -564,6 +564,31 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   padding: 24px;
 }
 
+.games-grid-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  gap: 16px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.scanning-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(0, 208, 94, 0.15);
+  border-top-color: #00FF87;
+  border-radius: 50%;
+  animation: spin-scan 0.8s cubic-bezier(0.4, 0.1, 0.2, 1) infinite;
+}
+
+@keyframes spin-scan {
+  to { transform: rotate(360deg); }
+}
+
 .games-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));

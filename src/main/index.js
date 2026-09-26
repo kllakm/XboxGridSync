@@ -29,6 +29,7 @@ if (isSilentRestore) {
 // 2. High-DPI display awareness & crisp text rendering
 app.commandLine.appendSwitch('enable-features', 'OverlayScrollbar,Accelerated2dCanvas');
 app.commandLine.appendSwitch('force-color-profile', 'srgb');
+app.commandLine.appendSwitch('enable-gamepad-button-axis-events');
 app.setAppUserModelId('Xbox Grid Sync');
 
 function ensureStartMenuShortcut() {
@@ -112,6 +113,11 @@ if (!gotTheLock) {
 let mainWindow = null;
 
 function createWindow() {
+  // Handheld & Exclusive Fullscreen Experience (FSE) Initialization
+  const isHandheld = isHandheldDevice();
+  const fseConfig = config.get('fseDefault');
+  const shouldStartFse = fseConfig !== undefined ? !!fseConfig : isHandheld;
+
   const windowOpts = {
     width: 1120,
     height: 760,
@@ -119,6 +125,7 @@ function createWindow() {
     minHeight: 600,
     frame: false,
     show: false,
+    fullscreen: shouldStartFse,
     backgroundColor: '#090b0e',
     icon: path.join(__dirname, '..', 'assets', 'icon.ico'),
     webPreferences: {
@@ -137,16 +144,12 @@ function createWindow() {
     const startMinimized = config.get('startMinimized');
     if (!startMinimized) {
       mainWindow.show();
+      mainWindow.focus();
+      if (mainWindow.webContents) {
+        mainWindow.webContents.focus();
+      }
     }
   });
-
-  // Handheld & Exclusive Fullscreen Experience (FSE) Initialization
-  const isHandheld = isHandheldDevice();
-  const fseConfig = config.get('fseDefault');
-  const shouldStartFse = fseConfig !== undefined ? !!fseConfig : isHandheld;
-  if (shouldStartFse) {
-    mainWindow.setFullScreen(true);
-  }
 
   mainWindow.on('enter-full-screen', () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
@@ -235,6 +238,10 @@ ipcMain.handle('app:version', () => app.getVersion());
 // 1. Scanner
 ipcMain.handle('scanner:scanAll', async (event, options) => {
   return await scanner.scanAll(options);
+});
+
+ipcMain.handle('scanner:getCachedLibrary', () => {
+  return scanner.getCachedLibrary();
 });
 
 // 2. Artwork Resolution & Injection

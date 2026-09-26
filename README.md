@@ -182,6 +182,23 @@ npm run pack
 
 ## Changelog
 
+### [v1.8.6] - 2026-09-26
+- **Multi-Gamepad & Flydigi Vader 5 Pro Compatibility:**
+  - Expanded controller polling across all connected Gamepad API slots rather than stopping at index 0, fully resolving issues where third-party companion software (such as Flydigi Space Station, Steam Input, or virtual HID drivers) occupies slot 0 with an idle device while the physical controller operates on subsequent slots.
+  - Implemented per-gamepad button state maps and added support for DirectInput POV hat switch axes and non-standard button mappings.
+  - Added native `gamepadconnected` and `gamepaddisconnected` event listeners, automatically engaging Controller Mode upon connection.
+  - Filtered out air mouse / gyro jitter by raising the mouse transition threshold, preventing sensitive controller sensors from accidentally disengaging controller navigation.
+  - Corrected all interactive DOM selectors (including filter pills, studio buttons, and modal backdrops) and mapped controller shortcuts for seamless library, studio, and settings navigation.
+- **Quick Start Tutorial Modal Fix:**
+  - Fixed an issue where the Quick Start Tutorial modal remained hidden despite setting `display: flex` due to missing `.open` state class on the acrylic modal backdrop.
+  - Re-clicking "View Tutorial" in Settings now immediately presents the interactive acrylic guide overlay.
+  - The tutorial now displays properly on clean first launch as intended.
+- **Instant Library Startup & FSE Loading Polish:**
+  - Eliminated the empty library state on FSE startup by persisting discovered games to an instantaneous local cache (`library_cache.json`), rendering detected titles in 0ms on boot before the background scan executes.
+  - Initialized BrowserWindow with `fullscreen: shouldStartFse` option directly, avoiding disruptive offscreen display mode transitions and swapchain resets on startup.
+  - Added an animated scanner loading indicator in the library grid to provide clear visual feedback during fresh scans.
+  - Ensured main process grants immediate window and webContents focus on `ready-to-show`.
+
 ### [v1.8.5] - 2026-09-26
 - **Automated Silent Start Menu Indexing on Launch:**
   - Fully automated the registration of the official Windows Start Menu shortcut (`Xbox Grid Sync.lnk`) to run silently on every application startup.

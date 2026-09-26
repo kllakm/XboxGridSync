@@ -38,7 +38,7 @@
       </div>
       <span class="titlebar-title">
         Xbox Grid Sync
-        <span class="version-badge" id="appVersionBadge">v1.8.5</span>
+        <span class="version-badge" id="appVersionBadge">v1.8.6</span>
         <span class="shield-badge" id="shieldStatusBadge" title="Automated Update Shield status">
           <span class="pulse-dot"></span>
           <span id="shieldStatusText">Shield Active</span>
@@ -171,6 +171,11 @@
 
       <!-- Games Library Grid -->
       <section class="library-scroll-area">
+        <div class="games-grid-loading" id="gamesLoadingIndicator" style="display: none;">
+          <div class="scanning-spinner"></div>
+          <span>Discovering Xbox App titles...</span>
+        </div>
+
         <div class="games-grid" id="gamesGrid">
           <!-- Rendered dynamically -->
         </div>
@@ -603,7 +608,7 @@
   <!-- ========================================================================
        Quick Start Tutorial Modal
        ======================================================================== -->
-  <div class="modal-backdrop" id="tutorialModal" style="display: none;">
+  <div class="modal-backdrop" id="tutorialModal">
     <div class="modal-sheet tutorial-sheet">
       <div class="modal-header">
         <div class="tutorial-header-title">

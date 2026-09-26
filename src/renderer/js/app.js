@@ -125,7 +125,14 @@ window.updateShieldBadge = function (isActive) {
 // ============================================================================
 window.rescanLibrary = async function () {
   const summaryEl = document.getElementById('gamesCountSummary');
+  const loadingIndicator = document.getElementById('gamesLoadingIndicator');
+  const emptyState = document.getElementById('emptyState');
+
   summaryEl.textContent = '(Scanning...)';
+  if (!state.games || state.games.length === 0) {
+    if (loadingIndicator) loadingIndicator.style.display = 'flex';
+    if (emptyState) emptyState.style.display = 'none';
+  }
 
   try {
     const games = await window.api.scanAll({ includeSamplesIfEmpty: false });
@@ -136,6 +143,8 @@ window.rescanLibrary = async function () {
   } catch (err) {
     summaryEl.textContent = '(Error scanning)';
     window.showToast('Scan Error', err.message, 'error');
+  } finally {
+    if (loadingIndicator) loadingIndicator.style.display = 'none';
   }
 };
 
@@ -469,6 +478,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     });
   }
+
+  // Instant Library Rendering from Cache (0ms on startup for FSE & PC)
+  try {
+    if (window.api && window.api.getCachedLibrary) {
+      const cached = await window.api.getCachedLibrary();
+      if (cached && cached.length > 0 && (!state.games || state.games.length === 0)) {
+        state.games = cached;
+        updateCounts();
+        renderGames();
+        const summaryEl = document.getElementById('gamesCountSummary');
+        if (summaryEl) summaryEl.textContent = `(${cached.length} titles discovered)`;
+      }
+    }
+  } catch (e) {}
 
   // Initial scan
   window.rescanLibrary();

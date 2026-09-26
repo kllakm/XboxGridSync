@@ -37,6 +37,6 @@ Whenever any code, bug fix, feature, or UI modification is performed in this rep
 ### 5. Provide One-Click GitHub CLI Release Command
 - In your final response on every prompt, **ALWAYS** include a ready-to-run GitHub CLI PowerShell command formatted with the current version and concise release notes:
   ```powershell
-  gh release create v<VERSION> .\dist\XboxGridSync-portable.exe .\dist\XboxGridSync-Setup.exe --title "Xbox Grid Sync v<VERSION>" --notes "<CONCISE_CHANGELOG_SUMMARY>"
+  gh release create v<VERSION> .\dist\XboxGridSync-portable.exe .\dist\XboxGridSync-Setup.exe --title "v<VERSION> - <TITLE>" --notes "<CONCISE_CHANGELOG_SUMMARY>"
   ```
 

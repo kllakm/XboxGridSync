@@ -737,7 +737,36 @@ class GameScanner {
 
     const elapsed = Date.now() - startTime;
     console.log(`[Scanner] Discovery complete in ${elapsed}ms. Found ${processedGames.length} authoritative Xbox games.`);
+    this.saveCachedLibrary(processedGames);
     return processedGames;
+  }
+
+  // Retrieve cached library scan for instantaneous 0ms display on boot
+  getCachedLibrary() {
+    try {
+      const cachePath = path.join(vault.cacheDir, 'library_cache.json');
+      if (fs.existsSync(cachePath)) {
+        const raw = fs.readFileSync(cachePath, 'utf8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('[Scanner] Could not read library cache:', e.message);
+    }
+    return [];
+  }
+
+  // Persist library scan results to disk
+  saveCachedLibrary(games) {
+    try {
+      if (!Array.isArray(games)) return;
+      const cachePath = path.join(vault.cacheDir, 'library_cache.json');
+      fs.writeFileSync(cachePath, JSON.stringify(games, null, 2), 'utf8');
+    } catch (e) {
+      console.warn('[Scanner] Could not write library cache:', e.message);
+    }
   }
 
   // Check if a game title is generic or an unresolved raw ID

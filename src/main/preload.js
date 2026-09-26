@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld('api', {
   // Discovery & Library
   getAppVersion: () => ipcRenderer.invoke('app:version'),
   scanAll: (options) => ipcRenderer.invoke('scanner:scanAll', options),
+  getCachedLibrary: () => ipcRenderer.invoke('scanner:getCachedLibrary'),
 
   // Artwork & Sync
   resolveArtwork: (game, options) => ipcRenderer.invoke('art:resolve', game, options),
