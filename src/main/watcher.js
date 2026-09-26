@@ -3,6 +3,7 @@ const path = require('path');
 const os = require('os');
 const injector = require('./injector');
 const config = require('./config');
+const vault = require('./vault');
 
 class BackgroundWatcher {
   constructor() {
@@ -67,11 +68,21 @@ class BackgroundWatcher {
   }
 
   handleFileChange(eventType, filename) {
-    // Ignore internal vault writes or if autoRestore is disabled
+    // Ignore if autoRestore is disabled or restore is currently in flight
     if (!config.get('autoRestore')) return;
     if (this.isRestoring) return;
 
-    console.log(`[Watcher] Detected filesystem event (${eventType}) on: ${filename}`);
+    // Ignore temporary files, locks, or log files
+    if (filename && (filename.endsWith('.tmp') || filename.endsWith('.log') || filename.startsWith('~'))) {
+      return;
+    }
+
+    // Ignore events caused by our own recent writes (cooldown 8s)
+    if (injector.lastWriteTime && (Date.now() - injector.lastWriteTime < 8000)) {
+      return;
+    }
+
+    console.log(`[Watcher] Detected external filesystem event (${eventType}) on: ${filename}`);
 
     // Debounce to allow package updates / deletions to settle
     if (this.debounceTimer) {
@@ -87,10 +98,45 @@ class BackgroundWatcher {
     if (this.isRestoring) return;
     this.isRestoring = true;
 
-    console.log(`[Watcher] Auto-Restore triggered by [${reason}]. Checking and shielding artwork...`);
     try {
+      // 1. Verify if ANY vault covers are actually missing on disk
+      const entries = vault.getAllVaultEntries();
+      if (!entries || entries.length === 0) {
+        return;
+      }
+
+      let missingCount = 0;
+      for (const entry of entries) {
+        const safeId = vault.sanitizeIdentifier(entry.gameId);
+        const targetPng = path.join(this.customLibraryDir, `${safeId}.png`);
+
+        if (!fs.existsSync(targetPng)) {
+          missingCount++;
+          continue;
+        }
+
+        const launcherFolder = (entry.launcher || '').toLowerCase();
+        if (['steam', 'epic', 'gog', 'bnet', 'ea', 'ubi'].includes(launcherFolder)) {
+          const provDir = path.join(this.targetDir, launcherFolder);
+          if (fs.existsSync(provDir)) {
+            const provTargetPng = path.join(provDir, `${safeId}.png`);
+            if (!fs.existsSync(provTargetPng)) {
+              missingCount++;
+            }
+          }
+        }
+      }
+
+      if (missingCount === 0) {
+        // No covers are missing; do NOT rewrite and do NOT spam toasts
+        console.log(`[Watcher] Verification complete: All ${entries.length} covers intact. No restore needed.`);
+        return;
+      }
+
+      console.log(`[Watcher] Detected ${missingCount} missing covers. Shielding and restoring from Vault...`);
       const result = injector.restoreAllFromVault();
-      if (this.onRestoreCallback) {
+
+      if (result.restored > 0 && this.onRestoreCallback) {
         this.onRestoreCallback({ reason, result, timestamp: new Date().toISOString() });
       }
     } catch (err) {

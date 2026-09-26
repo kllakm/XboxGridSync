@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('api', {
   resolveArtwork: (game, options) => ipcRenderer.invoke('art:resolve', game, options),
   resolveAll: (games, options) => ipcRenderer.invoke('art:resolveAll', games, options),
   searchAlternatives: (title) => ipcRenderer.invoke('art:searchAlternatives', title),
+  fetchImageAsDataUrl: (urlOrPath) => ipcRenderer.invoke('art:fetchAsDataUrl', urlOrPath),
   applyCustomCover: (gameId, dataUrlOrPath, metadata) =>
     ipcRenderer.invoke('art:applyCustomCover', gameId, dataUrlOrPath, metadata),
 

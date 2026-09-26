@@ -352,83 +352,139 @@
 
         </div>
       </div>
-    </section>
-  </main>
-
-  <!-- ========================================================================
-       Manual Artwork Override Modal
-       ======================================================================== -->
-  <div class="modal-backdrop" id="overrideModal">
-    <div class="modal-sheet">
-      <div class="modal-header">
-        <h2 id="overrideModalTitle">Customize Artwork</h2>
-        <button class="modal-close-btn" id="closeOverrideModalBtn">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
+    <!-- View 3: Full-App Size Manual Artwork Studio -->
+    <section class="app-view" id="overrideView" style="display: none;">
+      <div class="override-page-header">
+        <div class="override-header-left">
+          <button class="btn btn-secondary btn-back-nav" id="btnBackFromOverride" title="Return to Library">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            <span>Back to Library</span>
+          </button>
+          <div class="override-title-group">
+            <h1 id="overridePageTitle">Customize Artwork</h1>
+            <span class="game-badge" id="overrideGameBadge">Steam</span>
+          </div>
+        </div>
+        <div class="override-header-right">
+          <button class="btn btn-secondary" id="btnCancelOverridePage">Cancel</button>
+          <button class="btn btn-primary" id="btnApplyOverridePage">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>Save &amp; Inject to Xbox</span>
+          </button>
+        </div>
       </div>
 
-      <div class="modal-body">
-        <div class="override-grid">
-          <!-- Left: 1:1 Live Preview -->
-          <div class="override-preview-area">
-            <div class="override-preview-box">
-              <img src="" alt="Cover Preview" class="override-preview-img" id="overridePreviewImg">
+      <div class="override-content-layout">
+        <!-- Left: Interactive 1:1 Square Crop Studio -->
+        <div class="override-crop-studio">
+          <div class="studio-card">
+            <div class="studio-header">
+              <div class="studio-header-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00FF87" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M6 2v14a2 2 0 0 0 2 2h14"></path>
+                  <path d="M18 22V8a2 2 0 0 0-2-2H2"></path>
+                </svg>
+                <span>Interactive 1:1 Crop Studio</span>
+              </div>
+              <span class="studio-hint">Click &amp; drag to reposition &bull; Scroll wheel to zoom</span>
             </div>
-            <span style="font-size: 11px; color: var(--text-muted);">1:1 Square Artwork (Xbox App Format)</span>
-          </div>
 
-          <!-- Right: Alternatives & Inputs -->
-          <div class="override-options-area">
-            <div class="form-group">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                <label class="form-label" style="margin-bottom: 0;">Search Artwork Database</label>
-                <div style="display: flex; gap: 4px;">
-                  <button type="button" class="btn-source-filter active" id="filterSourceAll">All</button>
-                  <button type="button" class="btn-source-filter" id="filterSourceSteam">Steam</button>
-                  <button type="button" class="btn-source-filter" id="filterSourceSgdb">SteamGridDB</button>
+            <div class="crop-viewport-wrapper">
+              <div class="crop-viewport" id="cropViewport">
+                <canvas id="cropCanvas" width="1024" height="1024"></canvas>
+                <div class="crop-grid-overlay" id="cropGridOverlay">
+                  <div class="grid-line-h h1"></div>
+                  <div class="grid-line-h h2"></div>
+                  <div class="grid-line-v v1"></div>
+                  <div class="grid-line-v v2"></div>
+                </div>
+                <div class="crop-loading-spinner" id="cropLoadingSpinner" style="display: none;">
+                  <div class="spinner"></div>
+                  <span>Loading artwork...</span>
                 </div>
               </div>
-              <div style="display: flex; gap: 8px;">
-                <input type="text" class="form-input" id="overrideSearchInput" placeholder="Game title to search..." style="flex: 1;">
-                <button class="btn btn-secondary" id="btnSearchAlternatives">Search</button>
+            </div>
+
+            <!-- Crop Controls Bar -->
+            <div class="crop-controls-panel">
+              <div class="crop-control-row">
+                <span class="control-label">Zoom:</span>
+                <button type="button" class="btn-ctrl-icon" id="btnZoomOut" title="Zoom Out">&minus;</button>
+                <input type="range" id="cropZoomSlider" min="0.5" max="3.0" step="0.01" value="1.0" class="ctrl-slider">
+                <button type="button" class="btn-ctrl-icon" id="btnZoomIn" title="Zoom In">&plus;</button>
+                <span class="control-value" id="cropZoomVal">100%</span>
+              </div>
+
+              <div class="crop-actions-bar">
+                <span class="control-label">Align:</span>
+                <div class="quick-align-group">
+                  <button type="button" class="btn-ctrl-chip" id="btnAlignTop">Top</button>
+                  <button type="button" class="btn-ctrl-chip active" id="btnAlignCenter">Center</button>
+                  <button type="button" class="btn-ctrl-chip" id="btnAlignBottom">Bottom</button>
+                  <button type="button" class="btn-ctrl-chip" id="btnFitBest">Fit Best</button>
+                  <button type="button" class="btn-ctrl-chip" id="btnResetCrop">Reset</button>
+                </div>
+                <button type="button" class="btn-ctrl-chip" id="btnToggleGrid">Toggle Grid</button>
+              </div>
+
+              <div class="crop-info-footer">
+                <span class="crop-badge-png">1:1 Lossless PNG</span>
+                <span class="crop-dim-text" id="cropSourceDimensions">Output: 1024 &times; 1024 px</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Database Search & Alternative Covers -->
+        <div class="override-sources-column">
+          <div class="source-card">
+            <div class="source-card-header">
+              <label class="form-label" style="margin: 0; font-weight: 600;">Search Artwork Database</label>
+              <div class="source-filters-row">
+                <button type="button" class="btn-source-filter active" id="filterSourceAll">All</button>
+                <button type="button" class="btn-source-filter" id="filterSourceSgdb">SteamGridDB</button>
+                <button type="button" class="btn-source-filter" id="filterSourceSteam">Steam</button>
               </div>
             </div>
 
-            <!-- Matches List -->
+            <div class="search-input-group">
+              <input type="text" class="form-input" id="overrideSearchInput" placeholder="Game title to search...">
+              <button class="btn btn-secondary" id="btnSearchAlternatives">Search</button>
+            </div>
+
             <div class="search-matches-list" id="overrideMatchesList">
               <!-- Rendered dynamically -->
             </div>
+          </div>
 
-            <!-- Drag & Drop / File Browser -->
+          <div class="source-card">
+            <label class="form-label" style="font-weight: 600; margin-bottom: 8px;">Upload Local File or Web URL</label>
             <div class="drop-zone" id="overrideDropZone">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00FF87" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="17 8 12 3 7 8"></polyline>
                 <line x1="12" y1="3" x2="12" y2="15"></line>
               </svg>
-              <span>Drag & drop image file or <a href="#" id="btnBrowseLocalCover" style="color: #4ade80; text-decoration: underline;">browse</a></span>
+              <div class="drop-zone-text">
+                <span>Drag &amp; drop image file here</span>
+                <span class="drop-subtext">or <button type="button" id="btnBrowseLocalCover" class="btn-link">browse PC files</button> (PNG, JPG, WebP)</span>
+              </div>
             </div>
 
-            <!-- URL input -->
-            <div class="form-group">
-              <label class="form-label">Or Image URL</label>
-              <input type="text" class="form-input" id="overrideUrlInput" placeholder="https://example.com/poster.jpg">
+            <div class="url-input-row">
+              <input type="text" class="form-input" id="overrideUrlInput" placeholder="https://example.com/cover.png">
+              <button type="button" class="btn btn-secondary" id="btnLoadUrl">Load</button>
             </div>
           </div>
         </div>
       </div>
-
-      <div class="modal-footer">
-        <button class="btn btn-secondary" id="btnCancelOverride">Cancel</button>
-        <button class="btn btn-primary" id="btnApplyOverride">
-          <span>Apply to Vault & Xbox App</span>
-        </button>
-      </div>
-    </div>
-  </div>
+    </section>
+  </main>
 
   <!-- ========================================================================
        Add Custom Game Modal

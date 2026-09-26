@@ -175,6 +175,13 @@ npm run pack
 
 ## Changelog
 
+### [v1.5.0] - 2026-09-26
+- **Lossless PNG Xbox Cache Output:** Fixed thumbnail injection to output native `.png` format files (`steam_<appid>.png`, `<appid>.png`, etc.) into Xbox App cache and provider directories, ensuring thumbnails display reliably in the Xbox PC App while cleaning up legacy `.jpg` entries.
+- **Interactive 1:1 Crop Studio & Full-App Override Page:** Replaced the cramped modal dialog with a full-app size artwork studio featuring an interactive 1:1 square crop canvas with click-and-drag panning, smooth zoom controls, quick alignment presets (Top, Center, Bottom, Fit Best), and rule-of-thirds composition guides.
+- **Reliable Preview Loading:** Resolved local file and remote web image preview failures by streaming base64 Data URLs and implementing automatic backend CORS-bypassing fetch fallbacks.
+- **Smart Square Prioritization & Cropping:** Automatically prioritizes native 1:1 square grids and icons from SteamGridDB, with intelligent upper-middle focal cropping for standard 2:3 vertical covers so game titles and logos remain prominently centered.
+- **Eliminated False-Alarm Shield Alerts:** Fixed an infinite filesystem watcher loop by adding a self-write cooldown window, verifying cover existence on disk before triggering auto-restore, and suppressing toast notifications when zero covers are missing.
+
 ### [v1.4.0] - 2026-09-26
 - **Full-Size Dedicated Settings View:** Replaced the cramped modal dialog with a spacious, full app-size Settings view featuring organized acrylic cards, diagnostics tools, and smooth library navigation.
 - **Permanently Visible Donation QR Code:** The Support section in Settings now features an always-visible, high-resolution QR code for immediate phone camera scanning without requiring a button click.

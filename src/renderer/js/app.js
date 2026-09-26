@@ -361,12 +361,14 @@ function initEventListeners() {
 
   // Auto-restore event from FileSystemWatcher
   window.api.onAutoRestoreEvent((eventData) => {
-    window.showToast(
-      'Artwork Shield Protected',
-      `Xbox App update detected (${eventData.reason}). Automatically restored ${eventData.result.restored} master covers from Vault.`,
-      'success'
-    );
-    window.rescanLibrary();
+    if (eventData && eventData.result && eventData.result.restored > 0) {
+      window.showToast(
+        'Artwork Shield Protected',
+        `Xbox App update detected (${eventData.reason}). Automatically restored ${eventData.result.restored} master covers from Vault.`,
+        'success'
+      );
+      window.rescanLibrary();
+    }
   });
 }
 

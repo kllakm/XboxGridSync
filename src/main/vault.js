@@ -49,6 +49,8 @@ class VaultManager {
 
   getCoverPath(gameId) {
     const dir = this.getGameVaultDir(gameId);
+    const pngPath = path.join(dir, 'cover.png');
+    if (fs.existsSync(pngPath)) return pngPath;
     return path.join(dir, 'cover.jpg');
   }
 
@@ -65,6 +67,43 @@ class VaultManager {
     return false;
   }
 
+  // Convert buffer to 1:1 square PNG using Electron's nativeImage
+  convertToSquarePng(buffer, cropRatioY = 0.35) {
+    if (!buffer || buffer.length === 0) return buffer;
+    try {
+      const { nativeImage } = require('electron');
+      const img = nativeImage.createFromBuffer(buffer);
+      if (img.isEmpty()) return buffer;
+
+      const size = img.getSize();
+      if (!size.width || !size.height) return buffer;
+
+      // If already square (within 2px tolerance)
+      if (Math.abs(size.width - size.height) <= 2) {
+        return img.toPNG();
+      }
+
+      if (size.height > size.width) {
+        // Taller than wide (e.g. 600x900 vertical poster)
+        const side = size.width;
+        const excess = size.height - side;
+        const y = Math.max(0, Math.min(excess, Math.round(excess * cropRatioY)));
+        const cropped = img.crop({ x: 0, y, width: side, height: side });
+        return cropped.toPNG();
+      } else {
+        // Wider than tall
+        const side = size.height;
+        const excess = size.width - side;
+        const x = Math.max(0, Math.min(excess, Math.round(excess * 0.5)));
+        const cropped = img.crop({ x, y: 0, width: side, height: side });
+        return cropped.toPNG();
+      }
+    } catch (e) {
+      console.warn('[Vault] Image conversion warning:', e.message);
+      return buffer;
+    }
+  }
+
   saveCover(gameId, imageBuffer, metadata = {}) {
     try {
       const dir = this.getGameVaultDir(gameId);
@@ -72,20 +111,27 @@ class VaultManager {
         fs.mkdirSync(dir, { recursive: true });
       }
 
-      const coverPath = path.join(dir, 'cover.jpg');
+      // Convert to 1:1 Square PNG unless explicitly bypassed
+      const pngBuffer = metadata.isPreCropped ? imageBuffer : this.convertToSquarePng(imageBuffer);
+
+      const coverPngPath = path.join(dir, 'cover.png');
+      const coverJpgPath = path.join(dir, 'cover.jpg');
       const metaPath = path.join(dir, 'metadata.json');
 
       const meta = {
         gameId,
         savedAt: new Date().toISOString(),
-        size: imageBuffer.length,
+        size: pngBuffer.length,
+        format: 'png',
+        aspectRatio: '1:1',
         ...metadata
       };
 
-      fs.writeFileSync(coverPath, imageBuffer);
+      fs.writeFileSync(coverPngPath, pngBuffer);
+      fs.writeFileSync(coverJpgPath, pngBuffer);
       fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2), 'utf8');
-      console.log(`[Vault] Stored cover for ${gameId} (${imageBuffer.length} bytes)`);
-      return coverPath;
+      console.log(`[Vault] Stored 1:1 square PNG cover for ${gameId} (${pngBuffer.length} bytes)`);
+      return coverPngPath;
     } catch (err) {
       console.error(`[Vault] Failed to save cover for ${gameId}:`, err.message);
       throw err;
@@ -107,7 +153,7 @@ class VaultManager {
   getCoverAsDataUrl(gameId) {
     const buffer = this.getCoverBuffer(gameId);
     if (buffer) {
-      return `data:image/jpeg;base64,${buffer.toString('base64')}`;
+      return `data:image/png;base64,${buffer.toString('base64')}`;
     }
     return null;
   }

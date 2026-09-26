@@ -315,18 +315,45 @@ ipcMain.handle('dialog:selectExecutable', async () => {
   return null;
 });
 
+ipcMain.handle('art:fetchAsDataUrl', async (event, urlOrPath) => {
+  try {
+    if (!urlOrPath) return null;
+    if (urlOrPath.startsWith('data:')) return urlOrPath;
+    if (fs.existsSync(urlOrPath)) {
+      const buf = fs.readFileSync(urlOrPath);
+      const ext = path.extname(urlOrPath).toLowerCase().replace('.', '') || 'png';
+      const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : (ext === 'webp' ? 'image/webp' : 'image/png');
+      return `data:${mime};base64,${buf.toString('base64')}`;
+    }
+    const buf = await artResolver.downloadBuffer(urlOrPath);
+    return `data:image/png;base64,${buf.toString('base64')}`;
+  } catch (err) {
+    console.error(`[IPC] Failed to fetch image as data URL:`, err.message);
+    throw err;
+  }
+});
+
 ipcMain.handle('dialog:selectImage', async () => {
   if (!mainWindow) return null;
   const res = await dialog.showOpenDialog(mainWindow, {
     title: 'Select Custom Artwork Image (1:1 square recommended)',
     filters: [
-      { name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'webp'] },
+      { name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'webp', 'avif'] },
       { name: 'All Files', extensions: ['*'] }
     ],
     properties: ['openFile']
   });
   if (!res.canceled && res.filePaths.length > 0) {
-    return res.filePaths[0];
+    const filePath = res.filePaths[0];
+    try {
+      const buf = fs.readFileSync(filePath);
+      const ext = path.extname(filePath).toLowerCase().replace('.', '') || 'png';
+      const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : (ext === 'webp' ? 'image/webp' : 'image/png');
+      const dataUrl = `data:${mime};base64,${buf.toString('base64')}`;
+      return { filePath, dataUrl };
+    } catch (e) {
+      return { filePath, dataUrl: null };
+    }
   }
   return null;
 });

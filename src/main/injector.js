@@ -32,6 +32,7 @@ class XboxAppInjector {
       this.customLibraryDir,
       'CustomLibraryManagement.manifest'
     );
+    this.lastWriteTime = 0;
   }
 
   isXboxAppRunning() {
@@ -153,39 +154,66 @@ class XboxAppInjector {
     }
 
     this.ensureDirectories();
+    this.lastWriteTime = Date.now();
+
     const coverBuffer = vault.getCoverBuffer(game.id);
     const safeId = vault.sanitizeIdentifier(game.id);
 
-    // 1. Target inside CustomLibraryManagement
-    const targetJpg = path.join(this.customLibraryDir, `${safeId}.jpg`);
+    // 1. Primary target inside CustomLibraryManagement is .png
     const targetPng = path.join(this.customLibraryDir, `${safeId}.png`);
-    const targetCoverJpg = path.join(this.customLibraryDir, `${safeId}_cover.jpg`);
+    const targetCoverPng = path.join(this.customLibraryDir, `${safeId}_cover.png`);
+    const targetJpg = path.join(this.customLibraryDir, `${safeId}.jpg`);
 
-    this.writeFileWithRetry(targetJpg, coverBuffer);
     this.writeFileWithRetry(targetPng, coverBuffer);
-    this.writeFileWithRetry(targetCoverJpg, coverBuffer);
+    this.writeFileWithRetry(targetCoverPng, coverBuffer);
+    this.writeFileWithRetry(targetJpg, coverBuffer);
 
-    // 2. If launcher is steam/epic/gog, also place inside their respective subfolder
+    // If game has appId (e.g. 1091500), also write by appId
+    if (game.appId) {
+      const appIdPng = path.join(this.customLibraryDir, `${game.appId}.png`);
+      this.writeFileWithRetry(appIdPng, coverBuffer);
+    }
+
+    // 2. If launcher is steam/epic/gog/bnet/ea/ubi, place inside their respective subfolder as .png
     const launcherFolder = (game.launcher || '').toLowerCase();
     if (['steam', 'epic', 'gog', 'bnet', 'ea', 'ubi'].includes(launcherFolder)) {
       const provDir = path.join(this.thirdPartyDir, launcherFolder);
       if (fs.existsSync(provDir)) {
         try {
-          const provTarget = path.join(provDir, `${safeId}.jpg`);
-          this.writeFileWithRetry(provTarget, coverBuffer);
+          // Write primary launcher filename e.g. steam_1091500.png
+          const provTargetPng = path.join(provDir, `${safeId}.png`);
+          this.writeFileWithRetry(provTargetPng, coverBuffer);
+
+          // If game has appId, also write appId.png (e.g. 1091500.png)
+          if (game.appId) {
+            const provAppIdPng = path.join(provDir, `${game.appId}.png`);
+            this.writeFileWithRetry(provAppIdPng, coverBuffer);
+          }
+
+          // Clean up old .jpg in provider folder so Xbox App doesn't grab stale jpg
+          const oldProvJpg = path.join(provDir, `${safeId}.jpg`);
+          if (fs.existsSync(oldProvJpg)) {
+            try { fs.unlinkSync(oldProvJpg); } catch (e) {}
+          }
+          if (game.appId) {
+            const oldAppIdJpg = path.join(provDir, `${game.appId}.jpg`);
+            if (fs.existsSync(oldAppIdJpg)) {
+              try { fs.unlinkSync(oldAppIdJpg); } catch (e) {}
+            }
+          }
         } catch (e) {
-          // ignore
+          console.warn(`[Injector] Warning writing to ${provDir}:`, e.message);
         }
       }
     }
 
-    // 3. Update CustomLibraryManagement.manifest
-    this.updateManifestGame(game, targetJpg);
+    // 3. Update CustomLibraryManagement.manifest with targetPng
+    this.updateManifestGame(game, targetPng);
 
-    console.log(`[Injector] Successfully injected artwork for "${game.title}" -> ${targetJpg}`);
+    console.log(`[Injector] Successfully injected PNG artwork for "${game.title}" -> ${targetPng}`);
     return {
       success: true,
-      injectedPath: targetJpg,
+      injectedPath: targetPng,
       gameId: game.id,
       title: game.title
     };
@@ -221,24 +249,47 @@ class XboxAppInjector {
   // Restore all games directly from Vault directory entries
   restoreAllFromVault() {
     this.ensureDirectories();
+    this.lastWriteTime = Date.now();
+
     const entries = vault.getAllVaultEntries();
-    console.log(`[Injector] Restoring ${entries.length} covers from Vault to Xbox App...`);
+    console.log(`[Injector] Restoring ${entries.length} PNG covers from Vault to Xbox App...`);
     let restored = 0;
 
     for (const entry of entries) {
       try {
         const coverBuffer = vault.getCoverBuffer(entry.gameId);
         if (coverBuffer) {
-          const targetJpg = path.join(this.customLibraryDir, `${entry.gameId}.jpg`);
-          const targetCoverJpg = path.join(this.customLibraryDir, `${entry.gameId}_cover.jpg`);
+          const safeId = vault.sanitizeIdentifier(entry.gameId);
+          const targetPng = path.join(this.customLibraryDir, `${safeId}.png`);
+          const targetCoverPng = path.join(this.customLibraryDir, `${safeId}_cover.png`);
+          const targetJpg = path.join(this.customLibraryDir, `${safeId}.jpg`);
+
+          this.writeFileWithRetry(targetPng, coverBuffer);
+          this.writeFileWithRetry(targetCoverPng, coverBuffer);
           this.writeFileWithRetry(targetJpg, coverBuffer);
-          this.writeFileWithRetry(targetCoverJpg, coverBuffer);
+
+          const launcherFolder = (entry.launcher || '').toLowerCase();
+          if (['steam', 'epic', 'gog', 'bnet', 'ea', 'ubi'].includes(launcherFolder)) {
+            const provDir = path.join(this.thirdPartyDir, launcherFolder);
+            if (fs.existsSync(provDir)) {
+              try {
+                const provTargetPng = path.join(provDir, `${safeId}.png`);
+                this.writeFileWithRetry(provTargetPng, coverBuffer);
+
+                // Clean old jpg
+                const oldJpg = path.join(provDir, `${safeId}.jpg`);
+                if (fs.existsSync(oldJpg)) {
+                  try { fs.unlinkSync(oldJpg); } catch (e) {}
+                }
+              } catch (e) {}
+            }
+          }
 
           this.updateManifestGame({
             id: entry.gameId,
             title: entry.title,
             launcher: entry.launcher
-          }, targetJpg);
+          }, targetPng);
 
           restored++;
         }
@@ -247,7 +298,7 @@ class XboxAppInjector {
       }
     }
 
-    console.log(`[Injector] Restored ${restored}/${entries.length} covers.`);
+    console.log(`[Injector] Restored ${restored}/${entries.length} covers as .png.`);
     return { total: entries.length, restored };
   }
 }

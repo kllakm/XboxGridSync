@@ -140,7 +140,7 @@ class ArtworkResolver {
     }
   }
 
-  // Tier 4: Optional SteamGridDB API fetch
+  // Tier 4: Optional SteamGridDB API fetch (prioritizes 1:1 square grids)
   async fetchSteamGridDBCover(gameTitle, apiKey) {
     if (!apiKey) return null;
     try {
@@ -155,21 +155,39 @@ class ArtworkResolver {
       const data = await res.json();
       if (data.success && data.data && data.data.length > 0) {
         const sgdbGameId = data.data[0].id;
-        const gridsUrl = `https://www.steamgriddb.com/api/v2/grids/game/${sgdbGameId}?dimensions=512x512,1024x1024,600x900`;
-        const gridsRes = await fetch(gridsUrl, {
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'User-Agent': this.userAgent
-          }
+
+        // Try square 1:1 grids first (512x512, 1024x1024)
+        const squareGridsUrl = `https://www.steamgriddb.com/api/v2/grids/game/${sgdbGameId}?dimensions=512x512,1024x1024`;
+        const sqRes = await fetch(squareGridsUrl, {
+          headers: { 'Authorization': `Bearer ${apiKey}`, 'User-Agent': this.userAgent }
         });
-        if (gridsRes.ok) {
-          const gridsData = await gridsRes.json();
-          if (gridsData.success && gridsData.data && gridsData.data.length > 0) {
-            const bestGrid = gridsData.data[0];
+        if (sqRes.ok) {
+          const sqData = await sqRes.json();
+          if (sqData.success && sqData.data && sqData.data.length > 0) {
+            const bestGrid = sqData.data[0];
             const buffer = await this.downloadBuffer(bestGrid.url);
             return {
               buffer,
-              source: 'steamgriddb',
+              source: 'steamgriddb_square',
+              url: bestGrid.url,
+              isPreCropped: true
+            };
+          }
+        }
+
+        // Fallback to vertical 600x900
+        const vertGridsUrl = `https://www.steamgriddb.com/api/v2/grids/game/${sgdbGameId}?dimensions=600x900`;
+        const vertRes = await fetch(vertGridsUrl, {
+          headers: { 'Authorization': `Bearer ${apiKey}`, 'User-Agent': this.userAgent }
+        });
+        if (vertRes.ok) {
+          const vertData = await vertRes.json();
+          if (vertData.success && vertData.data && vertData.data.length > 0) {
+            const bestGrid = vertData.data[0];
+            const buffer = await this.downloadBuffer(bestGrid.url);
+            return {
+              buffer,
+              source: 'steamgriddb_vertical',
               url: bestGrid.url
             };
           }
@@ -188,7 +206,8 @@ class ArtworkResolver {
     const sgdbPromise = this.searchSteamGridDBGrids(cleaned, BUILTIN_SGDB_KEY);
 
     const [steamResults, sgdbResults] = await Promise.all([steamPromise, sgdbPromise]);
-    return [...steamResults, ...sgdbResults];
+    // Prioritize SteamGridDB square results, then Steam Store
+    return [...sgdbResults, ...steamResults];
   }
 
   async searchSteamGridDBGrids(gameTitle, apiKey) {
@@ -207,29 +226,80 @@ class ArtworkResolver {
 
       const results = [];
       for (const game of data.data.slice(0, 2)) {
-        const gridsUrl = `https://www.steamgriddb.com/api/v2/grids/game/${game.id}?dimensions=512x512,1024x1024,600x900`;
-        const gridsRes = await fetch(gridsUrl, {
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'User-Agent': this.userAgent
-          }
-        });
-        if (gridsRes.ok) {
-          const gridsData = await gridsRes.json();
-          if (gridsData.success && gridsData.data) {
-            for (const grid of gridsData.data.slice(0, 4)) {
-              results.push({
-                appId: `SGDB-${grid.id}`,
-                name: `${game.name} [SteamGridDB]`,
-                similarity: 0.98,
-                previewUrl: grid.url,
-                fallbackUrl: grid.thumb,
-                tinyImage: grid.thumb,
-                source: 'SteamGridDB'
-              });
+        // Fetch 1:1 Square Grids
+        const squareUrl = `https://www.steamgriddb.com/api/v2/grids/game/${game.id}?dimensions=512x512,1024x1024`;
+        try {
+          const sqRes = await fetch(squareUrl, {
+            headers: { 'Authorization': `Bearer ${apiKey}`, 'User-Agent': this.userAgent }
+          });
+          if (sqRes.ok) {
+            const sqData = await sqRes.json();
+            if (sqData.success && sqData.data) {
+              for (const grid of sqData.data.slice(0, 4)) {
+                results.push({
+                  appId: `SGDB-${grid.id}`,
+                  name: `${game.name} [Square Grid]`,
+                  similarity: 0.99,
+                  previewUrl: grid.url,
+                  fallbackUrl: grid.thumb,
+                  tinyImage: grid.thumb,
+                  source: 'SteamGridDB',
+                  badge: '1:1 Square'
+                });
+              }
             }
           }
-        }
+        } catch (e) {}
+
+        // Fetch Official / Community Icons
+        const iconsUrl = `https://www.steamgriddb.com/api/v2/icons/game/${game.id}`;
+        try {
+          const icRes = await fetch(iconsUrl, {
+            headers: { 'Authorization': `Bearer ${apiKey}`, 'User-Agent': this.userAgent }
+          });
+          if (icRes.ok) {
+            const icData = await icRes.json();
+            if (icData.success && icData.data) {
+              for (const icon of icData.data.slice(0, 2)) {
+                results.push({
+                  appId: `SGDB-ICON-${icon.id}`,
+                  name: `${game.name} [Square Icon]`,
+                  similarity: 0.96,
+                  previewUrl: icon.url,
+                  fallbackUrl: icon.thumb,
+                  tinyImage: icon.thumb,
+                  source: 'SteamGridDB',
+                  badge: '1:1 Icon'
+                });
+              }
+            }
+          }
+        } catch (e) {}
+
+        // Fetch standard 600x900 vertical posters
+        const vertUrl = `https://www.steamgriddb.com/api/v2/grids/game/${game.id}?dimensions=600x900`;
+        try {
+          const vRes = await fetch(vertUrl, {
+            headers: { 'Authorization': `Bearer ${apiKey}`, 'User-Agent': this.userAgent }
+          });
+          if (vRes.ok) {
+            const vData = await vRes.json();
+            if (vData.success && vData.data) {
+              for (const grid of vData.data.slice(0, 3)) {
+                results.push({
+                  appId: `SGDB-${grid.id}`,
+                  name: `${game.name} [Poster]`,
+                  similarity: 0.95,
+                  previewUrl: grid.url,
+                  fallbackUrl: grid.thumb,
+                  tinyImage: grid.thumb,
+                  source: 'SteamGridDB',
+                  badge: '2:3 Poster'
+                });
+              }
+            }
+          }
+        } catch (e) {}
       }
       return results;
     } catch (err) {
