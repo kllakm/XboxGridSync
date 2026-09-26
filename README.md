@@ -182,6 +182,17 @@ npm run pack
 
 ## Changelog
 
+### [v1.8.2] - 2026-09-26
+- **Eliminated Unwanted Elevation / UAC Prompts:**
+  - Resolved intrusive UAC elevation prompts occurring during application startup and page transitions between Settings and Library.
+  - Startup registration and settings closure now execute with `allowElevation: false`, guaranteeing completely silent, non-elevated operation without disruptive permission dialogs.
+  - Elevation is now exclusively requested when the user intentionally toggles ON the Task Scheduler switch in Settings or clicks "Test Background Trigger".
+- **Proper Windows Start Menu Title Labeling ("Xbox Grid Sync"):**
+  - Integrated `app.setAppUserModelId('Xbox Grid Sync')` and `fileDescription: "Xbox Grid Sync"` into Windows executable properties.
+  - Added automatic Windows Start Menu shortcut creation (`Xbox Grid Sync.lnk`), cleaning up legacy raw `.exe` filename shortcuts (`XboxGridSync-portable.lnk`).
+  - Added a one-click **"Pin / Add to Start"** action in Settings allowing users to immediately register and pin the application under the official **"Xbox Grid Sync"** name with high-resolution app branding.
+- **Robust Argument Parsing for Background Scheduler:** Switched internal `schtasks` operations to direct process execution (`spawnSync`), eliminating shell quote-stripping issues and ensuring reliable hourly restoration tasks under standard Windows accounts.
+
 ### [v1.8.1] - 2026-09-26
 - **Clear Task Scheduler Identification & Naming:** Renamed the Windows Task Scheduler entry to **`Xbox Grid Sync - Automated Artwork Update Shield`** so it is immediately visible, identifiable, and cleanly sorted in `taskschd.msc` (Task Scheduler Library). Automatically detects and cleans up legacy task names.
 - **Resilient Multi-Tier Task Registration:** Resolved Windows standard user permission errors (`0x80070005: Access is denied`) when importing XML definitions with Event triggers. The registration pipeline now utilizes a resilient 3-tier cascade:

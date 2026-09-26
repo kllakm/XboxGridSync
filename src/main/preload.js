@@ -31,9 +31,10 @@ contextBridge.exposeInMainWorld('api', {
 
   // Task Scheduler & Watcher
   getSchedulerStatus: () => ipcRenderer.invoke('scheduler:status'),
-  setSchedulerEnabled: (enabled) => ipcRenderer.invoke('scheduler:setEnabled', enabled),
+  setSchedulerEnabled: (enabled, allowElevation = false) => ipcRenderer.invoke('scheduler:setEnabled', enabled, allowElevation),
   testSchedulerTrigger: () => ipcRenderer.invoke('scheduler:test'),
   openTaskSchedulerGui: () => ipcRenderer.invoke('scheduler:openGui'),
+  createStartShortcut: () => ipcRenderer.invoke('app:createStartShortcut'),
 
   // Window Controls
   minimizeWindow: () => ipcRenderer.invoke('window:minimize'),

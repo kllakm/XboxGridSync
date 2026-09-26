@@ -29,6 +29,35 @@ if (isSilentRestore) {
 // 2. High-DPI display awareness & crisp text rendering
 app.commandLine.appendSwitch('enable-features', 'OverlayScrollbar,Accelerated2dCanvas');
 app.commandLine.appendSwitch('force-color-profile', 'srgb');
+app.setAppUserModelId('Xbox Grid Sync');
+
+function ensureStartMenuShortcut() {
+  if (process.platform !== 'win32') return false;
+  try {
+    const programsPath = path.join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs');
+    if (!fs.existsSync(programsPath)) return false;
+
+    const officialShortcut = path.join(programsPath, 'Xbox Grid Sync.lnk');
+    const legacyPortableShortcut = path.join(programsPath, 'XboxGridSync-portable.lnk');
+
+    // Clean up legacy portable shortcut if it was created
+    if (fs.existsSync(legacyPortableShortcut)) {
+      try { fs.unlinkSync(legacyPortableShortcut); } catch (e) {}
+    }
+
+    const targetExe = process.execPath;
+    shell.writeShortcutLink(officialShortcut, 'create', {
+      target: targetExe,
+      cwd: path.dirname(targetExe),
+      description: 'Xbox Grid Sync',
+      appUserModelId: 'Xbox Grid Sync'
+    });
+    return true;
+  } catch (err) {
+    console.warn('[StartMenu] Could not ensure shortcut:', err.message);
+    return false;
+  }
+}
 
 // 3. Single Instance Lock
 const gotTheLock = app.requestSingleInstanceLock();
@@ -92,10 +121,13 @@ function createWindow() {
 
   watcher.start();
 
-  // If Task Scheduler is enabled in config, verify or register
+  // If Task Scheduler is enabled in config, register silently without UAC prompt
   if (config.get('taskSchedulerEnabled') && !scheduler.isRegistered()) {
-    scheduler.register();
+    scheduler.register(process.execPath, { allowElevation: false });
   }
+
+  // Ensure official Start Menu shortcut named "Xbox Grid Sync" exists
+  ensureStartMenuShortcut();
 }
 
 app.on('second-instance', () => {
@@ -393,12 +425,20 @@ ipcMain.handle('scheduler:status', async () => {
   };
 });
 
-ipcMain.handle('scheduler:setEnabled', async (event, enabled) => {
+ipcMain.handle('scheduler:setEnabled', async (event, enabled, allowElevation = false) => {
   if (enabled) {
-    return scheduler.register();
+    return scheduler.register(process.execPath, { allowElevation });
   } else {
     return scheduler.unregister();
   }
+});
+
+ipcMain.handle('app:createStartShortcut', async () => {
+  const success = ensureStartMenuShortcut();
+  return {
+    success,
+    message: success ? 'Shortcut "Xbox Grid Sync" created in Windows Start Menu.' : 'Could not create Start Menu shortcut.'
+  };
 });
 
 ipcMain.handle('scheduler:test', async () => {

@@ -16,22 +16,17 @@ class TaskSchedulerManager {
   }
 
   getRegisteredTaskName() {
+    const { spawnSync } = require('child_process');
     try {
-      const out = execSync(`schtasks /Query /TN "${this.taskName}"`, {
-        stdio: ['pipe', 'pipe', 'ignore'],
-        encoding: 'utf8'
-      });
-      if (out.includes(this.taskName) || out.includes('Xbox Grid Sync')) {
+      const res = spawnSync('schtasks.exe', ['/Query', '/TN', this.taskName], { encoding: 'utf8' });
+      if (res.status === 0 && (res.stdout.includes(this.taskName) || res.stdout.includes('Xbox Grid Sync'))) {
         return this.taskName;
       }
     } catch (e) {}
 
     try {
-      const outLegacy = execSync(`schtasks /Query /TN "${this.legacyTaskName}"`, {
-        stdio: ['pipe', 'pipe', 'ignore'],
-        encoding: 'utf8'
-      });
-      if (outLegacy.includes(this.legacyTaskName)) {
+      const resLegacy = spawnSync('schtasks.exe', ['/Query', '/TN', this.legacyTaskName], { encoding: 'utf8' });
+      if (resLegacy.status === 0 && resLegacy.stdout.includes(this.legacyTaskName)) {
         return this.legacyTaskName;
       }
     } catch (e2) {}
@@ -111,14 +106,16 @@ class TaskSchedulerManager {
     return xml;
   }
 
-  register(exePath = process.execPath) {
+  register(exePath = process.execPath, options = {}) {
+    const { allowElevation = false } = (typeof options === 'object' && options !== null) ? options : { allowElevation: !!options };
+    const { spawnSync } = require('child_process');
     try {
       const { exe, args } = this.getExecutionCommand(exePath);
       const xml = this.generateTaskXml(exe, args);
 
       // Clean up legacy task if it existed
       try {
-        execSync(`schtasks /Delete /TN "${this.legacyTaskName}" /F`, { stdio: ['pipe', 'pipe', 'ignore'] });
+        spawnSync('schtasks.exe', ['/Delete', '/TN', this.legacyTaskName, '/F'], { stdio: 'ignore' });
       } catch (e) {}
 
       // Write XML file using UTF-16LE with BOM
@@ -130,31 +127,39 @@ class TaskSchedulerManager {
 
       // Tier 1: Try direct creation with XML (Event 854 + Logon triggers)
       try {
-        const cmd = `schtasks /Create /TN "${this.taskName}" /XML "${this.tempXmlPath}" /F`;
-        execSync(cmd, { stdio: ['pipe', 'pipe', 'ignore'] });
-        registered = this.isRegistered();
+        const res = spawnSync('schtasks.exe', ['/Create', '/TN', this.taskName, '/XML', this.tempXmlPath, '/F'], { encoding: 'utf8' });
+        if (res.status === 0) {
+          registered = this.isRegistered();
+        }
       } catch (directErr) {
         // Direct creation without elevation throws Access is denied on Windows 10/11 for EventTriggers
       }
 
-      // Tier 2: Try creating via elevated PowerShell (prompts UAC once)
-      if (!registered) {
+      // Tier 2: Try creating via elevated PowerShell ONLY if explicitly permitted by user interaction
+      if (!registered && allowElevation) {
         try {
           const psScript = `Start-Process schtasks.exe -ArgumentList '/Create /TN \"${this.taskName}\" /XML \"${this.tempXmlPath}\" /F' -Verb RunAs -Wait -WindowStyle Hidden`;
-          execSync(`powershell -NoProfile -Command "${psScript}"`, { stdio: ['pipe', 'pipe', 'ignore'], timeout: 15000 });
+          spawnSync('powershell.exe', ['-NoProfile', '-Command', psScript], { stdio: 'ignore', timeout: 15000 });
           registered = this.isRegistered();
         } catch (elevErr) {
           // UAC declined or unavailable
         }
       }
 
-      // Tier 3: Standard User Fallback (Hourly Task - 100% works without administrator rights)
+      // Tier 3: Standard User Fallback (Hourly Task - 100% works without administrator rights or UAC prompts)
       if (!registered) {
         try {
-          const trArg = `\\"${exe}\\" ${args}`;
-          const cmd = `schtasks /Create /SC HOURLY /TN "${this.taskName}" /TR "${trArg}" /F`;
-          execSync(cmd, { stdio: ['pipe', 'pipe', 'ignore'] });
-          registered = this.isRegistered();
+          const trCommand = `"${exe}" ${args}`.trim();
+          const hourlyRes = spawnSync('schtasks.exe', [
+            '/Create',
+            '/SC', 'HOURLY',
+            '/TN', this.taskName,
+            '/TR', trCommand,
+            '/F'
+          ], { encoding: 'utf8' });
+          if (hourlyRes.status === 0) {
+            registered = this.isRegistered();
+          }
         } catch (hourlyErr) {
           console.warn('[Scheduler] User-level task registration error:', hourlyErr.message);
         }
@@ -181,12 +186,13 @@ class TaskSchedulerManager {
   }
 
   unregister() {
+    const { spawnSync } = require('child_process');
     try {
       try {
-        execSync(`schtasks /Delete /TN "${this.taskName}" /F`, { stdio: ['pipe', 'pipe', 'ignore'] });
+        spawnSync('schtasks.exe', ['/Delete', '/TN', this.taskName, '/F'], { stdio: 'ignore' });
       } catch (e) {}
       try {
-        execSync(`schtasks /Delete /TN "${this.legacyTaskName}" /F`, { stdio: ['pipe', 'pipe', 'ignore'] });
+        spawnSync('schtasks.exe', ['/Delete', '/TN', this.legacyTaskName, '/F'], { stdio: 'ignore' });
       } catch (e) {}
 
       console.log(`[Scheduler] Successfully deleted Windows Task: "${this.taskName}"`);
@@ -198,21 +204,30 @@ class TaskSchedulerManager {
   }
 
   testTrigger() {
+    const { spawnSync } = require('child_process');
     try {
       let taskToRun = this.getRegisteredTaskName();
       if (!taskToRun) {
-        const regRes = this.register();
+        // When testing trigger explicitly, allow elevation if needed to establish the task
+        const regRes = this.register(process.execPath, { allowElevation: true });
         if (!regRes.success) {
           return regRes;
         }
         taskToRun = this.getRegisteredTaskName() || this.taskName;
       }
 
-      execSync(`schtasks /Run /TN "${taskToRun}"`, { stdio: ['pipe', 'pipe', 'ignore'] });
-      return {
-        success: true,
-        message: `Successfully executed "${taskToRun}". Background shield is active.`
-      };
+      const runRes = spawnSync('schtasks.exe', ['/Run', '/TN', taskToRun], { encoding: 'utf8' });
+      if (runRes.status === 0) {
+        return {
+          success: true,
+          message: `Successfully executed "${taskToRun}". Headless background restoration executed.`
+        };
+      } else {
+        return {
+          success: false,
+          error: runRes.stderr || runRes.stdout || `Exit code ${runRes.status}`
+        };
+      }
     } catch (err) {
       return { success: false, error: err.message };
     }

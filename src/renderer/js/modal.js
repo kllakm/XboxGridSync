@@ -661,8 +661,6 @@ window.ModalManager = {
     const openVaultBtn = document.getElementById('btnOpenVaultFolder');
     const restartXboxBtn = document.getElementById('btnRestartXboxApp');
     const btnBack = document.getElementById('btnBackToLibrary');
-    const btnSaveTop = document.getElementById('btnSaveSettingsTop');
-
     const saveAndClose = async () => {
       const updated = {
         autoRestore: autoRestoreCheck ? autoRestoreCheck.checked : true,
@@ -672,12 +670,39 @@ window.ModalManager = {
       };
 
       await window.api.setConfig(updated);
-      await window.api.setSchedulerEnabled(updated.taskSchedulerEnabled);
+
+      // Only update scheduler during save if the toggle was altered and unhandled; never request UAC on save/close
+      if (this._initialSchedulerEnabled !== undefined && updated.taskSchedulerEnabled !== this._initialSchedulerEnabled) {
+        await window.api.setSchedulerEnabled(updated.taskSchedulerEnabled, false);
+        this._initialSchedulerEnabled = updated.taskSchedulerEnabled;
+      }
+
       if (window.updateShieldBadge) window.updateShieldBadge(updated.autoRestore);
 
       window.showToast('Settings Saved', 'Configuration updated successfully.', 'success');
       this.closeSettingsPage();
     };
+
+    // User explicitly toggling the Task Scheduler checkbox directly
+    if (schedulerCheck) {
+      schedulerCheck.addEventListener('change', async () => {
+        const isEnabled = schedulerCheck.checked;
+        window.showToast('Task Scheduler', isEnabled ? 'Registering scheduled task...' : 'Removing scheduled task...', 'info');
+        // When user explicitly clicks toggle ON, allow elevation so they can approve Event triggers if prompted
+        const res = await window.api.setSchedulerEnabled(isEnabled, isEnabled);
+        this._initialSchedulerEnabled = isEnabled;
+        if (isEnabled) {
+          if (res && res.success) {
+            window.showToast('Task Scheduler Enabled', 'Registered "Xbox Grid Sync - Automated Artwork Update Shield".', 'success');
+          } else {
+            window.showToast('Notice', res?.error || 'Scheduled task active.', 'info');
+          }
+        } else {
+          window.showToast('Task Scheduler Disabled', 'Removed background task from Task Scheduler.', 'info');
+        }
+        await this.refreshSchedulerBadge();
+      });
+    }
 
     if (btnBack) btnBack.addEventListener('click', saveAndClose);
     if (btnSaveTop) btnSaveTop.addEventListener('click', saveAndClose);
@@ -790,6 +815,22 @@ window.ModalManager = {
         this.openTutorialModal();
       });
     }
+
+    const btnCreateShortcut = document.getElementById('btnCreateStartShortcut');
+    if (btnCreateShortcut) {
+      btnCreateShortcut.addEventListener('click', async () => {
+        try {
+          const res = await window.api.createStartShortcut();
+          if (res && res.success) {
+            window.showToast('Start Menu Shortcut', 'Registered shortcut as "Xbox Grid Sync" in Windows Start Menu!', 'success');
+          } else {
+            window.showToast('Start Menu', res?.message || 'Shortcut ready in Start Menu.', 'info');
+          }
+        } catch (e) {
+          window.showToast('Error', e.message, 'error');
+        }
+      });
+    }
   },
 
   // 4. Quick Start Tutorial Modal Engine
@@ -858,22 +899,29 @@ window.ModalManager = {
     if (watcherCheck) watcherCheck.checked = !!config.watchEnabled;
     if (closeToTrayCheck) closeToTrayCheck.checked = !!config.closeToTray;
 
-    const liveBadge = document.getElementById('schedulerLiveStatusBadge');
-    if (liveBadge) {
-      if (scheduler.registered) {
-        liveBadge.innerHTML = '<span class="pulse-dot"></span> Active in Windows (Event 854 + Logon)';
-        liveBadge.style.display = 'inline-flex';
-      } else {
-        liveBadge.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:#888;"></span> Not Registered';
-        liveBadge.style.display = 'inline-flex';
-      }
-    }
+    this._initialSchedulerEnabled = scheduler.registered;
+
+    await this.refreshSchedulerBadge();
 
     // Switch to Settings full-app view
     const libView = document.getElementById('libraryView');
     const setView = document.getElementById('settingsView');
     if (libView) libView.style.display = 'none';
     if (setView) setView.style.display = 'flex';
+  },
+
+  async refreshSchedulerBadge() {
+    const scheduler = await window.api.getSchedulerStatus();
+    const liveBadge = document.getElementById('schedulerLiveStatusBadge');
+    if (liveBadge) {
+      if (scheduler.registered) {
+        liveBadge.innerHTML = '<span class="pulse-dot"></span> Active in Windows';
+        liveBadge.style.display = 'inline-flex';
+      } else {
+        liveBadge.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:#888;"></span> Not Registered';
+        liveBadge.style.display = 'inline-flex';
+      }
+    }
   },
 
   closeSettingsPage() {
