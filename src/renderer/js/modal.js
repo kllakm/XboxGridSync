@@ -657,6 +657,7 @@ window.ModalManager = {
     const schedulerCheck = document.getElementById('settingTaskScheduler');
     const watcherCheck = document.getElementById('settingLiveWatcher');
     const closeToTrayCheck = document.getElementById('settingCloseToTray');
+    const fseDefaultCheck = document.getElementById('settingFseDefault');
 
     const openVaultBtn = document.getElementById('btnOpenVaultFolder');
     const restartXboxBtn = document.getElementById('btnRestartXboxApp');
@@ -666,7 +667,8 @@ window.ModalManager = {
         autoRestore: autoRestoreCheck ? autoRestoreCheck.checked : true,
         taskSchedulerEnabled: schedulerCheck ? schedulerCheck.checked : true,
         watchEnabled: watcherCheck ? watcherCheck.checked : true,
-        closeToTray: closeToTrayCheck ? closeToTrayCheck.checked : true
+        closeToTray: closeToTrayCheck ? closeToTrayCheck.checked : true,
+        fseDefault: fseDefaultCheck ? fseDefaultCheck.checked : false
       };
 
       await window.api.setConfig(updated);
@@ -898,6 +900,27 @@ window.ModalManager = {
     if (schedulerCheck) schedulerCheck.checked = scheduler.registered;
     if (watcherCheck) watcherCheck.checked = !!config.watchEnabled;
     if (closeToTrayCheck) closeToTrayCheck.checked = !!config.closeToTray;
+
+    const fseDefaultCheck = document.getElementById('settingFseDefault');
+    const fseDesc = document.getElementById('settingFseDesc');
+    let isHandheld = false;
+    try {
+      if (window.api && window.api.isHandheld) {
+        isHandheld = await window.api.isHandheld();
+      }
+    } catch (e) {}
+
+    if (fseDesc) {
+      if (isHandheld) {
+        fseDesc.innerHTML = 'Automatically start in Exclusive Fullscreen (<strong>🎮 Handheld Gaming PC Detected!</strong>)';
+      } else {
+        fseDesc.textContent = 'Automatically start in Exclusive Fullscreen (ideal for ROG Ally & gaming handhelds)';
+      }
+    }
+
+    if (fseDefaultCheck) {
+      fseDefaultCheck.checked = config.fseDefault !== undefined ? !!config.fseDefault : isHandheld;
+    }
 
     this._initialSchedulerEnabled = scheduler.registered;
 

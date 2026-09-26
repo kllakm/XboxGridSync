@@ -59,6 +59,47 @@ function ensureStartMenuShortcut() {
   }
 }
 
+function isHandheldDevice() {
+  if (process.platform !== 'win32') return false;
+  const { spawnSync } = require('child_process');
+
+  // 1. Windows 11 Handheld DeviceForm registry (0x2e = 46 decimal)
+  try {
+    const res = spawnSync('reg', ['query', 'HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\OEM', '/v', 'DeviceForm'], { encoding: 'utf8' });
+    if (res.status === 0) {
+      const match = res.stdout.match(/DeviceForm\s+REG_DWORD\s+(0x[0-9a-fA-F]+|\d+)/i);
+      if (match) {
+        const val = parseInt(match[1], 16);
+        if (val === 0x2e || val === 46) return true;
+      }
+    }
+  } catch (e) {}
+
+  // 2. Hardware / BIOS Product Name match for known handheld models (ROG Ally, Legion Go, Claw, etc.)
+  try {
+    const biosRes = spawnSync('reg', ['query', 'HKLM\\HARDWARE\\DESCRIPTION\\System\\BIOS', '/v', 'SystemProductName'], { encoding: 'utf8' });
+    if (biosRes.status === 0) {
+      const out = biosRes.stdout.toLowerCase();
+      if (
+        out.includes('rog ally') ||
+        out.includes('rc71l') ||
+        out.includes('rc72l') ||
+        out.includes('legion go') ||
+        out.includes('claw') ||
+        out.includes('ayaneo') ||
+        out.includes('gpd') ||
+        out.includes('onexplayer') ||
+        out.includes('aokzoe') ||
+        out.includes('steam deck')
+      ) {
+        return true;
+      }
+    }
+  } catch (e) {}
+
+  return false;
+}
+
 // 3. Single Instance Lock
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -94,6 +135,26 @@ function createWindow() {
     const startMinimized = config.get('startMinimized');
     if (!startMinimized) {
       mainWindow.show();
+    }
+  });
+
+  // Handheld & Exclusive Fullscreen Experience (FSE) Initialization
+  const isHandheld = isHandheldDevice();
+  const fseConfig = config.get('fseDefault');
+  const shouldStartFse = fseConfig !== undefined ? !!fseConfig : isHandheld;
+  if (shouldStartFse) {
+    mainWindow.setFullScreen(true);
+  }
+
+  mainWindow.on('enter-full-screen', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('window:fseChanged', true);
+    }
+  });
+
+  mainWindow.on('leave-full-screen', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('window:fseChanged', false);
     }
   });
 
@@ -470,5 +531,21 @@ ipcMain.handle('window:close', () => {
   } else {
     app.quit();
   }
+});
+
+// 8. Exclusive Fullscreen Experience (FSE)
+ipcMain.handle('window:toggleFse', () => {
+  if (!mainWindow) return false;
+  const isFull = mainWindow.isFullScreen();
+  mainWindow.setFullScreen(!isFull);
+  return !isFull;
+});
+
+ipcMain.handle('window:isFse', () => {
+  return mainWindow ? mainWindow.isFullScreen() : false;
+});
+
+ipcMain.handle('system:isHandheld', () => {
+  return isHandheldDevice();
 });
 

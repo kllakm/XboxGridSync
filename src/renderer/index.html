@@ -38,7 +38,7 @@
       </div>
       <span class="titlebar-title">
         Xbox Grid Sync
-        <span class="version-badge" id="appVersionBadge">v1.8.2</span>
+        <span class="version-badge" id="appVersionBadge">v1.8.3</span>
         <span class="shield-badge" id="shieldStatusBadge" title="Automated Update Shield status">
           <span class="pulse-dot"></span>
           <span id="shieldStatusText">Shield Active</span>
@@ -54,6 +54,21 @@
           <line x1="6" y1="2" x2="6" y2="4"></line>
           <line x1="10" y1="2" x2="10" y2="4"></line>
           <line x1="14" y1="2" x2="14" y2="4"></line>
+        </svg>
+      </button>
+
+      <button class="win-btn titlebar-fse-btn" id="btnToggleFse" title="Exclusive Fullscreen Experience (Handheld Mode)">
+        <svg class="icon-gamepad" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="6" y1="12" x2="10" y2="12"></line>
+          <line x1="8" y1="10" x2="8" y2="14"></line>
+          <line x1="15" y1="13" x2="15.01" y2="13"></line>
+          <line x1="18" y1="11" x2="18.01" y2="11"></line>
+          <rect x="2" y="6" width="20" height="12" rx="6"></rect>
+        </svg>
+        <svg class="icon-pc" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+          <line x1="8" y1="21" x2="16" y2="21"></line>
+          <line x1="12" y1="17" x2="12" y2="21"></line>
         </svg>
       </button>
 
@@ -282,6 +297,17 @@
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3l14 9-14 9V3z"/></svg>
                   <span>Pin / Add to Start</span>
                 </button>
+              </div>
+
+              <div class="setting-row">
+                <div class="setting-label">
+                  <span class="setting-title">Launch in Fullscreen Mode (FSE)</span>
+                  <span class="setting-desc" id="settingFseDesc">Automatically start in Exclusive Fullscreen (auto-enabled on ROG Ally & handheld gaming PCs)</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="settingFseDefault">
+                  <span class="slider"></span>
+                </label>
               </div>
             </div>
           </div>

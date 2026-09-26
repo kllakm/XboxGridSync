@@ -182,6 +182,18 @@ npm run pack
 
 ## Changelog
 
+### [v1.8.3] - 2026-09-26
+- **Exclusive Fullscreen Experience (FSE) for Handheld Gaming PCs:**
+  - Added an interactive FSE toggle button in the top titlebar (next to the Buy Me a Coffee button).
+  - Displays a clean Gamepad icon in normal windowed mode; clicking it transitions the application into true Exclusive Fullscreen mode covering and hiding the Windows taskbar and system chrome.
+  - When in FSE mode, the icon smoothly transitions to a PC / Desktop monitor icon; clicking it returns the application back to standard windowed mode.
+  - In FSE mode, standard window chrome controls (Minimize, Maximize, Close) and separator lines are automatically hidden for an immersive, distraction-free gaming handheld experience.
+  - Added support for keyboard toggling via the `F11` key.
+- **Automated Windows 11 Handheld Gaming PC Detection:**
+  - Integrated native Windows 11 registry querying (`HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\OEM\DeviceForm == 0x2e`) and BIOS hardware model detection (ASUS ROG Ally, Legion Go, MSI Claw, AYANEO, GPD, ONEXPLAYER, Steam Deck).
+  - When running on a handheld gaming device, the application automatically launches in Exclusive Fullscreen Experience by default.
+  - Added an explicit user preference toggle in Settings under **Window & System** with live handheld detection status.
+
 ### [v1.8.2] - 2026-09-26
 - **Eliminated Unwanted Elevation / UAC Prompts:**
   - Resolved intrusive UAC elevation prompts occurring during application startup and page transitions between Settings and Library.

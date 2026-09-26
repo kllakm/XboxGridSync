@@ -36,10 +36,18 @@ contextBridge.exposeInMainWorld('api', {
   openTaskSchedulerGui: () => ipcRenderer.invoke('scheduler:openGui'),
   createStartShortcut: () => ipcRenderer.invoke('app:createStartShortcut'),
 
-  // Window Controls
+  // Window Controls & Fullscreen (FSE)
   minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
   maximizeWindow: () => ipcRenderer.invoke('window:maximize'),
   closeWindow: () => ipcRenderer.invoke('window:close'),
+  toggleFse: () => ipcRenderer.invoke('window:toggleFse'),
+  isFse: () => ipcRenderer.invoke('window:isFse'),
+  isHandheld: () => ipcRenderer.invoke('system:isHandheld'),
+  onFseChanged: (callback) => {
+    const handler = (event, isFse) => callback(isFse);
+    ipcRenderer.on('window:fseChanged', handler);
+    return () => ipcRenderer.removeListener('window:fseChanged', handler);
+  },
 
   // Event Listeners from Main Process
   onSyncProgress: (callback) => {

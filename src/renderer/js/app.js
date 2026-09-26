@@ -47,6 +47,17 @@ window.showToast = function (title, message, type = 'info') {
 // ============================================================================
 // Window Controls & Shield Status Badge
 // ============================================================================
+function applyFseState(isFse) {
+  const fseBtn = document.getElementById('btnToggleFse');
+  if (isFse) {
+    document.body.classList.add('fse-mode');
+    if (fseBtn) fseBtn.title = 'Exit Exclusive Fullscreen (PC Mode)';
+  } else {
+    document.body.classList.remove('fse-mode');
+    if (fseBtn) fseBtn.title = 'Exclusive Fullscreen Experience (Handheld Mode)';
+  }
+}
+
 function initWindowControls() {
   document.getElementById('btnMinimize').addEventListener('click', () => {
     window.api.minimizeWindow();
@@ -64,6 +75,34 @@ function initWindowControls() {
       window.api.openExternal('https://buymeacoffee.com/enufstyle');
     });
   }
+
+  const fseBtn = document.getElementById('btnToggleFse');
+  if (fseBtn) {
+    fseBtn.addEventListener('click', async () => {
+      const isFse = await window.api.toggleFse();
+      applyFseState(isFse);
+    });
+  }
+
+  // Query initial FSE status
+  if (window.api && window.api.isFse) {
+    window.api.isFse().then(applyFseState).catch(() => {});
+  }
+
+  // Listen for FSE state change notifications
+  if (window.api && window.api.onFseChanged) {
+    window.api.onFseChanged(applyFseState);
+  }
+
+  // F11 keyboard shortcut to toggle FSE
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'F11') {
+      e.preventDefault();
+      if (window.api && window.api.toggleFse) {
+        window.api.toggleFse().then(applyFseState).catch(() => {});
+      }
+    }
+  });
 }
 
 window.updateShieldBadge = function (isActive) {
