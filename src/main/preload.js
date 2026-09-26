@@ -16,6 +16,8 @@ contextBridge.exposeInMainWorld('api', {
   // Xbox App Injection & Repair
   restartXboxApp: () => ipcRenderer.invoke('xbox:restart'),
   restoreVaultToXbox: () => ipcRenderer.invoke('xbox:restoreVault'),
+  clearAllData: () => ipcRenderer.invoke('vault:clearAll'),
+  clearXboxCache: () => ipcRenderer.invoke('vault:clearXboxCache'),
   openVaultFolder: () => ipcRenderer.invoke('shell:openVault'),
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
 

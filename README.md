@@ -175,6 +175,13 @@ npm run pack
 
 ## Changelog
 
+### [v1.6.0] - 2026-09-26
+- **Aggressive Library Deduplication Engine:** Replaced launcher-keyed deduplication with title-only normalization plus a fast AppID cross-index. Games from Xbox registry, Steam manifests, and cache image files now correctly collapse into a single unified entry instead of appearing as duplicates.
+- **Source Priority Merging:** When the same game is detected from multiple sources, entries are ranked by source priority (Xbox Registry > Xbox Cache > Vault > Steam Manifest > Epic Manifest > GOG Registry) so the most relevant metadata (thumbnail, install path) is preserved.
+- **Clear Xbox App Thumbnails:** New Settings action to selectively remove all injected artwork from the Xbox App's `ThirdPartyLibraries` cache while preserving Vault backups for easy re-sync.
+- **Full Factory Reset:** New destructive reset option in Settings that deletes all Vault covers, local resolution cache, and Xbox App injected thumbnails with double-confirmation safety prompts for a completely clean slate.
+- **Watcher Stability:** Background FileSystemWatcher now pauses during cache clear operations and automatically restarts afterward, preventing false-positive auto-restore events during maintenance.
+
 ### [v1.5.3] - 2026-09-26
 - **Default SteamGridDB Square Icon Resolution:** When scanning the library and resolving artwork, the app now queries SteamGridDB first for native 1:1 square artwork, automatically selecting the highest-resolution (1024x1024 / 512x512) and highest-rated community square icon or grid.
 - **Graceful Steam Store 2:3 Fallback:** If no 1:1 square artwork exists on SteamGridDB for a given title, the resolver seamlessly defaults to the Steam Store's official 2:3 vertical cover (`library_600x900_2x.jpg`), which is intelligently cropped to a 1:1 square for Xbox App injection.

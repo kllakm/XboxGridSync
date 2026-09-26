@@ -222,6 +222,99 @@ class VaultManager {
       console.error('[Vault] Error saving name_to_appid cache:', err.message);
     }
   }
+
+  // Full reset: delete all vault covers and local cache
+  clearAllData() {
+    let removedCovers = 0;
+    let removedCache = 0;
+
+    try {
+      if (fs.existsSync(this.vaultDir)) {
+        const entries = fs.readdirSync(this.vaultDir, { withFileTypes: true });
+        for (const entry of entries) {
+          if (entry.isDirectory()) {
+            const dirPath = path.join(this.vaultDir, entry.name);
+            fs.rmSync(dirPath, { recursive: true, force: true });
+            removedCovers++;
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[Vault] Error clearing vault:', err.message);
+    }
+
+    try {
+      if (fs.existsSync(this.cacheDir)) {
+        fs.rmSync(this.cacheDir, { recursive: true, force: true });
+        fs.mkdirSync(this.cacheDir, { recursive: true });
+        removedCache++;
+      }
+      this.nameToAppId = {};
+      this.saveNameToAppId();
+    } catch (err) {
+      console.error('[Vault] Error clearing cache:', err.message);
+    }
+
+    console.log(`[Vault] Full reset complete. Removed ${removedCovers} vault entries, cleared cache.`);
+    return { removedCovers, removedCache };
+  }
+
+  // Clear Xbox App's cached thumbnails from ThirdPartyLibraries
+  clearXboxAppCache() {
+    const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
+    const thirdPartyDir = path.join(
+      localAppData,
+      'Packages',
+      'Microsoft.GamingApp_8wekyb3d8bbwe',
+      'LocalState',
+      'ThirdPartyLibraries'
+    );
+    const customLibDir = path.join(thirdPartyDir, 'CustomLibraryManagement');
+
+    let removedFiles = 0;
+
+    // Clear image files injected by our app inside CustomLibraryManagement
+    try {
+      if (fs.existsSync(customLibDir)) {
+        const files = fs.readdirSync(customLibDir);
+        for (const file of files) {
+          const ext = path.extname(file).toLowerCase();
+          if (['.png', '.jpg', '.jpeg', '.webp'].includes(ext)) {
+            try {
+              fs.unlinkSync(path.join(customLibDir, file));
+              removedFiles++;
+            } catch (e) {}
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[Vault] Error clearing CustomLibraryManagement images:', err.message);
+    }
+
+    // Clear image files from launcher-specific subfolders (steam/, epic/, etc.)
+    const providers = ['steam', 'epic', 'gog', 'bnet', 'ea', 'ubi'];
+    for (const prov of providers) {
+      const provDir = path.join(thirdPartyDir, prov);
+      try {
+        if (fs.existsSync(provDir)) {
+          const files = fs.readdirSync(provDir);
+          for (const file of files) {
+            const ext = path.extname(file).toLowerCase();
+            if (['.png', '.jpg', '.jpeg', '.webp'].includes(ext)) {
+              try {
+                fs.unlinkSync(path.join(provDir, file));
+                removedFiles++;
+              } catch (e) {}
+            }
+          }
+        }
+      } catch (err) {}
+    }
+
+    console.log(`[Vault] Xbox App cache cleared. Removed ${removedFiles} injected image files.`);
+    return { removedFiles };
+  }
 }
 
 module.exports = new VaultManager();
+

@@ -256,6 +256,29 @@ ipcMain.handle('xbox:restoreVault', async () => {
   return injector.restoreAllFromVault();
 });
 
+ipcMain.handle('vault:clearAll', async () => {
+  watcher.stop();
+  const vaultResult = vault.clearAllData();
+  const xboxResult = vault.clearXboxAppCache();
+  // Restart watcher after clearing
+  if (config.get('watchEnabled')) watcher.start();
+  return {
+    success: true,
+    removedCovers: vaultResult.removedCovers,
+    removedXboxFiles: xboxResult.removedFiles
+  };
+});
+
+ipcMain.handle('vault:clearXboxCache', async () => {
+  watcher.stop();
+  const result = vault.clearXboxAppCache();
+  if (config.get('watchEnabled')) watcher.start();
+  return {
+    success: true,
+    removedFiles: result.removedFiles
+  };
+});
+
 ipcMain.handle('shell:openVault', async () => {
   shell.openPath(vault.vaultDir);
   return true;

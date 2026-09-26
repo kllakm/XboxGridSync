@@ -667,58 +667,101 @@ class GameScanner {
       `[Scanner] Scanned: ${xboxGames.length} Xbox registry, ${steamGames.length} Steam, ${epicGames.length} Epic, ${gogGames.length} GOG, ${customGames.length} Custom`
     );
 
-    // Combine and deduplicate
-    const combinedMap = new Map();
+    // ====================================================================
+    // Aggressive deduplication: keyed by TITLE ONLY (launcher-agnostic),
+    // plus a fast appId index so e.g. steam_1091500 from Xbox cache and
+    // Steam manifest collapse into a single entry.
+    // ====================================================================
+    const combinedMap = new Map();   // normalizedTitle -> merged game
+    const appIdIndex = new Map();    // appId -> normalizedTitle key
 
-    const normalizeKey = (title, launcher) => {
-      const clean = (title || '')
+    const normalizeTitle = (title) => {
+      return (title || '')
         .toLowerCase()
         .replace(/[^a-z0-9]/g, '')
         .trim();
-      return `${clean}_${(launcher || '').toLowerCase()}`;
     };
 
-    // Helper to add game
+    // Source priority: xbox_registry > xbox_cache > vault > steam_manifest > epic_manifest > gog_registry > sample > user_custom
+    const SOURCE_PRIORITY = {
+      'xbox_registry': 0,
+      'xbox_cache': 1,
+      'vault': 2,
+      'steam_manifest': 3,
+      'epic_manifest': 4,
+      'gog_registry': 5,
+      'gog_database': 6,
+      'sample': 7,
+      'user_custom': 8
+    };
+
+    const getSourceRank = (source) => SOURCE_PRIORITY[source] ?? 99;
+
     const addGame = (game) => {
-      // If Steam game with appId, also check if appId already exists in map
+      if (!game || (!game.title && !game.id)) return;
+
+      const titleKey = normalizeTitle(game.title);
+      if (!titleKey) return;
+
+      // Check if an entry with the same appId already exists under a different title key
       let existingKey = null;
-      if (game.appId && (game.launcher === 'STEAM' || game.id.startsWith('steam_'))) {
-        for (const [k, v] of combinedMap.entries()) {
-          if (v.appId === game.appId) {
-            existingKey = k;
-            break;
-          }
-        }
+      if (game.appId) {
+        existingKey = appIdIndex.get(game.appId) || null;
       }
 
-      const key = existingKey || normalizeKey(game.title, game.launcher);
-      if (combinedMap.has(key)) {
-        // Merge attributes
-        const existing = combinedMap.get(key);
-        // Prefer more descriptive title if existing is generic 'Steam App <id>' or 'xbox_'
-        const isGeneric = (t) => !t || t.startsWith('Steam App ') || t.startsWith('xbox_');
-        const preferredTitle = (!isGeneric(existing.title))
-          ? existing.title
-          : (game.title || existing.title);
+      const key = existingKey || titleKey;
 
-        combinedMap.set(key, {
-          ...existing,
-          ...game,
+      if (combinedMap.has(key)) {
+        const existing = combinedMap.get(key);
+
+        // Determine which entry is "better" (lower rank = higher priority)
+        const existingRank = getSourceRank(existing.source);
+        const newRank = getSourceRank(game.source);
+
+        // Generic title detection
+        const isGeneric = (t) => !t || t.startsWith('Steam App ') || t.startsWith('xbox_') || /^[0-9]+$/.test(t);
+
+        // Prefer non-generic title
+        const preferredTitle = !isGeneric(existing.title) ? existing.title : (game.title || existing.title);
+
+        // The base object is whichever has higher source priority
+        const base = newRank < existingRank ? game : existing;
+        const supplement = newRank < existingRank ? existing : game;
+
+        const merged = {
+          ...supplement,
+          ...base,
           title: preferredTitle,
-          appId: game.appId || existing.appId,
-          installPath: game.installPath || existing.installPath,
-          currentThumbnail: existing.currentThumbnail || game.currentThumbnail,
-          inXboxRegistry: existing.inXboxRegistry || game.source === 'xbox_registry' || game.source === 'xbox_cache'
-        });
+          appId: base.appId || supplement.appId,
+          installPath: base.installPath || supplement.installPath,
+          // Prefer Xbox cache thumbnail since it reflects what the Xbox App actually shows
+          currentThumbnail: (existing.source === 'xbox_cache' || existing.source === 'xbox_registry')
+            ? (existing.currentThumbnail || game.currentThumbnail)
+            : (game.currentThumbnail || existing.currentThumbnail),
+          inXboxRegistry: existing.inXboxRegistry || game.source === 'xbox_registry' || game.source === 'xbox_cache',
+          // Keep the better id (prefer steam_<appId> format for Steam games)
+          id: (base.appId && base.id.startsWith('steam_')) ? base.id : (supplement.appId && supplement.id.startsWith('steam_') ? supplement.id : base.id)
+        };
+
+        combinedMap.set(key, merged);
+
+        // Update appId index if we now have an appId
+        if (merged.appId && !appIdIndex.has(merged.appId)) {
+          appIdIndex.set(merged.appId, key);
+        }
       } else {
         combinedMap.set(key, {
           ...game,
           inXboxRegistry: game.source === 'xbox_registry' || game.source === 'xbox_cache'
         });
+
+        if (game.appId) {
+          appIdIndex.set(game.appId, key);
+        }
       }
     };
 
-    // Add in order of priority: Xbox Registry -> Native Launchers -> Custom
+    // Add in order: Xbox Registry (highest priority) -> Native Launchers -> Custom
     xboxGames.forEach(addGame);
     steamGames.forEach(addGame);
     epicGames.forEach(addGame);

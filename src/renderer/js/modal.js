@@ -734,6 +734,37 @@ window.ModalManager = {
       });
     }
 
+    // Clear Xbox App Thumbnails
+    const clearXboxCacheBtn = document.getElementById('btnClearXboxCache');
+    if (clearXboxCacheBtn) {
+      clearXboxCacheBtn.addEventListener('click', async () => {
+        if (!confirm('Clear all injected artwork from the Xbox App cache?\n\nYour Vault backups will be preserved and can be re-injected with "Sync All Artwork".')) return;
+        try {
+          const res = await window.api.clearXboxCache();
+          window.showToast('Xbox Cache Cleared', `Removed ${res.removedFiles} injected thumbnail files from Xbox App.`, 'success');
+        } catch (err) {
+          window.showToast('Error', err.message, 'error');
+        }
+      });
+    }
+
+    // Full Factory Reset
+    const fullResetBtn = document.getElementById('btnFullReset');
+    if (fullResetBtn) {
+      fullResetBtn.addEventListener('click', async () => {
+        if (!confirm('⚠ FULL FACTORY RESET ⚠\n\nThis will permanently delete:\n• All saved artwork in the Vault\n• All local resolution cache\n• All injected Xbox App thumbnails\n\nThis cannot be undone. Continue?')) return;
+        if (!confirm('Are you absolutely sure? All artwork data will be lost.')) return;
+        try {
+          const res = await window.api.clearAllData();
+          window.showToast('Factory Reset Complete', `Removed ${res.removedCovers} vault entries and ${res.removedXboxFiles} Xbox App files. Rescan your library to start fresh.`, 'success');
+          // Trigger a fresh rescan
+          if (window.rescanLibrary) window.rescanLibrary();
+        } catch (err) {
+          window.showToast('Error', err.message, 'error');
+        }
+      });
+    }
+
     const donateSettingsBtn = document.getElementById('btnSettingsDonate');
     if (donateSettingsBtn) {
       donateSettingsBtn.addEventListener('click', () => {

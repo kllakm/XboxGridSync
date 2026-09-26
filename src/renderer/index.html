@@ -38,7 +38,7 @@
       </div>
       <span class="titlebar-title">
         Xbox Grid Sync
-        <span class="version-badge" id="appVersionBadge">v1.5.3</span>
+        <span class="version-badge" id="appVersionBadge">v1.6.0</span>
         <span class="shield-badge" id="shieldStatusBadge" title="Automated Update Shield status">
           <span class="pulse-dot"></span>
           <span id="shieldStatusText">Shield Active</span>
@@ -305,6 +305,28 @@
                   <button class="btn btn-secondary" id="btnRestartXboxApp">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
                     <span>Restart Xbox PC App</span>
+                  </button>
+                </div>
+
+                <div class="tool-box">
+                  <div class="tool-text">
+                    <span class="setting-title">Clear Xbox App Thumbnails</span>
+                    <span class="setting-desc">Removes all injected artwork from the Xbox App cache. Your Vault backups are kept.</span>
+                  </div>
+                  <button class="btn btn-secondary btn-danger-subtle" id="btnClearXboxCache">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    <span>Clear Xbox Thumbnails</span>
+                  </button>
+                </div>
+
+                <div class="tool-box">
+                  <div class="tool-text">
+                    <span class="setting-title">Full Factory Reset</span>
+                    <span class="setting-desc">Deletes ALL vault covers, local cache, AND Xbox App thumbnails. Start completely fresh.</span>
+                  </div>
+                  <button class="btn btn-secondary btn-danger" id="btnFullReset">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                    <span>Full Factory Reset</span>
                   </button>
                 </div>
               </div>

@@ -393,6 +393,26 @@ svg {
   transform: translateY(-1px);
 }
 
+.btn-danger-subtle {
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #f59e0b;
+}
+.btn-danger-subtle:hover {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.5);
+  color: #fbbf24;
+}
+
+.btn-danger {
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+}
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.6);
+  color: #f87171;
+}
+
 .btn-icon {
   padding: 8px;
   background: rgba(255, 255, 255, 0.06);
