@@ -161,8 +161,9 @@ function renderGames() {
 
     const launcherClass = (game.launcher || 'shortcut').toLowerCase();
     const isSynced = game.status === 'Synced';
-    const statusClass = isSynced ? 'synced' : (game.status === 'Needs Review' ? 'review' : 'pending');
-    const statusText = isSynced ? '✓ Synced' : (game.status === 'Needs Review' ? 'Needs Review' : 'Pending');
+    const isReady = game.status === 'Ready to Sync' || (!isSynced && !!game.coverUrl);
+    const statusClass = isSynced ? 'synced' : (isReady ? 'ready' : (game.status === 'Needs Review' ? 'review' : 'pending'));
+    const statusText = isSynced ? '✓ Synced' : (isReady ? 'Ready to Sync' : (game.status === 'Needs Review' ? 'Needs Review' : 'Pending'));
 
     const posterSrc = game.coverUrl || '';
 
@@ -198,7 +199,7 @@ function renderGames() {
         <div class="card-title" title="${game.title}">${game.title}</div>
         <div class="card-subtext">
           <span>${game.appId ? `AppID: ${game.appId}` : (game.inXboxRegistry ? 'Xbox Registered' : 'Discovered')}</span>
-          <span style="color: ${isSynced ? '#4ade80' : 'var(--text-muted)'};">${isSynced ? 'Protected' : 'Unsynced'}</span>
+          <span id="subtext-status-${game.id}" style="color: ${isSynced ? '#4ade80' : (isReady ? '#38bdf8' : 'var(--text-muted)')}; font-weight: ${isSynced || isReady ? '600' : '400'};">${isSynced ? 'Protected' : (isReady ? 'Best Artwork Selected' : 'Unsynced')}</span>
         </div>
       </div>
     `;
@@ -247,6 +248,12 @@ function onGameCoverUpdated(gameId, newCoverUrl) {
       badge.className = 'status-badge synced';
       badge.textContent = '✓ Synced';
     }
+
+    const subtext = document.getElementById(`subtext-status-${gameId}`);
+    if (subtext) {
+      subtext.style.color = '#4ade80';
+      subtext.textContent = 'Protected';
+    }
   }
 }
 
@@ -254,7 +261,7 @@ function onGameCoverUpdated(gameId, newCoverUrl) {
 // Artwork Synchronization
 // ============================================================================
 async function syncSingleGame(game) {
-  window.showToast('Syncing Artwork', `Resolving vertical cover for "${game.title}"...`, 'info');
+  window.showToast('Syncing Artwork', `Pushing thumbnail for "${game.title}" to Xbox App...`, 'info');
   try {
     const res = await window.api.resolveArtwork(game);
     if (res.success) {

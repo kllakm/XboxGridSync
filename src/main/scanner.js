@@ -658,13 +658,53 @@ class GameScanner {
 
     const uniqueFinalGames = Array.from(finalTitleMap.values());
 
-    // 6. Process Sync Status & Artwork Preview
-    const processedGames = await Promise.all(uniqueFinalGames.map(async (game) => {
+    // Helper to process items in a small concurrency-managed pool with stagger to prevent rate-limiting
+    const mapConcurrent = async (items, limit, fn) => {
+      const results = new Array(items.length);
+      let index = 0;
+      const worker = async () => {
+        while (index < items.length) {
+          const i = index++;
+          try {
+            results[i] = await fn(items[i], i);
+          } catch (err) {
+            results[i] = null;
+          }
+          await new Promise(r => setTimeout(r, 40));
+        }
+      };
+      const workers = [];
+      for (let w = 0; w < Math.min(limit, items.length); w++) {
+        workers.push(worker());
+      }
+      await Promise.all(workers);
+      return results.filter(Boolean);
+    };
+
+    // 6. Process Sync Status & Artwork Preview (Auto-selects best available community artwork)
+    const processedGames = await mapConcurrent(uniqueFinalGames, 4, async (game) => {
       const hasVaultCover = vault.hasCover(game.id);
       const vaultMeta = vault.getMetadata(game.id);
       let coverUrl = hasVaultCover ? vault.getCoverAsDataUrl(game.id) : null;
+      let isSquare = true;
 
-      // Fallback 1: Show existing Xbox App thumbnail if present on disk
+      // Primary Selection on scan: Automatically select best available community artwork
+      if (!coverUrl) {
+        try {
+          const artInfo = await artResolver.getBestSquareCoverUrl(game);
+          if (artInfo && artInfo.url) {
+            coverUrl = artInfo.url;
+            isSquare = !!artInfo.isSquare;
+          }
+        } catch (e) {
+          if (game.appId) {
+            coverUrl = `https://cdn.akamai.steamstatic.com/steam/apps/${game.appId}/library_600x900_2x.jpg`;
+            isSquare = false;
+          }
+        }
+      }
+
+      // Fallback: If no online thumbnail found, show existing Xbox App thumbnail if present on disk
       if (!coverUrl && game.currentThumbnail && fs.existsSync(game.currentThumbnail)) {
         try {
           const buf = fs.readFileSync(game.currentThumbnail);
@@ -674,23 +714,11 @@ class GameScanner {
         } catch (e) {}
       }
 
-      // Fallback 2: Query SteamGridDB online for best square cover preview
-      if (!coverUrl) {
-        try {
-          const artInfo = await artResolver.getBestSquareCoverUrl(game);
-          if (artInfo && artInfo.url) {
-            coverUrl = artInfo.url;
-          }
-        } catch (e) {
-          if (game.appId) {
-            coverUrl = `https://cdn.akamai.steamstatic.com/steam/apps/${game.appId}/library_600x900_2x.jpg`;
-          }
-        }
-      }
-
       let status = 'Pending';
       if (hasVaultCover) {
         status = 'Synced';
+      } else if (coverUrl && (coverUrl.startsWith('http') || coverUrl.startsWith('data:image/svg'))) {
+        status = 'Ready to Sync';
       } else if (!game.appId && game.launcher === 'SHORTCUT') {
         status = 'Needs Review';
       }
@@ -699,12 +727,13 @@ class GameScanner {
         ...game,
         hasVaultCover,
         coverUrl,
+        isSquare,
         lastSynced: vaultMeta ? vaultMeta.savedAt : null,
         status,
         inXboxRegistry: true,
         resolvedAppId: game.appId || vault.getCachedAppId(this.cleanGameTitle(game.title))
       };
-    }));
+    });
 
     const elapsed = Date.now() - startTime;
     console.log(`[Scanner] Discovery complete in ${elapsed}ms. Found ${processedGames.length} authoritative Xbox games.`);

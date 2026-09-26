@@ -175,6 +175,13 @@ npm run pack
 
 ## Changelog
 
+### [v1.7.1] - 2026-09-26
+- **Automatic Best Available Artwork Selection on Initial Scan:** The initial library scan and rescan now immediately discover and pre-select the best available high-resolution 1:1 square artwork (preferring 1024x1024 and 512x512 SteamGridDB grids, square icons, and official Steam covers) for all detected Xbox App titles, rather than displaying low-resolution default Xbox thumbnails.
+- **One-Click Push to Xbox App Thumbnail Folder:** Clicking "Sync All Artwork" or per-card "Sync" now directly downloads and injects the exact pre-selected artwork into the Xbox PC App's cache folder (`ThirdPartyLibraries`), with automatic backup and `.new` reload markers.
+- **Rate-Limited Concurrent Artwork Pool:** Scanner now uses a concurrency-managed worker queue with subtle staggered delays to ensure fast, reliable artwork resolution across all titles without triggering rate limits or network timeouts.
+- **Early Steam AppID & Community Cross-Referencing:** Non-Steam titles (Epic, GOG, Ubisoft, Custom) now resolve Steam AppIDs early via title search and cache, allowing SteamGridDB to fetch official high-res square grids and icons with 99.9% accuracy.
+- **Visual "Ready to Sync" Status Indicator:** Game cards now clearly display a vibrant "Ready to Sync" badge and "Best Artwork Selected" status when new artwork is ready to be pushed to the Xbox App folder.
+
 ### [v1.7.0] - 2026-09-26
 - **Xbox App-Centric Architecture (Zero Duplicates):** Shifted the primary library discovery exclusively to the Xbox PC App's authoritative registry and cache (`ThirdPartyLibraries` and `ExternalAppShortcut`). Instead of crawling whole hard drives for arbitrary games, the app directly mirrors the Xbox App's library, completely eliminating duplicate tiles, phantom DLC entries, and cross-launcher confusion.
 - **Precision Target Artwork Injection:** Artwork injection now writes directly and exclusively to the exact file path expected by the Xbox PC App (e.g. `epic_<namespace>_<catalogId>.png`, `steam_<appId>.png`), creating `.bak` backups of original artwork and `.new` companion markers compatible with SteamGridDB Game Bar widget standards without spraying redundant files across folders or polluting `CustomLibraryManagement.manifest`.

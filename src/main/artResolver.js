@@ -276,20 +276,37 @@ class ArtworkResolver {
   // Fast resolution for scanning: resolves highest-rated square URL from SteamGridDB first, falls back to Steam 2:3
   async getBestSquareCoverUrl(game) {
     if (!this.urlCache) this.urlCache = new Map();
-    const cacheKey = (game.appId ? `steam_${game.appId}` : game.id || game.title).toLowerCase();
+    const cacheKey = (game.appId ? `steam_${game.appId}` : game.id || game.title || '').toLowerCase();
     if (this.urlCache.has(cacheKey)) {
       return this.urlCache.get(cacheKey);
     }
 
     const apiKey = BUILTIN_SGDB_KEY;
     let candidateGrids = [];
+    const cleaned = this.cleanTitle(game.title);
 
-    // Query SteamGridDB square grids by Steam AppID
-    if (game.appId) {
+    // 1. Determine or resolve Steam AppID (fastest & most accurate hook for SteamGridDB)
+    let resolvedAppId = game.appId;
+    if (!resolvedAppId && cleaned) {
+      resolvedAppId = vault.getCachedAppId(cleaned);
+      if (!resolvedAppId) {
+        try {
+          const steamMatches = await this.searchSteamStore(cleaned);
+          if (steamMatches.length > 0 && steamMatches[0].similarity >= 0.40) {
+            resolvedAppId = steamMatches[0].appId;
+            vault.setCachedAppId(cleaned, resolvedAppId);
+          }
+        } catch (e) {}
+      }
+    }
+
+    // 2. Query SteamGridDB square grids & icons by Steam AppID
+    if (resolvedAppId) {
       try {
-        const sqUrl = `https://www.steamgriddb.com/api/v2/grids/steam/${game.appId}?dimensions=512x512,1024x1024`;
+        const sqUrl = `https://www.steamgriddb.com/api/v2/grids/steam/${resolvedAppId}?dimensions=512x512,1024x1024`;
         const sqRes = await fetch(sqUrl, {
-          headers: { 'Authorization': `Bearer ${apiKey}`, 'User-Agent': this.userAgent }
+          headers: { 'Authorization': `Bearer ${apiKey}`, 'User-Agent': this.userAgent },
+          signal: AbortSignal.timeout(3500)
         });
         if (sqRes.ok) {
           const sqData = await sqRes.json();
@@ -299,9 +316,10 @@ class ArtworkResolver {
         }
 
         if (candidateGrids.length === 0) {
-          const icUrl = `https://www.steamgriddb.com/api/v2/icons/steam/${game.appId}`;
+          const icUrl = `https://www.steamgriddb.com/api/v2/icons/steam/${resolvedAppId}`;
           const icRes = await fetch(icUrl, {
-            headers: { 'Authorization': `Bearer ${apiKey}`, 'User-Agent': this.userAgent }
+            headers: { 'Authorization': `Bearer ${apiKey}`, 'User-Agent': this.userAgent },
+            signal: AbortSignal.timeout(3000)
           });
           if (icRes.ok) {
             const icData = await icRes.json();
@@ -313,13 +331,13 @@ class ArtworkResolver {
       } catch (e) {}
     }
 
-    // Query SteamGridDB by Title if no results yet
-    if (candidateGrids.length === 0 && game.title) {
+    // 3. Query SteamGridDB by Title Autocomplete if no grids by AppID
+    if (candidateGrids.length === 0 && cleaned) {
       try {
-        const cleaned = this.cleanTitle(game.title);
         const searchUrl = `https://www.steamgriddb.com/api/v2/search/autocomplete/${encodeURIComponent(cleaned)}`;
         const res = await fetch(searchUrl, {
-          headers: { 'Authorization': `Bearer ${apiKey}`, 'User-Agent': this.userAgent }
+          headers: { 'Authorization': `Bearer ${apiKey}`, 'User-Agent': this.userAgent },
+          signal: AbortSignal.timeout(3500)
         });
         if (res.ok) {
           const data = await res.json();
@@ -327,7 +345,8 @@ class ArtworkResolver {
             const sgdbGameId = data.data[0].id;
             const sqUrl = `https://www.steamgriddb.com/api/v2/grids/game/${sgdbGameId}?dimensions=512x512,1024x1024`;
             const sqRes = await fetch(sqUrl, {
-              headers: { 'Authorization': `Bearer ${apiKey}`, 'User-Agent': this.userAgent }
+              headers: { 'Authorization': `Bearer ${apiKey}`, 'User-Agent': this.userAgent },
+              signal: AbortSignal.timeout(3500)
             });
             if (sqRes.ok) {
               const sqData = await sqRes.json();
@@ -335,11 +354,26 @@ class ArtworkResolver {
                 candidateGrids.push(...sqData.data);
               }
             }
+
+            if (candidateGrids.length === 0) {
+              const icUrl = `https://www.steamgriddb.com/api/v2/icons/game/${sgdbGameId}`;
+              const icRes = await fetch(icUrl, {
+                headers: { 'Authorization': `Bearer ${apiKey}`, 'User-Agent': this.userAgent },
+                signal: AbortSignal.timeout(3000)
+              });
+              if (icRes.ok) {
+                const icData = await icRes.json();
+                if (icData.success && Array.isArray(icData.data)) {
+                  candidateGrids.push(...icData.data.filter(i => i.url && !i.url.toLowerCase().endsWith('.ico')));
+                }
+              }
+            }
           }
         }
       } catch (e) {}
     }
 
+    // 4. Score and pick best square candidate
     const ranked = this.scoreAndRankSquareGrids(candidateGrids);
     if (ranked.length > 0) {
       const result = { url: ranked[0].url, source: 'steamgriddb_square', isSquare: true };
@@ -347,10 +381,10 @@ class ArtworkResolver {
       return result;
     }
 
-    // Default fallback to Steam Store 2:3 vertical cover if appId is available
-    if (game.appId) {
+    // 5. Fallback to Steam Store 2:3 vertical cover if resolvedAppId is available
+    if (resolvedAppId) {
       const result = {
-        url: `https://cdn.akamai.steamstatic.com/steam/apps/${game.appId}/library_600x900_2x.jpg`,
+        url: `https://cdn.cloudflare.steamstatic.com/steam/apps/${resolvedAppId}/library_600x900_2x.jpg`,
         source: 'steam_store_2x3',
         isSquare: false
       };
@@ -358,7 +392,16 @@ class ArtworkResolver {
       return result;
     }
 
-    return null;
+    // 6. Universal Fallback: Elegant 1:1 Acrylic Card Template
+    try {
+      const cardBuffer = this.generateCardTemplate(game.title, game.launcher);
+      const dataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(cardBuffer.toString('utf8'))}`;
+      const result = { url: dataUrl, source: 'tier3_template', isSquare: true };
+      this.urlCache.set(cacheKey, result);
+      return result;
+    } catch (e) {
+      return null;
+    }
   }
 
   // Search alternatives from both Steam Store and built-in SteamGridDB
@@ -600,7 +643,7 @@ class ArtworkResolver {
   async resolveArtwork(game, options = {}) {
     console.log(`[ArtResolver] Resolving artwork for: "${game.title}" (${game.launcher})`);
 
-    // Check Vault first
+    // 1. Check Vault first (if already protected and not forcing re-fetch)
     if (!options.force && vault.hasCover(game.id)) {
       console.log(`[ArtResolver] Found existing cover in Vault for ${game.id}`);
       return {
@@ -611,6 +654,63 @@ class ArtworkResolver {
       };
     }
 
+    // 2. Preselected Cover URL from initial scan or user modal override
+    if (game.coverUrl && !options.ignorePreselected) {
+      try {
+        if (game.coverUrl.startsWith('data:image/svg+xml;utf8,')) {
+          const svgText = decodeURIComponent(game.coverUrl.replace(/^data:image\/svg\+xml;utf8,/, ''));
+          const buffer = Buffer.from(svgText, 'utf8');
+          vault.saveCover(game.id, buffer, {
+            title: game.title,
+            launcher: game.launcher,
+            appId: game.appId,
+            targetImagePath: game.targetImagePath,
+            isPreCropped: true,
+            source: 'preselected_template'
+          });
+          return { buffer, source: 'preselected_template', gameId: game.id, isNew: true };
+        } else if (game.coverUrl.startsWith('data:image/')) {
+          const base64Data = game.coverUrl.replace(/^data:image\/[a-z+]+;base64,/i, '');
+          const buffer = Buffer.from(base64Data, 'base64');
+          vault.saveCover(game.id, buffer, {
+            title: game.title,
+            launcher: game.launcher,
+            appId: game.appId,
+            targetImagePath: game.targetImagePath,
+            isPreCropped: !!game.isSquare,
+            source: 'preselected_data'
+          });
+          return { buffer, source: 'preselected_data', gameId: game.id, isNew: true };
+        } else if (game.coverUrl.startsWith('http://') || game.coverUrl.startsWith('https://')) {
+          console.log(`[ArtResolver] Downloading preselected cover for "${game.title}" from ${game.coverUrl}`);
+          const buffer = await this.downloadBuffer(game.coverUrl);
+          vault.saveCover(game.id, buffer, {
+            title: game.title,
+            launcher: game.launcher,
+            appId: game.appId,
+            targetImagePath: game.targetImagePath,
+            url: game.coverUrl,
+            isPreCropped: !!game.isSquare,
+            source: 'preselected_url'
+          });
+          return { buffer, source: 'preselected_url', url: game.coverUrl, gameId: game.id, isNew: true };
+        } else if (fs.existsSync(game.coverUrl)) {
+          const buffer = fs.readFileSync(game.coverUrl);
+          vault.saveCover(game.id, buffer, {
+            title: game.title,
+            launcher: game.launcher,
+            appId: game.appId,
+            targetImagePath: game.targetImagePath,
+            isPreCropped: !!game.isSquare,
+            source: 'preselected_file'
+          });
+          return { buffer, source: 'preselected_file', gameId: game.id, isNew: true };
+        }
+      } catch (err) {
+        console.warn(`[ArtResolver] Could not use preselected coverUrl for "${game.title}":`, err.message);
+      }
+    }
+
     // Tier 1 (Preferred Default): Highest-Resolution & Highest-Rated 1:1 Square Artwork from SteamGridDB
     try {
       const squareResult = await this.fetchBestSquareArtwork(game);
@@ -619,6 +719,7 @@ class ArtworkResolver {
           title: game.title,
           launcher: game.launcher,
           appId: game.appId,
+          targetImagePath: game.targetImagePath,
           source: squareResult.source,
           url: squareResult.url,
           isPreCropped: true
@@ -643,6 +744,7 @@ class ArtworkResolver {
           title: game.title,
           launcher: game.launcher,
           appId: game.appId,
+          targetImagePath: game.targetImagePath,
           source: result.source,
           url: result.url
         });
@@ -659,6 +761,7 @@ class ArtworkResolver {
         vault.saveCover(game.id, buffer, {
           title: game.title,
           launcher: game.launcher,
+          targetImagePath: game.targetImagePath,
           source: 'steam_local_cache'
         });
         return { buffer, source: 'steam_local_cache', gameId: game.id, isNew: true };
@@ -679,6 +782,7 @@ class ArtworkResolver {
           title: game.title,
           launcher: game.launcher,
           appId: resolvedAppId,
+          targetImagePath: game.targetImagePath,
           source: 'steam_cached_fallback',
           url: result.url
         });
@@ -690,7 +794,7 @@ class ArtworkResolver {
 
     // Live Steam Store Search
     const searchResults = await this.searchSteamStore(game.title);
-    if (searchResults.length > 0 && searchResults[0].similarity >= 0.45) {
+    if (searchResults.length > 0 && searchResults[0].similarity >= 0.40) {
       const topMatch = searchResults[0];
       console.log(
         `[ArtResolver] Matched "${game.title}" -> "${topMatch.name}" (AppID: ${topMatch.appId}, similarity: ${topMatch.similarity.toFixed(2)})`
@@ -705,6 +809,7 @@ class ArtworkResolver {
           matchedTitle: topMatch.name,
           launcher: game.launcher,
           appId: topMatch.appId,
+          targetImagePath: game.targetImagePath,
           similarity: topMatch.similarity,
           source: 'steam_store_search',
           url: result.url
@@ -721,6 +826,7 @@ class ArtworkResolver {
     vault.saveCover(game.id, cardBuffer, {
       title: game.title,
       launcher: game.launcher,
+      targetImagePath: game.targetImagePath,
       source: 'tier3_template'
     });
     return { buffer: cardBuffer, source: 'tier3_template', gameId: game.id, isNew: true };

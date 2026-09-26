@@ -614,6 +614,11 @@ svg {
   color: #06080a;
   font-weight: 800;
 }
+.status-badge.ready {
+  background: rgba(14, 165, 233, 0.90);
+  color: #ffffff;
+  font-weight: 700;
+}
 .status-badge.pending {
   background: rgba(217, 119, 6, 0.88);
   color: #ffffff;

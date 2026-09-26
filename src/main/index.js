@@ -226,8 +226,11 @@ ipcMain.handle('art:applyCustomCover', async (event, gameId, dataUrlOrPath, meta
       throw new Error('Invalid image source provided.');
     }
 
+    const targetImagePath = metadata.targetImagePath || (vault.getMetadata(gameId) ? vault.getMetadata(gameId).targetImagePath : null);
+
     vault.saveCover(gameId, buffer, {
       ...metadata,
+      targetImagePath,
       source: 'manual_override',
       appliedAt: new Date().toISOString()
     });
@@ -236,7 +239,8 @@ ipcMain.handle('art:applyCustomCover', async (event, gameId, dataUrlOrPath, meta
     injector.injectGame({
       id: gameId,
       title: metadata.title || gameId,
-      launcher: metadata.launcher || 'CUSTOM'
+      launcher: metadata.launcher || 'CUSTOM',
+      targetImagePath
     });
 
     const coverUrl = vault.getCoverAsDataUrl(gameId);
