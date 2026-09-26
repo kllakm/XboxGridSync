@@ -46,11 +46,13 @@ function ensureStartMenuShortcut() {
     }
 
     const targetExe = process.execPath;
-    shell.writeShortcutLink(officialShortcut, 'create', {
+    shell.writeShortcutLink(officialShortcut, 'replace', {
       target: targetExe,
       cwd: path.dirname(targetExe),
       description: 'Xbox Grid Sync',
-      appUserModelId: 'Xbox Grid Sync'
+      appUserModelId: 'Xbox Grid Sync',
+      icon: targetExe,
+      iconIndex: 0
     });
     return true;
   } catch (err) {

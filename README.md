@@ -182,6 +182,14 @@ npm run pack
 
 ## Changelog
 
+### [v1.8.5] - 2026-09-26
+- **Automated Silent Start Menu Indexing on Launch:**
+  - Fully automated the registration of the official Windows Start Menu shortcut (`Xbox Grid Sync.lnk`) to run silently on every application startup.
+  - Automatically indexes the app in Windows Start Menu and Windows Search under its official title **"Xbox Grid Sync"** with high-resolution icon assets, ensuring any user can right-click the app in Start and select "Pin to Start" cleanly labeled as **Xbox Grid Sync**.
+  - Seamlessly cleans up legacy raw executable shortcuts (`XboxGridSync-portable.lnk`) without user intervention.
+- **Settings UI Polish:**
+  - Removed the confusing and misleading manual "Pin / Add to Start" button from the Settings view, as Windows does not permit third-party applications to force arbitrary pinned tiles directly without user confirmation.
+
 ### [v1.8.4] - 2026-09-26
 - **Native Controller & Gamepad Navigation Engine:**
   - Implemented automatic gamepad detection and utilization (Xbox controllers, ROG Ally built-in gamepad, Legion Go, DualSense, etc.).

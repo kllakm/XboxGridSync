@@ -817,22 +817,6 @@ window.ModalManager = {
         this.openTutorialModal();
       });
     }
-
-    const btnCreateShortcut = document.getElementById('btnCreateStartShortcut');
-    if (btnCreateShortcut) {
-      btnCreateShortcut.addEventListener('click', async () => {
-        try {
-          const res = await window.api.createStartShortcut();
-          if (res && res.success) {
-            window.showToast('Start Menu Shortcut', 'Registered shortcut as "Xbox Grid Sync" in Windows Start Menu!', 'success');
-          } else {
-            window.showToast('Start Menu', res?.message || 'Shortcut ready in Start Menu.', 'info');
-          }
-        } catch (e) {
-          window.showToast('Error', e.message, 'error');
-        }
-      });
-    }
   },
 
   // 4. Quick Start Tutorial Modal Engine
