@@ -14,43 +14,50 @@ function Create-XboxGridSyncIcon {
     $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
     $g.Clear([System.Drawing.Color]::Transparent)
 
-    # 1. Main sphere with vibrant modern Xbox green gradient (#00D05E to #00FF87)
-    $sphereBrush = New-Object System.Drawing.Drawing2D.LinearGradientBrush (
-        (New-Object System.Drawing.PointF 24, 16),
-        (New-Object System.Drawing.PointF 232, 240),
-        ([System.Drawing.Color]::FromArgb(255, 0, 208, 94)),
-        ([System.Drawing.Color]::FromArgb(255, 0, 255, 135))
+    function Create-RoundedRectPath {
+        param ($x, $y, $w, $h, $r)
+        $path = New-Object System.Drawing.Drawing2D.GraphicsPath
+        $d = $r * 2
+        $path.AddArc($x, $y, $d, $d, 180, 90)
+        $path.AddArc($x + $w - $d, $y, $d, $d, 270, 90)
+        $path.AddArc($x + $w - $d, $y + $h - $d, $d, $d, 0, 90)
+        $path.AddArc($x, $y + $h - $d, $d, $d, 90, 90)
+        $path.CloseFigure()
+        return $path
+    }
+
+    $sqSize = 132
+    $rad = 32
+    $gap = 12
+    $backX, $backY = 92, 32
+    $frontX, $frontY = 32, 92
+
+    # 1. Back Square: Rich deep Xbox emerald gradient
+    $backPath = Create-RoundedRectPath $backX $backY $sqSize $sqSize $rad
+    $backGrad = New-Object System.Drawing.Drawing2D.LinearGradientBrush (
+        (New-Object System.Drawing.PointF $backX, $backY),
+        (New-Object System.Drawing.PointF ($backX + $sqSize), ($backY + $sqSize)),
+        ([System.Drawing.Color]::FromArgb(255, 0, 168, 70)),
+        ([System.Drawing.Color]::FromArgb(255, 0, 92, 36))
     )
-    $g.FillEllipse($sphereBrush, 12, 12, 232, 232)
+    $g.FillPath($backGrad, $backPath)
 
-    # 2. Cutouts matching titlebar SVG exactly (#0d0f12)
-    # No white rim, no grey reflection crescent!
-    $cutoutBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 13, 15, 18))
+    # 2. Transparent negative space cutout for crisp separation
+    $cutoutPath = Create-RoundedRectPath ($frontX - $gap) ($frontY - $gap) ($sqSize + ($gap * 2)) ($sqSize + ($gap * 2)) ($rad + ($gap / 2))
+    $g.CompositingMode = [System.Drawing.Drawing2D.CompositingMode]::SourceCopy
+    $clearBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::Transparent)
+    $g.FillPath($clearBrush, $cutoutPath)
 
-    # Top Cutout
-    $topPath = New-Object System.Drawing.Drawing2D.GraphicsPath
-    $topPath.StartFigure()
-    $topPath.AddBezier([float]71.1, [float]71.1, [float]92.4, [float]99.6, [float]128.0, [float]135.1, [float]128.0, [float]170.7)
-    $topPath.AddBezier([float]128.0, [float]170.7, [float]128.0, [float]135.1, [float]163.6, [float]99.6, [float]184.9, [float]71.1)
-    $topPath.AddBezier([float]184.9, [float]71.1, [float]149.3, [float]56.9, [float]106.7, [float]56.9, [float]71.1, [float]71.1)
-    $topPath.CloseFigure()
-    $g.FillPath($cutoutBrush, $topPath)
-
-    # Left Cutout
-    $leftPath = New-Object System.Drawing.Drawing2D.GraphicsPath
-    $leftPath.StartFigure()
-    $leftPath.AddBezier([float]49.8, [float]92.4, [float]71.1, [float]113.8, [float]99.6, [float]149.3, [float]85.3, [float]199.1)
-    $leftPath.AddBezier([float]85.3, [float]199.1, [float]56.9, [float]170.7, [float]42.7, [float]128.0, [float]49.8, [float]92.4)
-    $leftPath.CloseFigure()
-    $g.FillPath($cutoutBrush, $leftPath)
-
-    # Right Cutout
-    $rightPath = New-Object System.Drawing.Drawing2D.GraphicsPath
-    $rightPath.StartFigure()
-    $rightPath.AddBezier([float]206.2, [float]92.4, [float]184.9, [float]113.8, [float]156.4, [float]149.3, [float]170.7, [float]199.1)
-    $rightPath.AddBezier([float]170.7, [float]199.1, [float]199.1, [float]170.7, [float]213.3, [float]128.0, [float]206.2, [float]92.4)
-    $rightPath.CloseFigure()
-    $g.FillPath($cutoutBrush, $rightPath)
+    # 3. Front Square: Luminous vivid Xbox neon gradient
+    $g.CompositingMode = [System.Drawing.Drawing2D.CompositingMode]::SourceOver
+    $frontPath = Create-RoundedRectPath $frontX $frontY $sqSize $sqSize $rad
+    $frontGrad = New-Object System.Drawing.Drawing2D.LinearGradientBrush (
+        (New-Object System.Drawing.PointF $frontX, $frontY),
+        (New-Object System.Drawing.PointF ($frontX + $sqSize), ($frontY + $sqSize)),
+        ([System.Drawing.Color]::FromArgb(255, 0, 255, 135)),
+        ([System.Drawing.Color]::FromArgb(255, 0, 204, 82))
+    )
+    $g.FillPath($frontGrad, $frontPath)
 
     # Save 256x256 master PNG
     $masterBmp.Save($PngPath, [System.Drawing.Imaging.ImageFormat]::Png)

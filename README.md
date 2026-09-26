@@ -175,6 +175,15 @@ npm run pack
 
 ## Changelog
 
+### [v1.5.2] - 2026-09-26
+- **Comprehensive Xbox App Image Cache Scanning:** The scanner now thoroughly inspects all cached artwork files (`.png`, `.jpg`, `.jpeg`, `.webp`) across `ThirdPartyLibraries` launcher directories (`steam`, `epic`, `gog`, etc.), `LocalState\CustomLibraryManagement`, and `LocalCache\Roaming\Microsoft\XboxPCApp`. Any game recognized or cached by the Xbox PC App is now automatically imported into Xbox Grid Sync even if it lacks a formal manifest.
+- **SteamVR & Expanded Tool Discovery:** Removed SteamVR (`AppID 250820`) from the scanner's tool blacklist, added a built-in title dictionary for common tools and games, and expanded Steam library scanning across all local drives (`C:`, `D:`, `E:`, `F:`, `G:`, `H:`) so SteamVR and non-traditional titles tracked by the Xbox App are properly discovered.
+- **Fixed Full-App Edit Studio Loading:** Resolved a nested view layout issue in `index.html` where the manual artwork studio was nested inside the settings view, causing it to render as a blank page. Dedicated edit button click handlers and multi-tiered image fallbacks (Vault cover -> local Xbox cache thumbnail -> official Steam CDN) ensure the studio immediately opens with artwork loaded onto the interactive crop canvas.
+
+### [v1.5.1] - 2026-09-26
+- **New Unified Minimalist Brand Icon:** Designed a simple, sharp, high-quality two-square icon representing 1:1 game tiles syncing together, featuring a luminous Xbox neon foreground tile (`#00FF87` to `#00CC52`) and a deep emerald background tile (`#00A846` to `#005C24`) separated by a clean transparent negative space channel.
+- **Single Universal Icon Across All Surfaces:** Applied this design consistently across the entire application, including the titlebar vector SVG, multi-resolution Windows executable icon (`.ico` containing 256, 128, 64, 48, 32, 24, 16 sizes), system tray, taskbar, desktop installer, and generated fallback acrylic cards.
+
 ### [v1.5.0] - 2026-09-26
 - **Lossless PNG Xbox Cache Output:** Fixed thumbnail injection to output native `.png` format files (`steam_<appid>.png`, `<appid>.png`, etc.) into Xbox App cache and provider directories, ensuring thumbnails display reliably in the Xbox PC App while cleaning up legacy `.jpg` entries.
 - **Interactive 1:1 Crop Studio & Full-App Override Page:** Replaced the cramped modal dialog with a full-app size artwork studio featuring an interactive 1:1 square crop canvas with click-and-drag panning, smooth zoom controls, quick alignment presets (Top, Center, Bottom, Fit Best), and rule-of-thirds composition guides.

@@ -179,7 +179,7 @@ class VaultManager {
       for (const d of subdirs) {
         if (d.isDirectory()) {
           const gameId = d.name;
-          const coverPath = path.join(this.vaultDir, gameId, 'cover.jpg');
+          const coverPath = this.getCoverPath(gameId);
           if (fs.existsSync(coverPath)) {
             const meta = this.getMetadata(gameId) || {};
             entries.push({
@@ -187,7 +187,8 @@ class VaultManager {
               coverPath,
               savedAt: meta.savedAt || null,
               title: meta.title || gameId,
-              launcher: meta.launcher || 'unknown'
+              launcher: meta.launcher || 'unknown',
+              appId: meta.appId || null
             });
           }
         }

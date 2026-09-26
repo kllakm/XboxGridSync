@@ -418,11 +418,15 @@ window.ModalManager = {
 
     if (libView) libView.style.display = 'none';
     if (setView) setView.style.display = 'none';
-    if (ovView) ovView.style.display = 'flex';
+    if (ovView) {
+      ovView.style.display = 'flex';
+      window.scrollTo(0, 0);
+    }
 
-    // Load initial cover into studio
-    if (game.coverUrl) {
-      this.loadArtworkIntoStudio(game.coverUrl);
+    // Load initial cover into studio (from vault cover, local cache thumbnail, or steam cdn)
+    const initialUrl = game.coverUrl || game.currentThumbnail || (game.appId ? `https://cdn.akamai.steamstatic.com/steam/apps/${game.appId}/library_600x900_2x.jpg` : null);
+    if (initialUrl) {
+      this.loadArtworkIntoStudio(initialUrl);
     } else {
       // Clear canvas
       this.cropState.image = null;

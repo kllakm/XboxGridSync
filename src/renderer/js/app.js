@@ -201,7 +201,7 @@ function renderGames() {
       </div>
     `;
 
-    // Click card to open override modal
+    // Click card or edit button to open override modal
     card.addEventListener('click', (e) => {
       // Don't trigger if clicked quick sync directly
       if (e.target.closest('.btn-quick-sync')) {
@@ -213,6 +213,16 @@ function renderGames() {
         onGameCoverUpdated(gameId, newCoverUrl);
       });
     });
+
+    const editBtn = card.querySelector('.btn-override');
+    if (editBtn) {
+      editBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        window.ModalManager.openOverrideModal(game, (gameId, newCoverUrl) => {
+          onGameCoverUpdated(gameId, newCoverUrl);
+        });
+      });
+    }
 
     grid.appendChild(card);
   });

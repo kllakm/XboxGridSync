@@ -351,13 +351,18 @@ class ArtworkResolver {
     <text x="50" y="18" font-family="'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" fill="#00FF87" text-anchor="middle" letter-spacing="1">${launcherBadge}</text>
   </g>
 
-  <!-- Central Xbox Game Icon Graphic -->
-  <g transform="translate(300, 240)">
-    <circle cx="0" cy="0" r="76" fill="#15171a" stroke="#00D05E" stroke-width="3" />
-    <!-- Xbox Sphere Curves -->
-    <path d="M-38,-38 Q0,0 0,52 Q0,0 38,-38 Q0,-16 -38,-38 Z" fill="#00D05E" />
-    <path d="M-52,-18 Q-12,8 -30,42 Q-48,16 -52,-18 Z" fill="#00D05E" />
-    <path d="M52,-18 Q12,8 30,42 Q48,16 52,-18 Z" fill="#00D05E" />
+  <!-- Central Game Icon Graphic (Two-Square Sync) -->
+  <g transform="translate(240, 180)">
+    <defs>
+      <mask id="cardBackMask">
+        <rect width="200" height="200" fill="white" />
+        <rect x="-8" y="36" width="96" height="96" rx="24" fill="black" />
+      </mask>
+    </defs>
+    <!-- Rear Square -->
+    <rect x="44" y="0" width="76" height="76" rx="20" fill="#00A846" mask="url(#cardBackMask)" />
+    <!-- Front Square -->
+    <rect x="0" y="44" width="76" height="76" rx="20" fill="url(#accent)" />
   </g>
 
   <!-- Game Title Bottom Block -->

@@ -19,20 +19,26 @@
       <div class="titlebar-logo">
         <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
           <defs>
-            <linearGradient id="xboxLogoGrad" x1="4" y1="4" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stop-color="#00D05E" />
-              <stop offset="100%" stop-color="#00FF87" />
+            <linearGradient id="backSqGrad" x1="13" y1="4.5" x2="31.5" y2="23" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#00A846" />
+              <stop offset="100%" stop-color="#005C24" />
             </linearGradient>
+            <linearGradient id="frontSqGrad" x1="4.5" y1="13" x2="23" y2="31.5" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#00FF87" />
+              <stop offset="100%" stop-color="#00CC52" />
+            </linearGradient>
+            <mask id="backSqMask">
+              <rect width="36" height="36" fill="white" />
+              <rect x="2.8" y="11.3" width="21.9" height="21.9" rx="5.5" fill="black" />
+            </mask>
           </defs>
-          <circle cx="18" cy="18" r="17" fill="url(#xboxLogoGrad)" />
-          <path d="M10 10C13 14 18 19 18 24C18 19 23 14 26 10C21 8 15 8 10 10Z" fill="#0d0f12" />
-          <path d="M7 13C10 16 14 21 12 28C8 24 6 18 7 13Z" fill="#0d0f12" />
-          <path d="M29 13C26 16 22 21 24 28C28 24 30 18 29 13Z" fill="#0d0f12" />
+          <rect x="13" y="4.5" width="18.5" height="18.5" rx="4.5" fill="url(#backSqGrad)" mask="url(#backSqMask)" />
+          <rect x="4.5" y="13" width="18.5" height="18.5" rx="4.5" fill="url(#frontSqGrad)" />
         </svg>
       </div>
       <span class="titlebar-title">
         Xbox Grid Sync
-        <span class="version-badge" id="appVersionBadge">v1.0.1</span>
+        <span class="version-badge" id="appVersionBadge">v1.5.2</span>
         <span class="shield-badge" id="shieldStatusBadge" title="Automated Update Shield status">
           <span class="pulse-dot"></span>
           <span id="shieldStatusText">Shield Active</span>
@@ -352,6 +358,8 @@
 
         </div>
       </div>
+    </section>
+
     <!-- View 3: Full-App Size Manual Artwork Studio -->
     <section class="app-view" id="overrideView" style="display: none;">
       <div class="override-page-header">
