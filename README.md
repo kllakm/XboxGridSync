@@ -1,8 +1,10 @@
 # Xbox Grid Sync
 
-> **Automated high-resolution artwork discovery, seamless multi-launcher ingestion, and a persistent protection shield for the Xbox PC App.**
+> **Automated high-resolution artwork discovery, multi-launcher ingestion, native Windows handheld gaming PC experience, and a persistent protection shield for the Xbox PC App.**
 
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-0078D4?style=flat&logo=windows)](https://microsoft.com/windows)
+[![Handheld Ready](https://img.shields.io/badge/Handheld-ROG%20Ally%20%7C%20Legion%20Go%20%7C%20Claw-FF0055?style=flat&logo=gamepad)](https://github.com/kllakm/XboxGridSync)
+[![Controller Navigation](https://img.shields.io/badge/Gamepad-Full%2010ft%20%2F%20FSE%20Nav-107C41?style=flat&logo=xbox)](https://github.com/kllakm/XboxGridSync)
 [![Xbox Accent](https://img.shields.io/badge/Design-WinUI%203%20%2F%20Fluent-00D05E?style=flat&logo=xbox)](https://xbox.com)
 [![Zero-Key](https://img.shields.io/badge/Steam%20CDN-Zero%20API%20Key-171a21?style=flat&logo=steam)](https://steampowered.com)
 [![Support](https://img.shields.io/badge/Support-Buy%20Me%20A%20Coffee-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/enufstyle)
@@ -17,14 +19,23 @@ The **Xbox PC App** provides a unified place to browse your PC game collection a
 1. **Low-Resolution & Distorted Icons:** Titles imported from third-party launchers or custom shortcuts regularly display low-res, blurry, stretched thumbnails or generic placeholder tiles inside the Xbox App's 1:1 square icon grid.
 2. **The Update Wipe Problem:** Microsoft Store updates to the Xbox PC App package (`Microsoft.GamingApp_8wekyb3d8bbwe`) regularly wipe and reset the local thumbnail cache, destroying custom artwork. Existing Game Bar widgets are sandboxed and unable to run background recovery tasks.
 
-**Xbox Grid Sync** is a native, high-performance desktop application built to permanently solve these problems. It mirrors your Xbox PC App's authoritative library (`ThirdPartyLibraries` & `ExternalAppShortcut`), automatically pre-selects the highest-rated 1:1 square artwork from SteamGridDB and Steam on your very first scan, archives them in an isolated persistent Artwork Vault, and defends them with a background **Update Shield** that silently re-injects your covers the moment an update occurs. All artwork is natively aligned to the Xbox App's **1:1 square aspect ratio**.
+**Xbox Grid Sync** is a native, high-performance desktop application engineered for both traditional desktop PCs and Windows Handheld Gaming PCs (ASUS ROG Ally, Lenovo Legion Go, MSI Claw, AYANEO, GPD, ONEXPLAYER, and Steam Deck running Windows).
+
+It mirrors your Xbox PC App's authoritative library (`ThirdPartyLibraries` & `ExternalAppShortcut`), automatically pre-selects the highest-rated 1:1 square artwork from SteamGridDB and Steam on your very first scan, archives them in an isolated persistent Artwork Vault, and defends them with a background **Update Shield** that silently re-injects your covers the moment an update occurs. All artwork is natively aligned to the Xbox App's **1:1 square aspect ratio**.
 
 ---
 
 ## Key Features
 
-- **Xbox App-Centric Library Mirroring (Zero Duplicates):**
+- **Built for Windows Handheld Gaming PCs & 10-Foot Living Room Setups:**
+  - **Automatic Handheld Detection:** Natively identifies Windows 11 Handheld form factors (`DeviceForm == 0x2e`) and gaming handheld hardware (ROG Ally, Legion Go, Claw, etc.) to launch in full-screen handheld mode out of the box.
+  - **Exclusive Fullscreen Experience (FSE):** Seamlessly switch between Desktop Windowed mode and borderless Exclusive Fullscreen with one click or `F11`. System chrome and taskbars are hidden for a distraction-free console interface.
+  - **Full Gamepad & Controller Engine:** Complete spatial thumbstick/D-pad navigation, console-style horizontal row wrapping, cursor auto-hiding, multi-gamepad slot polling (Xbox Wireless controllers, Flydigi Vader 5 Pro, DualSense, embedded handheld controls), and contextual on-screen button HUD hints.
+  - **Zero-Mouse Artwork Studio:** Easily search, preview, and select community artwork entirely via controller.
+
+- **Xbox App-Centric Library Mirroring (Zero Duplicates & Zero Ghost Games):**
   - **Authoritative Discovery:** Scans `%LOCALAPPDATA%\Packages\Microsoft.GamingApp_8wekyb3d8bbwe\LocalState\ThirdPartyLibraries\` to discover precisely what the Xbox App recognizes. No whole-hard-drive crawling, phantom games, or duplicate tiles.
+  - **Instant 0ms Boot Display:** Caches your library locally so your games appear instantaneously on launch while a background sync verifies active titles.
   - **Intelligent Title Enrichment:** Resolves raw catalog hashes (e.g. *The Outlast Trials* on Epic) and IDs via local manifests, SteamGridDB, and Steam Store search.
 
 - **Automatic 1:1 Square Artwork Pre-Selection on First Scan:**
@@ -181,6 +192,17 @@ npm run pack
 ---
 
 ## Changelog
+
+### [v1.8.8] - 2026-09-26
+- **Ghost Game & Orphan Image Discovery Elimination:**
+  - Resolved an issue where unmanifested leftover thumbnail files in the Xbox PC App's `ThirdPartyLibraries` directory (such as Cyberpunk 2077 `1091500.png`) were inadvertently synthesized into library games on systems with zero installed games.
+  - Step 5B discovery now verifies loose image IDs against local launcher indices (`localIndexes`) before adding them, guaranteeing that orphan cached images never produce phantom titles.
+  - Updated Full Factory Reset and Xbox Cache Purge routines to actively clean up unmanifested orphan images across all provider directories alongside clearing `library_cache.json`.
+- **Factory Reset Modal & Navigation Resolution:**
+  - Fixed `TypeError: window.ModalManager.closeSettingsModal is not a function` during Factory Reset by establishing a formal `closeSettingsModal()` alias and transitioning via `this.closeSettingsPage()`.
+  - Factory reset now cleanly navigates back to the primary library view, resets controller focus, and triggers a fresh 0ms rescan.
+- **Handheld Gaming PC & Gamepad Documentation Update:**
+  - Updated repository header badges and feature documentation to prominently highlight Windows Handheld Gaming PC support (ASUS ROG Ally, Lenovo Legion Go, MSI Claw), Exclusive Fullscreen Experience (FSE), and full Gamepad Navigation.
 
 ### [v1.8.7] - 2026-09-26
 - **Settings Page & Event Listener ReferenceError Resolution:**

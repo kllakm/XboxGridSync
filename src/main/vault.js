@@ -304,15 +304,35 @@ class VaultManager {
           }
         }
 
-        // 2. Remove .new, .tmp, stray _cover.png, and injected custom files
+        // 2. Remove .new, .tmp, stray _cover.png, unmanifested injected images, and injected custom files
         const recheckFiles = fs.readdirSync(provDir);
+        let manifestContent = '';
+        for (const mName of [`${prov}.manifest`, `${prov}.json`]) {
+          const mPath = path.join(provDir, mName);
+          if (fs.existsSync(mPath)) {
+            try { manifestContent += fs.readFileSync(mPath, 'utf8'); } catch (e) {}
+          }
+        }
+
         for (const file of recheckFiles) {
           const lower = file.toLowerCase();
           const ext = path.extname(lower);
-          const isStray = lower.endsWith('.new') ||
-                          lower.endsWith('.tmp') ||
-                          lower.includes('_cover.') ||
-                          (prov === 'CustomLibraryManagement' && ['.png', '.jpg', '.jpeg', '.webp'].includes(ext));
+          const base = path.parse(file).name;
+          const isImg = ['.png', '.jpg', '.jpeg', '.webp'].includes(ext);
+
+          let isStray = lower.endsWith('.new') ||
+                        lower.endsWith('.tmp') ||
+                        lower.includes('_cover.') ||
+                        (prov === 'CustomLibraryManagement' && isImg);
+
+          // If an image has no manifest and wasn't backed up from original Xbox App, it's an orphan injected image
+          if (!isStray && isImg && prov !== 'CustomLibraryManagement') {
+            const hasManifestMatch = manifestContent && manifestContent.includes(base);
+            const hasBackup = fs.existsSync(path.join(provDir, `${file}.bak`));
+            if (!hasManifestMatch && !hasBackup && (!manifestContent || base.startsWith('steam_') || base.startsWith('epic_') || base.startsWith('gog_'))) {
+              isStray = true;
+            }
+          }
 
           if (isStray) {
             try {

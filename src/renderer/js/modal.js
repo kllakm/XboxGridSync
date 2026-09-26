@@ -795,8 +795,11 @@ window.ModalManager = {
             if (window.renderGames) window.renderGames();
           }
 
-          // Close modal
-          window.ModalManager.closeSettingsModal();
+          // Return to main library page
+          this.closeSettingsPage();
+          if (window.ControllerNav && window.ControllerNav.focusDefaultElement) {
+            window.ControllerNav.focusDefaultElement();
+          }
 
           // Rescan cleanly
           if (window.rescanLibrary) await window.rescanLibrary();
@@ -958,9 +961,13 @@ window.ModalManager = {
     if (libView) libView.style.display = 'flex';
   },
 
-  // Alias for backward compatibility
+  // Aliases for backward compatibility
   openSettingsModal() {
     this.openSettingsPage();
+  },
+
+  closeSettingsModal() {
+    this.closeSettingsPage();
   },
 
   setupSettingsModal() {

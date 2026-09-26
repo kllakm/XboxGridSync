@@ -332,7 +332,7 @@ class GameScanner {
   }
 
   // 5. Scan Xbox PC App's authoritative library from ThirdPartyLibraries and ExternalAppShortcut
-  scanXboxAppRegistry() {
+  scanXboxAppRegistry(localIndexes = null) {
     const rawGames = [];
     const candidateDirs = [
       this.xboxThirdPartyDir,
@@ -492,6 +492,25 @@ class GameScanner {
               launcher === 'STEAM' ? `steam_${externalPlatformId}` : `${launcher.toLowerCase()}_${externalPlatformId}`
             );
 
+            // If this is an unmanifested image in a standard provider folder,
+            // only treat it as a game if it is actually verified installed in the local launcher index.
+            // This prevents orphan cache images from creating ghost games on machines where the game is not installed.
+            if (!isCustom) {
+              let isInstalled = false;
+              if (localIndexes) {
+                if (launcher === 'STEAM' && localIndexes.steam && localIndexes.steam.has(externalPlatformId)) {
+                  isInstalled = true;
+                } else if (launcher === 'EPIC' && localIndexes.epic && (localIndexes.epic.has(externalPlatformId) || localIndexes.epic.has(cleanBase))) {
+                  isInstalled = true;
+                } else if (launcher === 'GOG' && localIndexes.gog && localIndexes.gog.has(externalPlatformId)) {
+                  isInstalled = true;
+                }
+              }
+              if (!isInstalled) {
+                continue;
+              }
+            }
+
             rawGames.push({
               id: safeId,
               originalId: baseName,
@@ -574,7 +593,7 @@ class GameScanner {
     const localIndexes = this.buildLocalEnrichmentIndices();
 
     // 2. Discover games registered in Xbox PC App
-    const rawXboxGames = this.scanXboxAppRegistry();
+    const rawXboxGames = this.scanXboxAppRegistry(localIndexes);
     console.log(`[Scanner] Discovered ${rawXboxGames.length} raw entries in Xbox App.`);
 
     // 3. Strict Deduplication: Keyed by targetImagePath or canonical identifier
