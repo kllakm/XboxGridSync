@@ -2269,3 +2269,19 @@ body.controller-mode .controller-hud-overlay {
   font-weight: 700;
   border: 1px solid rgba(255, 255, 255, 0.15);
 }
+
+body.controller-mode .match-item.controller-focused {
+  border-color: #00FF87 !important;
+  background: rgba(0, 208, 94, 0.2) !important;
+  outline: 2px solid #00FF87 !important;
+  outline-offset: 1px !important;
+  box-shadow: 0 0 16px rgba(0, 255, 135, 0.45) !important;
+  transform: translateY(-1px) scale(1.01);
+}
+
+body.controller-mode #btnToggleFse.controller-focused,
+body.controller-mode #btnTitlebarDonate.controller-focused {
+  outline: 2px solid #00FF87 !important;
+  outline-offset: -2px !important;
+  box-shadow: 0 0 16px rgba(0, 255, 135, 0.5) !important;
+}

@@ -551,6 +551,7 @@ window.ModalManager = {
     filtered.slice(0, 20).forEach(match => {
       const item = document.createElement('div');
       item.className = 'match-item';
+      item.tabIndex = 0;
 
       const isSgdb = match.source === 'SteamGridDB';
       const isSquare = match.badge && match.badge.includes('1:1');
@@ -662,6 +663,7 @@ window.ModalManager = {
     const openVaultBtn = document.getElementById('btnOpenVaultFolder');
     const restartXboxBtn = document.getElementById('btnRestartXboxApp');
     const btnBack = document.getElementById('btnBackToLibrary');
+    const btnSaveTop = document.getElementById('btnSaveSettingsTop');
     const saveAndClose = async () => {
       const updated = {
         autoRestore: autoRestoreCheck ? autoRestoreCheck.checked : true,

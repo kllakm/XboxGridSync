@@ -444,7 +444,11 @@ function initEventListeners() {
 document.addEventListener('DOMContentLoaded', async () => {
   initWindowControls();
   initEventListeners();
-  window.ModalManager.init();
+  try {
+    window.ModalManager.init();
+  } catch (err) {
+    console.error('[App] Error initializing ModalManager:', err);
+  }
 
   // Load and display dynamic version
   try {

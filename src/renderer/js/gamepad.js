@@ -141,7 +141,7 @@ class ControllerNavigationManager {
     const now = performance.now();
     let anyActiveDirection = null;
 
-    // Check ALL connected gamepads (Flydigi Vader creates virtual controller at index 0, actual controller at index 1+)
+    // Check ALL connected gamepads (Flydigi Vader creates virtual controller at index 0, physical controller at index 1+)
     for (let i = 0; i < gamepads.length; i++) {
       const gp = gamepads[i];
       if (!gp || !gp.connected) continue;
@@ -260,48 +260,107 @@ class ControllerNavigationManager {
 
   // Find all focusable elements in current active scope
   getFocusableElements() {
-    let container = document.body;
-
-    // Check if any acrylic modal is open
+    // 1. If any acrylic modal backdrop is open, constrain focus strictly to that modal
     const openModals = Array.from(document.querySelectorAll('.modal-backdrop')).filter(m => {
       return m.classList.contains('open') || m.style.display === 'flex';
     });
 
     if (openModals.length > 0) {
-      container = openModals[openModals.length - 1]; // Topmost open modal
-    } else {
-      const overrideView = document.getElementById('overrideView');
-      const settingsView = document.getElementById('settingsView');
-      const libraryView = document.getElementById('libraryView');
-
-      if (overrideView && overrideView.style.display !== 'none' && overrideView.style.display !== '') {
-        container = overrideView;
-      } else if (settingsView && settingsView.style.display !== 'none' && settingsView.style.display !== '') {
-        container = settingsView;
-      } else if (libraryView && libraryView.style.display !== 'none') {
-        container = libraryView;
-      }
+      const topModal = openModals[openModals.length - 1];
+      const modalSelector = [
+        'button:not([disabled])',
+        'input:not([disabled])',
+        'select:not([disabled])',
+        '.clickable',
+        '.protection-option-card',
+        '.tutorial-step-card'
+      ].join(',');
+      return Array.from(topModal.querySelectorAll(modalSelector)).filter(el => this.isElementVisible(el));
     }
 
-    // Selector for interactive elements
-    const selector = [
-      '.game-card',
-      'button:not([disabled])',
-      'input:not([disabled])',
-      'select:not([disabled])',
-      '.filter-pill',
-      '.switch input',
-      '.clickable',
-      '.cover-option',
-      '.protection-option-card',
-      '.tutorial-step-card'
-    ].join(',');
+    const titlebar = document.getElementById('appTitlebar');
+    const overrideView = document.getElementById('overrideView');
+    const settingsView = document.getElementById('settingsView');
+    const libraryView = document.getElementById('libraryView');
 
-    const elements = Array.from(container.querySelectorAll(selector)).filter(el => {
-      return this.isElementVisible(el);
-    });
+    const focusables = [];
 
-    return elements;
+    // Titlebar items (available across all views: PC/FSE toggle, Buy Me a Coffee)
+    if (titlebar) {
+      const titlebarBtns = Array.from(titlebar.querySelectorAll('#btnToggleFse, #btnTitlebarDonate')).filter(el => this.isElementVisible(el));
+      focusables.push(...titlebarBtns);
+    }
+
+    // 2. Artwork Override / Studio View
+    if (overrideView && overrideView.style.display !== 'none' && overrideView.style.display !== '') {
+      const studioSelector = [
+        '#btnBackFromOverride',
+        '#btnCancelOverridePage',
+        '#btnApplyOverridePage',
+        '#btnZoomOut',
+        '#cropZoomSlider',
+        '#btnZoomIn',
+        '#btnAlignTop',
+        '#btnAlignCenter',
+        '#btnAlignBottom',
+        '#btnFitBest',
+        '#btnResetCrop',
+        '#btnToggleGrid',
+        '.btn-source-filter',
+        '#overrideSearchInput',
+        '#btnSearchAlternatives',
+        '.match-item', // Artwork search results selectable via controller
+        '#btnBrowseLocalCover',
+        '#overrideUrlInput',
+        '#btnLoadUrl'
+      ].join(',');
+      const studioElements = Array.from(overrideView.querySelectorAll(studioSelector)).filter(el => this.isElementVisible(el));
+      focusables.push(...studioElements);
+      return focusables;
+    }
+
+    // 3. Settings View
+    if (settingsView && settingsView.style.display !== 'none' && settingsView.style.display !== '') {
+      const settingsSelector = [
+        '#btnBackToLibrary',
+        '#btnSaveSettingsTop',
+        '.switch input',
+        '#btnOpenVaultFolder',
+        '#btnRestartXboxApp',
+        '#btnTestScheduler',
+        '#btnOpenTaskSchedulerGui',
+        '#btnClearXboxCache',
+        '#btnFullReset',
+        '#btnSettingsDonate',
+        '#btnOpenTutorial'
+      ].join(',');
+      const settingsElements = Array.from(settingsView.querySelectorAll(settingsSelector)).filter(el => this.isElementVisible(el));
+      focusables.push(...settingsElements);
+      return focusables;
+    }
+
+    // 4. Game Library View
+    if (libraryView && libraryView.style.display !== 'none') {
+      // Header actions & filters
+      const libraryControls = [
+        '#btnSyncAll',
+        '#btnRescan',
+        '#btnRestoreVault',
+        '#btnSettings',
+        '.filter-pill',
+        '#searchGamesInput',
+        '#emptyState button'
+      ].join(',');
+      const controls = Array.from(libraryView.querySelectorAll(libraryControls)).filter(el => this.isElementVisible(el));
+      focusables.push(...controls);
+
+      // Game cards only (EXCLUDE inner overlay buttons so left/right navigation stays cleanly on game cards)
+      const cards = Array.from(libraryView.querySelectorAll('.game-card')).filter(el => this.isElementVisible(el));
+      focusables.push(...cards);
+      return focusables;
+    }
+
+    return focusables;
   }
 
   isElementVisible(el) {
@@ -327,6 +386,13 @@ class ControllerNavigationManager {
     const primaryBtn = focusables.find(el => el.classList.contains('btn-primary'));
     if (primaryBtn) {
       this.setFocus(primaryBtn);
+      return;
+    }
+
+    // In studio, prefer search input or first match item
+    const matchItem = focusables.find(el => el.classList.contains('match-item'));
+    if (matchItem) {
+      this.setFocus(matchItem);
       return;
     }
 
@@ -424,11 +490,64 @@ class ControllerNavigationManager {
       }
 
       if (isStrictlyInDirection) {
-        // Heavy orthogonal penalty keeps navigation in steady grid rows and columns
-        const score = primaryDist + (orthogonalDist * 2.4);
+        // Orthogonal penalty keeps navigation strictly in steady rows and columns
+        const score = primaryDist + (orthogonalDist * 1.8);
         if (score < minScore) {
           minScore = score;
           bestCandidate = el;
+        }
+      }
+    }
+
+    // Grid edge wrapping for horizontal navigation (like console dashboards)
+    if (!bestCandidate) {
+      if (dir === 'RIGHT') {
+        // Find next row down, pick leftmost element
+        let nextRowMinY = Infinity;
+        for (const el of focusables) {
+          const rect = el.getBoundingClientRect();
+          const cy = rect.top + rect.height / 2;
+          if (cy > currentCenter.y + 15 && cy < nextRowMinY) {
+            nextRowMinY = cy;
+          }
+        }
+        if (nextRowMinY !== Infinity) {
+          let leftmostInNextRow = null;
+          let minX = Infinity;
+          for (const el of focusables) {
+            const rect = el.getBoundingClientRect();
+            const cy = rect.top + rect.height / 2;
+            const cx = rect.left + rect.width / 2;
+            if (Math.abs(cy - nextRowMinY) < 25 && cx < minX) {
+              minX = cx;
+              leftmostInNextRow = el;
+            }
+          }
+          if (leftmostInNextRow) bestCandidate = leftmostInNextRow;
+        }
+      } else if (dir === 'LEFT') {
+        // Find previous row up, pick rightmost element
+        let prevRowMaxY = -Infinity;
+        for (const el of focusables) {
+          const rect = el.getBoundingClientRect();
+          const cy = rect.top + rect.height / 2;
+          if (cy < currentCenter.y - 15 && cy > prevRowMaxY) {
+            prevRowMaxY = cy;
+          }
+        }
+        if (prevRowMaxY !== -Infinity) {
+          let rightmostInPrevRow = null;
+          let maxX = -Infinity;
+          for (const el of focusables) {
+            const rect = el.getBoundingClientRect();
+            const cy = rect.top + rect.height / 2;
+            const cx = rect.left + rect.width / 2;
+            if (Math.abs(cy - prevRowMaxY) < 25 && cx > maxX) {
+              maxX = cx;
+              rightmostInPrevRow = el;
+            }
+          }
+          if (rightmostInPrevRow) bestCandidate = rightmostInPrevRow;
         }
       }
     }
@@ -447,6 +566,13 @@ class ControllerNavigationManager {
     if (el.tagName === 'INPUT' && el.type === 'checkbox') {
       el.checked = !el.checked;
       el.dispatchEvent(new Event('change', { bubbles: true }));
+      return;
+    }
+
+    // Match item in search results: click it to select artwork
+    if (el.classList.contains('match-item')) {
+      el.click();
+      this.updateHudHints();
       return;
     }
 
@@ -549,6 +675,15 @@ class ControllerNavigationManager {
   handleButtonY() {
     if (!this.currentFocusedElement) return;
 
+    // If in studio, focus overrideSearchInput
+    const overrideSearch = document.getElementById('overrideSearchInput');
+    const overrideView = document.getElementById('overrideView');
+    if (overrideView && overrideView.style.display !== 'none' && overrideSearch && this.isElementVisible(overrideSearch)) {
+      this.setFocus(overrideSearch);
+      overrideSearch.focus();
+      return;
+    }
+
     // If game card, open studio dialog directly
     if (this.currentFocusedElement.classList.contains('game-card')) {
       const editBtn = this.currentFocusedElement.querySelector('.btn-override');
@@ -627,6 +762,8 @@ class ControllerNavigationManager {
     const settingsView = document.getElementById('settingsView');
     const isSettings = settingsView && settingsView.style.display !== 'none' && settingsView.style.display !== '';
     const isCardFocused = this.currentFocusedElement && this.currentFocusedElement.classList.contains('game-card');
+    const isMatchFocused = this.currentFocusedElement && this.currentFocusedElement.classList.contains('match-item');
+    const isFseBtnFocused = this.currentFocusedElement && this.currentFocusedElement.id === 'btnToggleFse';
 
     let hintsHtml = '';
 
@@ -635,14 +772,26 @@ class ControllerNavigationManager {
         <div class="controller-hud-item"><span class="btn-badge btn-badge-a">A</span> Select</div>
         <div class="controller-hud-item"><span class="btn-badge btn-badge-b">B</span> Close</div>
       `;
+    } else if (isMatchFocused) {
+      hintsHtml = `
+        <div class="controller-hud-item"><span class="btn-badge btn-badge-a">A</span> Use Cover</div>
+        <div class="controller-hud-item"><span class="btn-badge btn-badge-y">Y</span> Search</div>
+        <div class="controller-hud-item"><span class="btn-badge btn-badge-b">B</span> Back to Library</div>
+      `;
     } else if (isOverride) {
       hintsHtml = `
         <div class="controller-hud-item"><span class="btn-badge btn-badge-a">A</span> Select / Crop</div>
+        <div class="controller-hud-item"><span class="btn-badge btn-badge-y">Y</span> Search</div>
         <div class="controller-hud-item"><span class="btn-badge btn-badge-b">B</span> Back to Library</div>
       `;
     } else if (isSettings) {
       hintsHtml = `
         <div class="controller-hud-item"><span class="btn-badge btn-badge-a">A</span> Toggle / Select</div>
+        <div class="controller-hud-item"><span class="btn-badge btn-badge-b">B</span> Back to Library</div>
+      `;
+    } else if (isFseBtnFocused) {
+      hintsHtml = `
+        <div class="controller-hud-item"><span class="btn-badge btn-badge-a">A</span> Toggle Desktop / FSE</div>
         <div class="controller-hud-item"><span class="btn-badge btn-badge-b">B</span> Back to Library</div>
       `;
     } else if (isCardFocused) {

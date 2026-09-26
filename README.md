@@ -182,6 +182,17 @@ npm run pack
 
 ## Changelog
 
+### [v1.8.7] - 2026-09-26
+- **Settings Page & Event Listener ReferenceError Resolution:**
+  - Resolved an uncaught `ReferenceError` during `setupSettingsPage()` caused by an uninitialized `btnSaveTop` reference, which prevented all subsequent event listeners in Settings (Xbox restart, thumbnail purge, factory reset, Buy Me a Coffee, and View Tutorial) from attaching.
+  - Removed the redundant "Done" button from the Settings header; navigating back with "Back to Library" automatically persists configuration changes cleanly.
+  - Wrapped `ModalManager.init()` in defensive error handling within `DOMContentLoaded` to guarantee the initial library scan and version synchronization always execute unconditionally on startup.
+- **Controller Navigation & Tab Order Overhaul:**
+  - **Left/Right Library Navigation Fix:** Strictly isolated `.game-card` elements in the spatial navigation list, eliminating hidden child overlay buttons that were previously intercepting horizontal focus and causing selection outlines to vanish.
+  - **Console-Style Horizontal Edge Wrapping:** Added intelligent row-wrapping navigation when moving Left at the start of a row or Right at the end of a row across the game library grid.
+  - **Selectable Artwork Search Results:** Added `.match-item` search results directly into the controller focus order with dedicated glowing highlight rings (`A: Use This Cover`), enabling full controller navigation in the Artwork Studio.
+  - **Titlebar & FSE Switch Access:** Added `#btnToggleFse` and `#btnTitlebarDonate` to the global controller tab order, allowing users to navigate up from the library or settings to seamlessly toggle between Desktop and Exclusive Fullscreen Experience (FSE).
+
 ### [v1.8.6] - 2026-09-26
 - **Multi-Gamepad & Flydigi Vader 5 Pro Compatibility:**
   - Expanded controller polling across all connected Gamepad API slots rather than stopping at index 0, fully resolving issues where third-party companion software (such as Flydigi Space Station, Steam Input, or virtual HID drivers) occupies slot 0 with an idle device while the physical controller operates on subsequent slots.
