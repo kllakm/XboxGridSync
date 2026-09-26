@@ -1,0 +1,65 @@
+{
+  "name": "xboxgridsync",
+  "productName": "Xbox Grid Sync",
+  "version": "1.4.0",
+  "description": "Artwork discovery, upgrade, and persistent protection shield for the Xbox PC App",
+  "main": "src/main/index.js",
+  "author": "Antigravity",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "restore-silent": "electron . --restore-silent",
+    "generate-icons": "powershell -ExecutionPolicy Bypass -File scripts/generate-icons.ps1",
+    "build": "electron-builder --win",
+    "build:portable": "electron-builder --win portable",
+    "build:installer": "electron-builder --win nsis",
+    "pack": "electron-builder --dir"
+  },
+  "build": {
+    "appId": "com.xboxgridsync.app",
+    "productName": "Xbox Grid Sync",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "build/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Xbox Grid Sync",
+      "artifactName": "XboxGridSync-Setup.${ext}",
+      "runAfterFinish": true
+    },
+    "portable": {
+      "artifactName": "XboxGridSync-portable.exe"
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.4.5",
+    "electron-builder": "^26.7.0"
+  }
+}
