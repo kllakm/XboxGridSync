@@ -25,6 +25,7 @@ window.ModalManager = {
     this.setupOverrideStudio();
     this.setupAddGameModal();
     this.setupSettingsPage();
+    this.setupTutorialModal();
   },
 
   // 1. Setup Full-App Manual Artwork Override Studio
@@ -781,6 +782,65 @@ window.ModalManager = {
       donateSettingsBtn.addEventListener('click', () => {
         window.api.openExternal('https://buymeacoffee.com/enufstyle');
       });
+    }
+
+    const openTutorialBtn = document.getElementById('btnOpenTutorial');
+    if (openTutorialBtn) {
+      openTutorialBtn.addEventListener('click', () => {
+        this.openTutorialModal();
+      });
+    }
+  },
+
+  // 4. Quick Start Tutorial Modal Engine
+  setupTutorialModal() {
+    const modal = document.getElementById('tutorialModal');
+    const closeBtn = document.getElementById('btnCloseTutorialModal');
+    const getStartedBtn = document.getElementById('btnGetStartedTutorial');
+    const dontShowCheck = document.getElementById('chkDontShowTutorialAgain');
+
+    const handleDismiss = async () => {
+      this.closeTutorialModal();
+      if (dontShowCheck && dontShowCheck.checked) {
+        try {
+          await window.api.setConfig({ hasSeenTutorial: true });
+        } catch (e) {}
+      }
+    };
+
+    if (closeBtn) closeBtn.addEventListener('click', handleDismiss);
+    if (getStartedBtn) getStartedBtn.addEventListener('click', handleDismiss);
+
+    if (modal) {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          handleDismiss();
+        }
+      });
+    }
+  },
+
+  openTutorialModal() {
+    const modal = document.getElementById('tutorialModal');
+    if (modal) {
+      modal.style.display = 'flex';
+      const sheet = modal.querySelector('.modal-sheet');
+      if (sheet) {
+        sheet.style.transform = 'scale(0.95)';
+        sheet.style.opacity = '0';
+        requestAnimationFrame(() => {
+          sheet.style.transition = 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)';
+          sheet.style.transform = 'scale(1)';
+          sheet.style.opacity = '1';
+        });
+      }
+    }
+  },
+
+  closeTutorialModal() {
+    const modal = document.getElementById('tutorialModal');
+    if (modal) {
+      modal.style.display = 'none';
     }
   },
 

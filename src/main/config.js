@@ -17,6 +17,7 @@ class ConfigManager {
       taskSchedulerEnabled: true,
       closeToTray: true,
       startMinimized: false,
+      hasSeenTutorial: false,
       customGames: []
     };
     this.config = { ...this.defaultConfig };

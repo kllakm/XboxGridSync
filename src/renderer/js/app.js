@@ -411,10 +411,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.warn('[App] Could not fetch version:', err);
   }
 
-  // Check initial shield status
+  // Check initial shield status & first-launch tutorial
   try {
     const config = await window.api.getConfig();
     window.updateShieldBadge(config.autoRestore);
+    if (!config.hasSeenTutorial) {
+      window.ModalManager.openTutorialModal();
+    }
   } catch (err) {
     console.warn('[App] Could not fetch config:', err);
   }

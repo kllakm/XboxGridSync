@@ -17,35 +17,31 @@ The **Xbox PC App** provides a unified place to browse your PC game collection a
 1. **Low-Resolution & Distorted Icons:** Titles imported from third-party launchers or custom shortcuts regularly display low-res, blurry, stretched thumbnails or generic placeholder tiles inside the Xbox App's 1:1 square icon grid.
 2. **The Update Wipe Problem:** Microsoft Store updates to the Xbox PC App package (`Microsoft.GamingApp_8wekyb3d8bbwe`) regularly wipe and reset the local thumbnail cache, destroying custom artwork. Existing Game Bar widgets are sandboxed and unable to run background recovery tasks.
 
-**Xbox Grid Sync** is a native, high-performance desktop application built to permanently solve these problems. It automatically identifies games from all your launchers, retrieves high-resolution artwork directly from public Steam CDN endpoints without requiring any API keys, deposits them in an isolated persistent Artwork Vault, and defends them with a background **Update Shield** that silently re-injects your covers the moment an update occurs. All artwork is natively aligned to the Xbox App's **1:1 square aspect ratio**.
+**Xbox Grid Sync** is a native, high-performance desktop application built to permanently solve these problems. It mirrors your Xbox PC App's authoritative library (`ThirdPartyLibraries` & `ExternalAppShortcut`), automatically pre-selects the highest-rated 1:1 square artwork from SteamGridDB and Steam on your very first scan, archives them in an isolated persistent Artwork Vault, and defends them with a background **Update Shield** that silently re-injects your covers the moment an update occurs. All artwork is natively aligned to the Xbox App's **1:1 square aspect ratio**.
 
 ---
 
 ## Key Features
 
-- **Multi-Launcher Auto-Discovery:**
-  - **Xbox App Registry:** Scans `%LOCALAPPDATA%\Packages\Microsoft.GamingApp_8wekyb3d8bbwe\LocalState\ThirdPartyLibraries\` to identify games already recognized by the Xbox App.
-  - **Steam:** Deterministic AppID matching across all drives via `steamapps\libraryfolders.vdf` and `appmanifest_<appid>.acf`.
-  - **Epic Games:** Inspects `%PROGRAMDATA%\Epic\EpicGamesLauncher\Data\Manifests\*.item`.
-  - **GOG Galaxy:** Queries Windows Registry `HKLM\SOFTWARE\WOW6432Node\GOG.com\Games` and Galaxy SQLite storage.
-  - **Custom Shortcuts & Additions:** Import any `.exe` or desktop shortcut with 1-click artwork resolution.
+- **Xbox App-Centric Library Mirroring (Zero Duplicates):**
+  - **Authoritative Discovery:** Scans `%LOCALAPPDATA%\Packages\Microsoft.GamingApp_8wekyb3d8bbwe\LocalState\ThirdPartyLibraries\` to discover precisely what the Xbox App recognizes. No whole-hard-drive crawling, phantom games, or duplicate tiles.
+  - **Intelligent Title Enrichment:** Resolves raw catalog hashes (e.g. *The Outlast Trials* on Epic) and IDs via local manifests, SteamGridDB, and Steam Store search.
 
-- **Automated Artwork Resolution Pipeline (Zero Setup Required):**
-  - **Tier 1 (Steam AppID):** Checks local Steam cache, then fetches official high-res artwork directly from public Steam CDN (`library_600x900_2x.jpg`) centered perfectly in 1:1 square presentation.
-  - **Tier 2 (Non-Steam / Fuzzy Name Resolution):** Cleans game titles (strips edition suffixes, architecture tags, and publisher prefixes) and queries the public Steam Store search API. Fuzzy-matches candidates and pulls official CDN covers.
-  - **Local Resolution Cache:** Remembers title-to-AppID matches locally in `%APPDATA%\XboxGridSync\cache\name_to_appid.json` so searches never repeat.
-  - **Tier 3 (Automated 1:1 Acrylic Template):** Generates high-resolution 1:1 square Fluent acrylic cards for rare indie titles or custom utilities so no tile is left blank.
-  - **Tier 4 (Built-in SteamGridDB Backup):** Built-in community artwork and square icon resolution pipeline baked directly into the application—zero user accounts or manual API keys required.
+- **Automatic 1:1 Square Artwork Pre-Selection on First Scan:**
+  - **Tier 1 (Preferred Square Community Grids):** Queries SteamGridDB for high-resolution 1024×1024 or 512×512 square grids and clean square icons.
+  - **Tier 2 (Official Steam CDN Covers):** Pulls high-resolution official artwork directly from Steam CDN endpoints (`library_600x900_2x.jpg`) centered to 1:1 square.
+  - **Tier 3 (Automated 1:1 Acrylic Template):** Generates modern Fluent acrylic cards for rare indie titles or custom shortcuts so no tile is left blank.
+  - **One-Click Sync:** Simply click **Sync All Artwork** (or per-card **Sync**) to push all chosen covers directly into the Xbox PC App thumbnail folder.
 
-- **Persistent Artwork Vault & Background Update Shield:**
-  - Master collection is isolated in `%APPDATA%\XboxGridSync\Vault\<GameIdentifier>\cover.jpg`.
-  - **Live FileSystemWatcher Daemon:** Continuously monitors the Xbox App cache directory; if files are deleted during updates, it silently restores the artwork within 3 seconds.
-  - **Windows Task Scheduler Integration:** Automatically registers a scheduled task triggered by **Windows Event ID 854** (`Microsoft-Windows-AppXDeployment-Server/Operational`) and **User Logon**, executing `XboxGridSync.exe --restore-silent` headless in under a second.
+- **Two Persistent Update Protection Modes (Choose Your Preference):**
+  - **Option 1: Live System Tray Daemon (Recommended):** Leave Xbox Grid Sync minimized to the Windows System Tray. The built-in `FileSystemWatcher` detects Xbox App thumbnail wipes immediately and restores master covers within 3 seconds.
+  - **Option 2: Windows Task Scheduler (Headless / No App Running):** Enable the Task Scheduler in Settings. Windows registers an automated task triggered on **Event ID 854** (Xbox App update) and **User Logon**, executing `XboxGridSync.exe --restore-silent` in the background without keeping the application window or tray open.
 
 - **WinUI 3 & Fluent Design UI:**
+  - **Interactive First-Launch Tutorial:** Explains discovery, one-click sync, and protection modes right when you first start the app (re-openable anytime from Settings).
   - **Smoky Acrylic & Xbox Green Styling:** Deep obsidian backgrounds, luminous Xbox Green gradients (`#00C853` -> `#00FF87`), and Segoe UI Variable typography.
-  - **Full Dashboard:** Wide library view with launcher filtering pills, real-time search, sync progress bar, and 1:1 square game icon cards (matching Xbox App format).
-  - **Acrylic Manual Override Sheet:** Click any card to preview alternatives, perform live search, or drag-and-drop custom cover images.
+  - **Full Dashboard:** Wide library view with launcher filtering pills, real-time search, sync progress bar, "Ready to Sync" badges, and 1:1 square game icon cards.
+  - **Interactive 1:1 Crop Studio & Override Modal:** Click any card to preview alternatives, perform live search, or drag-and-drop custom cover images.
 
 ---
 
@@ -53,22 +49,33 @@ The **Xbox PC App** provides a unified place to browse your PC game collection a
 
 ```mermaid
 flowchart TD
-    A[Launchers & Xbox App] -->|Scan Manifests & Registry| B(Discovery Engine)
-    B -->|Steam AppID| C[Tier 1: Steam CDN Artwork]
-    B -->|Non-Steam / Epic / GOG / Custom| D[Tier 2: Clean Title + Steam Store Search]
-    D -->|Fuzzy Match Found| C
-    D -->|No Match| E[Tier 3: 1:1 Acrylic Fluent Card Generator]
-    
-    C -->|High-Res Artwork Buffer| F[(Persistent Artwork Vault)]
-    E -->|Generated Card Buffer| F
-    
-    F -->|Injection Engine| G[Xbox PC App Cache]
-    G --> H[Xbox Library with Crisp 1:1 Artwork]
+    subgraph Discovery ["1. Xbox App-Centric Discovery"]
+        A["Xbox PC App Registry & Manifests<br/>(ThirdPartyLibraries & CustomLibraryManagement)"] -->|Discover Recognized Titles| B(Xbox Discovery Engine)
+        C["Local Manifests & Steam Search"] -->|Enrich Clean Titles & AppIDs| B
+    end
 
-    subgraph Protection Shield
-        I[Windows Event ID 854 / Logon] -->|Task Scheduler| J[CLI: --restore-silent]
-        K[Live FileSystemWatcher] -->|Detect Reset| J
-        J -->|Silently Re-Inject| G
+    subgraph Resolution ["2. High-Res Artwork Selection"]
+        B -->|Auto-Query on Scan| D["SteamGridDB 1:1 Square Grids & Icons"]
+        D -->|Best Square Match| F[("Persistent Artwork Vault")]
+        D -.->|Fallback| E["Steam CDN 600x900 / Acrylic 1:1 Template"]
+        E --> F
+    end
+
+    subgraph Injection ["3. Precision Target Injection"]
+        F -->|1-Click Sync / Auto-Inject| G["Xbox App Cache<br/>(ThirdPartyLibraries)"]
+        G -->|Direct Target + .bak Backup + .new Trigger| H["Xbox Library with Crisp 1:1 Square Artwork"]
+    end
+
+    subgraph Protection ["4. Update Protection Shield (Choose Mode)"]
+        direction TB
+        subgraph Option1 ["Option 1: Live Tray Shield"]
+            K["Minimize to System Tray"] -->|Live FileSystemWatcher| L["Instant 3s Background Auto-Restore"]
+        end
+        subgraph Option2 ["Option 2: Windows Task Scheduler (No App Running)"]
+            M["Windows Event ID 854 / Logon"] -->|Scheduled Task| N["CLI: --restore-silent Headless"]
+        end
+        L --> G
+        N --> G
     end
 ```
 
@@ -174,6 +181,12 @@ npm run pack
 ---
 
 ## Changelog
+
+### [v1.8.0] - 2026-09-26
+- **Interactive First-Launch Tutorial Modal:** Added an onboarding guide on initial startup that visually walks users through the 3-step workflow (Auto-Discovery, Customization, 1-Click Sync) and explains the two update protection options in detail.
+- **Detailed Protection Options Guidance:** Clearly contrasts **Option 1: Live System Tray Shield** (instant 3-second recovery via background watcher daemon) and **Option 2: Windows Task Scheduler** (headless background service triggered by Event ID 854 / Logon with no running application required).
+- **Settings "View Tutorial" Access:** Users can reopen the tutorial guide at any time via a dedicated button in the Settings view.
+- **Updated Architecture Documentation & Flow Chart:** Refreshed the Mermaid architectural diagram and README specifications to reflect the Xbox App-centric library mirroring and dual protection models.
 
 ### [v1.7.1] - 2026-09-26
 - **Automatic Best Available Artwork Selection on Initial Scan:** The initial library scan and rescan now immediately discover and pre-select the best available high-resolution 1:1 square artwork (preferring 1024x1024 and 512x512 SteamGridDB grids, square icons, and official Steam covers) for all detected Xbox App titles, rather than displaying low-resolution default Xbox thumbnails.
