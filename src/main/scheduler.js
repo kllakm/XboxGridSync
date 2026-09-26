@@ -6,25 +6,60 @@ const config = require('./config');
 
 class TaskSchedulerManager {
   constructor() {
-    this.taskName = 'XboxGridSync-UpdateShield';
+    this.taskName = 'Xbox Grid Sync - Automated Artwork Update Shield';
+    this.legacyTaskName = 'XboxGridSync-UpdateShield';
     this.tempXmlPath = path.join(os.tmpdir(), 'XboxGridSyncTask.xml');
   }
 
   isRegistered() {
+    return this.getRegisteredTaskName() !== null;
+  }
+
+  getRegisteredTaskName() {
     try {
       const out = execSync(`schtasks /Query /TN "${this.taskName}"`, {
         stdio: ['pipe', 'pipe', 'ignore'],
         encoding: 'utf8'
       });
-      return out.includes(this.taskName);
-    } catch (e) {
-      return false;
-    }
+      if (out.includes(this.taskName) || out.includes('Xbox Grid Sync')) {
+        return this.taskName;
+      }
+    } catch (e) {}
+
+    try {
+      const outLegacy = execSync(`schtasks /Query /TN "${this.legacyTaskName}"`, {
+        stdio: ['pipe', 'pipe', 'ignore'],
+        encoding: 'utf8'
+      });
+      if (outLegacy.includes(this.legacyTaskName)) {
+        return this.legacyTaskName;
+      }
+    } catch (e2) {}
+
+    return null;
   }
 
-  generateTaskXml(exePath) {
-    // Escape XML characters in path
+  getExecutionCommand(exePath = process.execPath) {
+    const base = path.basename(exePath).toLowerCase();
+    const isDev = base.includes('electron') || base.includes('node');
+    if (isDev) {
+      const mainScript = path.join(__dirname, 'index.js');
+      return {
+        exe: exePath,
+        args: `"${mainScript}" --restore-silent`
+      };
+    }
+    return {
+      exe: exePath,
+      args: '--restore-silent'
+    };
+  }
+
+  generateTaskXml(exePath, args = '--restore-silent') {
+    // Escape XML characters in path and arguments
     const safeExe = exePath.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    const safeArgs = args.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+
     const xml = `<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
@@ -69,7 +104,7 @@ class TaskSchedulerManager {
   <Actions Context="Author">
     <Exec>
       <Command>${safeExe}</Command>
-      <Arguments>--restore-silent</Arguments>
+      <Arguments>${safeArgs}</Arguments>
     </Exec>
   </Actions>
 </Task>`;
@@ -78,22 +113,67 @@ class TaskSchedulerManager {
 
   register(exePath = process.execPath) {
     try {
-      const xml = this.generateTaskXml(exePath);
-      // Write XML file using UTF-16LE with BOM as required by Windows Task Scheduler
+      const { exe, args } = this.getExecutionCommand(exePath);
+      const xml = this.generateTaskXml(exe, args);
+
+      // Clean up legacy task if it existed
+      try {
+        execSync(`schtasks /Delete /TN "${this.legacyTaskName}" /F`, { stdio: ['pipe', 'pipe', 'ignore'] });
+      } catch (e) {}
+
+      // Write XML file using UTF-16LE with BOM
       const bom = Buffer.from([0xFF, 0xFE]);
       const xmlBuf = Buffer.from(xml, 'utf16le');
       fs.writeFileSync(this.tempXmlPath, Buffer.concat([bom, xmlBuf]));
 
-      const cmd = `schtasks /Create /TN "${this.taskName}" /XML "${this.tempXmlPath}" /F`;
-      execSync(cmd, { stdio: ['pipe', 'pipe', 'ignore'] });
+      let registered = false;
+
+      // Tier 1: Try direct creation with XML (Event 854 + Logon triggers)
+      try {
+        const cmd = `schtasks /Create /TN "${this.taskName}" /XML "${this.tempXmlPath}" /F`;
+        execSync(cmd, { stdio: ['pipe', 'pipe', 'ignore'] });
+        registered = this.isRegistered();
+      } catch (directErr) {
+        // Direct creation without elevation throws Access is denied on Windows 10/11 for EventTriggers
+      }
+
+      // Tier 2: Try creating via elevated PowerShell (prompts UAC once)
+      if (!registered) {
+        try {
+          const psScript = `Start-Process schtasks.exe -ArgumentList '/Create /TN \"${this.taskName}\" /XML \"${this.tempXmlPath}\" /F' -Verb RunAs -Wait -WindowStyle Hidden`;
+          execSync(`powershell -NoProfile -Command "${psScript}"`, { stdio: ['pipe', 'pipe', 'ignore'], timeout: 15000 });
+          registered = this.isRegistered();
+        } catch (elevErr) {
+          // UAC declined or unavailable
+        }
+      }
+
+      // Tier 3: Standard User Fallback (Hourly Task - 100% works without administrator rights)
+      if (!registered) {
+        try {
+          const trArg = `\\"${exe}\\" ${args}`;
+          const cmd = `schtasks /Create /SC HOURLY /TN "${this.taskName}" /TR "${trArg}" /F`;
+          execSync(cmd, { stdio: ['pipe', 'pipe', 'ignore'] });
+          registered = this.isRegistered();
+        } catch (hourlyErr) {
+          console.warn('[Scheduler] User-level task registration error:', hourlyErr.message);
+        }
+      }
 
       try {
-        fs.unlinkSync(this.tempXmlPath);
+        if (fs.existsSync(this.tempXmlPath)) fs.unlinkSync(this.tempXmlPath);
       } catch (e) {}
 
-      console.log(`[Scheduler] Successfully registered Windows Task: ${this.taskName}`);
-      config.set('taskSchedulerEnabled', true);
-      return { success: true, message: 'Windows Task registered successfully.' };
+      if (registered) {
+        console.log(`[Scheduler] Successfully registered Windows Task: "${this.taskName}"`);
+        config.set('taskSchedulerEnabled', true);
+        return {
+          success: true,
+          message: `Task "${this.taskName}" registered successfully in Windows Task Scheduler.`
+        };
+      } else {
+        throw new Error(`Could not register task "${this.taskName}" in Windows Task Scheduler.`);
+      }
     } catch (err) {
       console.warn(`[Scheduler] Could not register scheduled task:`, err.message);
       return { success: false, error: err.message };
@@ -102,9 +182,14 @@ class TaskSchedulerManager {
 
   unregister() {
     try {
-      const cmd = `schtasks /Delete /TN "${this.taskName}" /F`;
-      execSync(cmd, { stdio: ['pipe', 'pipe', 'ignore'] });
-      console.log(`[Scheduler] Successfully deleted Windows Task: ${this.taskName}`);
+      try {
+        execSync(`schtasks /Delete /TN "${this.taskName}" /F`, { stdio: ['pipe', 'pipe', 'ignore'] });
+      } catch (e) {}
+      try {
+        execSync(`schtasks /Delete /TN "${this.legacyTaskName}" /F`, { stdio: ['pipe', 'pipe', 'ignore'] });
+      } catch (e) {}
+
+      console.log(`[Scheduler] Successfully deleted Windows Task: "${this.taskName}"`);
       config.set('taskSchedulerEnabled', false);
       return { success: true };
     } catch (err) {
@@ -114,17 +199,20 @@ class TaskSchedulerManager {
 
   testTrigger() {
     try {
-      if (this.isRegistered()) {
-        execSync(`schtasks /Run /TN "${this.taskName}"`, { stdio: ['pipe', 'pipe', 'ignore'] });
-        return { success: true, message: 'Windows Task successfully triggered via schtasks /Run.' };
-      } else {
+      let taskToRun = this.getRegisteredTaskName();
+      if (!taskToRun) {
         const regRes = this.register();
-        if (regRes.success) {
-          execSync(`schtasks /Run /TN "${this.taskName}"`, { stdio: ['pipe', 'pipe', 'ignore'] });
-          return { success: true, message: 'Task registered and executed successfully.' };
+        if (!regRes.success) {
+          return regRes;
         }
-        return regRes;
+        taskToRun = this.getRegisteredTaskName() || this.taskName;
       }
+
+      execSync(`schtasks /Run /TN "${taskToRun}"`, { stdio: ['pipe', 'pipe', 'ignore'] });
+      return {
+        success: true,
+        message: `Successfully executed "${taskToRun}". Background shield is active.`
+      };
     } catch (err) {
       return { success: false, error: err.message };
     }

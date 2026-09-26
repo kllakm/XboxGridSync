@@ -182,6 +182,15 @@ npm run pack
 
 ## Changelog
 
+### [v1.8.1] - 2026-09-26
+- **Clear Task Scheduler Identification & Naming:** Renamed the Windows Task Scheduler entry to **`Xbox Grid Sync - Automated Artwork Update Shield`** so it is immediately visible, identifiable, and cleanly sorted in `taskschd.msc` (Task Scheduler Library). Automatically detects and cleans up legacy task names.
+- **Resilient Multi-Tier Task Registration:** Resolved Windows standard user permission errors (`0x80070005: Access is denied`) when importing XML definitions with Event triggers. The registration pipeline now utilizes a resilient 3-tier cascade:
+  1. *Direct XML Registration:* Attempts direct standard user registration with Event ID 854 + Logon triggers.
+  2. *Elevated Registration:* Prompts for UAC permission when needed to register full system event triggers in the Task Scheduler Library.
+  3. *Unprivileged User Fallback:* Falls back to a standard non-elevated hourly scheduled task running headless `--restore-silent`, guaranteeing reliable execution without requiring administrative privileges.
+- **Enhanced Test & Diagnostics Feedback:** Updated the "Test Trigger" diagnostics to run the scheduled task on demand via `schtasks /Run` and report live execution status in the notification toast.
+- **Accurate Direct Task Scheduler View:** Updated "View in Task Scheduler" button to open `taskschd.msc` with friendly guidance on locating the clearly named task in the root `Task Scheduler Library`.
+
 ### [v1.8.0] - 2026-09-26
 - **Interactive First-Launch Tutorial Modal:** Added an onboarding guide on initial startup that visually walks users through the 3-step workflow (Auto-Discovery, Customization, 1-Click Sync) and explains the two update protection options in detail.
 - **Detailed Protection Options Guidance:** Clearly contrasts **Option 1: Live System Tray Shield** (instant 3-second recovery via background watcher daemon) and **Option 2: Windows Task Scheduler** (headless background service triggered by Event ID 854 / Logon with no running application required).

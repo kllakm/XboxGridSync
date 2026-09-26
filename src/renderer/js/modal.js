@@ -713,11 +713,11 @@ window.ModalManager = {
     const testSchedulerBtn = document.getElementById('btnTestScheduler');
     if (testSchedulerBtn) {
       testSchedulerBtn.addEventListener('click', async () => {
-        window.showToast('Testing Trigger', 'Executing background silent restore via schtasks...', 'info');
+        window.showToast('Testing Trigger', 'Executing background silent restore via Task Scheduler...', 'info');
         try {
           const res = await window.api.testSchedulerTrigger();
           if (res.success) {
-            window.showToast('Trigger Verified!', 'Task executed silently. Background shield is functional.', 'success');
+            window.showToast('Trigger Verified!', res.message || 'Task executed silently. Background shield is active.', 'success');
           } else {
             window.showToast('Test Result', res.message || res.error, 'warning');
           }
@@ -731,7 +731,7 @@ window.ModalManager = {
     if (openSchedulerGuiBtn) {
       openSchedulerGuiBtn.addEventListener('click', async () => {
         await window.api.openTaskSchedulerGui();
-        window.showToast('Task Scheduler', 'Opened Windows Task Scheduler (taskschd.msc).', 'info');
+        window.showToast('Task Scheduler Opened', 'Opened taskschd.msc. Look for "Xbox Grid Sync - Automated Artwork Update Shield" in Task Scheduler Library.', 'info');
       });
     }
 
