@@ -2178,9 +2178,24 @@ body.controller-mode .game-card.controller-focused {
 }
 
 /* Switches & toggles in controller mode */
+.switch:focus {
+  outline: none;
+}
+.switch:focus-visible .slider {
+  box-shadow: 0 0 14px rgba(0, 255, 135, 0.6) !important;
+  border-color: #00FF87 !important;
+}
+body.controller-mode .switch.controller-focused,
+body.controller-mode .switch:focus {
+  outline: 2px solid rgba(0, 255, 135, 0.7);
+  outline-offset: 3px;
+  border-radius: 24px;
+}
+body.controller-mode .switch.controller-focused .slider,
+body.controller-mode .switch:focus-within .slider,
 body.controller-mode .switch input:focus + .slider,
 body.controller-mode .switch input.controller-focused + .slider {
-  box-shadow: 0 0 14px rgba(0, 255, 135, 0.6) !important;
+  box-shadow: 0 0 18px rgba(0, 255, 135, 0.8), 0 0 6px #00FF87 !important;
   border-color: #00FF87 !important;
 }
 

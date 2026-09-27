@@ -193,6 +193,21 @@ npm run pack
 
 ## Changelog
 
+### [v1.8.9] - 2026-09-27
+- **Settings Toggle Switch Controller Tab Order:**
+  - Integrated all configuration switches into the controller focus order and DOM tab indexing (`tabindex="0"`, `aria-label`).
+  - Added radiant Xbox Green outline and glow focus states for focused switch sliders in controller and keyboard navigation mode.
+  - Implemented single-button `(A)` toggle action and keyboard `Space`/`Enter` support to instantly flip settings switches.
+- **Full Edge-to-Edge Library Grid Scrolling & Zero Clipping:**
+  - Implemented container-aware scroll clamping in `setFocus`: navigating to any card in the top row smoothly scrolls all the way to `top: 0`, and navigating to any card in the bottom row scrolls all the way to the container floor (`scrollHeight`).
+  - Completely eliminated clipping of top and bottom padding, preserving generous 36px breathing margins for game tiles, drop shadows, and glowing selection rings.
+  - Pressing `(B)` from any library card jumps focus to the active filter pill and resets the library scroll smoothly to top.
+- **Guide Button Unassignment:**
+  - Unassigned the controller Guide / Home button (index 16) from triggering Settings, reserving it exclusively for Windows Game Bar and system-level actions.
+  - Settings access is now exclusively bound to the Menu / Start button (index 9) as intended.
+- **Row-Tiered Spatial Navigation Engine:**
+  - Upgraded directional spatial navigation across Settings and the Library with a row-tier clustering algorithm, preventing cross-column jumping and ensuring natural top-to-bottom and side-to-side progression.
+
 ### [v1.8.8] - 2026-09-26
 - **Ghost Game & Orphan Image Discovery Elimination:**
   - Resolved an issue where unmanifested leftover thumbnail files in the Xbox PC App's `ThirdPartyLibraries` directory (such as Cyberpunk 2077 `1091500.png`) were inadvertently synthesized into library games on systems with zero installed games.

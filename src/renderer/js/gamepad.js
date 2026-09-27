@@ -31,6 +31,7 @@ class ControllerNavigationManager {
     this.createHudOverlay();
     this.setupMouseListeners();
     this.setupGamepadListeners();
+    this.setupKeyboardListeners();
     this.startPollingLoop();
 
     // Automatically enter controller mode if launched in FSE mode or if gamepads are connected
@@ -68,6 +69,20 @@ class ControllerNavigationManager {
       console.log(`[Gamepad] Disconnected from slot ${e.gamepad.index}: ${e.gamepad.id}`);
       this.prevButtonsMap.delete(e.gamepad.index);
       this.updateHudHints();
+    });
+  }
+
+  setupKeyboardListeners() {
+    window.addEventListener('keydown', (e) => {
+      if ((e.key === ' ' || e.key === 'Enter') && document.activeElement && document.activeElement.classList.contains('switch')) {
+        e.preventDefault();
+        const input = document.activeElement.querySelector('input[type="checkbox"]');
+        if (input) {
+          input.checked = !input.checked;
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+          this.updateHudHints();
+        }
+      }
     });
   }
 
@@ -249,8 +264,9 @@ class ControllerNavigationManager {
     // View / Back (8): Toggle Tutorial
     if (isNewPress(8)) this.toggleTutorial();
 
-    // Menu / Start (9) or Guide (16): Toggle Settings
-    if (isNewPress(9) || isNewPress(16)) this.toggleSettings();
+    // Menu / Start (9): Toggle Settings
+    // Guide button (16) is intentionally unassigned so it does not trigger settings
+    if (isNewPress(9)) this.toggleSettings();
 
     // Store button states for this gamepad
     this.prevButtonsMap.set(slotIndex, gp.buttons.map(b => b ? (b.pressed || b.value > 0.5) : false));
@@ -324,7 +340,7 @@ class ControllerNavigationManager {
       const settingsSelector = [
         '#btnBackToLibrary',
         '#btnSaveSettingsTop',
-        '.switch input',
+        '.switch',
         '#btnOpenVaultFolder',
         '#btnRestartXboxApp',
         '#btnTestScheduler',
@@ -366,7 +382,8 @@ class ControllerNavigationManager {
   isElementVisible(el) {
     if (!el || !el.getBoundingClientRect) return false;
     const style = window.getComputedStyle(el);
-    if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+    if (style.display === 'none' || style.visibility === 'hidden') return false;
+    if (style.opacity === '0' && !el.classList.contains('switch')) return false;
     const rect = el.getBoundingClientRect();
     return rect.width > 0 && rect.height > 0;
   }
@@ -414,12 +431,71 @@ class ControllerNavigationManager {
       el.focus({ preventScroll: true });
     } catch (e) {}
 
-    // Smooth scroll into visible viewport
-    el.scrollIntoView({
-      behavior: 'smooth',
-      block: 'nearest',
-      inline: 'nearest'
-    });
+    // Precise container-aware scrolling: ensures full padding and zero clipping
+    const libraryScroll = el.closest('.library-scroll-area');
+    const settingsScroll = el.closest('.settings-scroll-content');
+
+    if (libraryScroll && el.classList.contains('game-card')) {
+      const cards = Array.from(libraryScroll.querySelectorAll('.game-card'));
+      if (cards.length > 0) {
+        const firstCard = cards[0];
+        const lastCard = cards[cards.length - 1];
+
+        const isTopRow = Math.abs(el.offsetTop - firstCard.offsetTop) < 15;
+        const isBottomRow = Math.abs(el.offsetTop - lastCard.offsetTop) < 15;
+
+        if (isTopRow) {
+          // Navigating to top row: scroll ALL the way to the top so top padding is fully visible
+          libraryScroll.scrollTo({ top: 0, behavior: 'smooth' });
+        } else if (isBottomRow) {
+          // Navigating to last row: scroll ALL the way to the bottom so bottom padding is fully visible
+          libraryScroll.scrollTo({ top: libraryScroll.scrollHeight, behavior: 'smooth' });
+        } else {
+          // Middle rows: ensure generous margin so cards, borders, and halo glows are never clipped
+          const containerRect = libraryScroll.getBoundingClientRect();
+          const elRect = el.getBoundingClientRect();
+          const margin = 36;
+
+          if (elRect.top < containerRect.top + margin) {
+            libraryScroll.scrollBy({
+              top: elRect.top - containerRect.top - margin,
+              behavior: 'smooth'
+            });
+          } else if (elRect.bottom > containerRect.bottom - margin) {
+            libraryScroll.scrollBy({
+              top: elRect.bottom - containerRect.bottom + margin,
+              behavior: 'smooth'
+            });
+          }
+        }
+      }
+    } else if (settingsScroll) {
+      const containerRect = settingsScroll.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      const margin = 32;
+
+      if (el.id === 'btnBackToLibrary') {
+        settingsScroll.scrollTo({ top: 0, behavior: 'smooth' });
+      } else if (elRect.top < containerRect.top + margin) {
+        settingsScroll.scrollBy({
+          top: elRect.top - containerRect.top - margin,
+          behavior: 'smooth'
+        });
+      } else if (elRect.bottom > containerRect.bottom - margin) {
+        settingsScroll.scrollBy({
+          top: elRect.bottom - containerRect.bottom + margin,
+          behavior: 'smooth'
+        });
+      }
+    } else {
+      try {
+        el.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'nearest'
+        });
+      } catch (e) {}
+    }
 
     this.updateHudHints();
   }
@@ -440,8 +516,9 @@ class ControllerNavigationManager {
     };
 
     let bestCandidate = null;
-    let minScore = Infinity;
 
+    // Filter strictly candidates in direction
+    const candidates = [];
     for (const el of focusables) {
       if (el === this.currentFocusedElement) continue;
 
@@ -455,46 +532,78 @@ class ControllerNavigationManager {
       const dy = center.y - currentCenter.y;
 
       let isStrictlyInDirection = false;
-      let primaryDist = 0;
-      let orthogonalDist = 0;
-
       switch (dir) {
         case 'UP':
-          if (center.y < currentCenter.y - 4) {
-            isStrictlyInDirection = true;
-            primaryDist = currentCenter.y - center.y;
-            orthogonalDist = Math.abs(dx);
-          }
+          if (center.y < currentCenter.y - 6) isStrictlyInDirection = true;
           break;
         case 'DOWN':
-          if (center.y > currentCenter.y + 4) {
-            isStrictlyInDirection = true;
-            primaryDist = center.y - currentCenter.y;
-            orthogonalDist = Math.abs(dx);
-          }
+          if (center.y > currentCenter.y + 6) isStrictlyInDirection = true;
           break;
         case 'LEFT':
-          if (center.x < currentCenter.x - 4) {
-            isStrictlyInDirection = true;
-            primaryDist = currentCenter.x - center.x;
-            orthogonalDist = Math.abs(dy);
-          }
+          if (center.x < currentCenter.x - 6) isStrictlyInDirection = true;
           break;
         case 'RIGHT':
-          if (center.x > currentCenter.x + 4) {
-            isStrictlyInDirection = true;
-            primaryDist = center.x - currentCenter.x;
-            orthogonalDist = Math.abs(dy);
-          }
+          if (center.x > currentCenter.x + 6) isStrictlyInDirection = true;
           break;
       }
 
       if (isStrictlyInDirection) {
-        // Orthogonal penalty keeps navigation strictly in steady rows and columns
-        const score = primaryDist + (orthogonalDist * 1.8);
-        if (score < minScore) {
-          minScore = score;
-          bestCandidate = el;
+        candidates.push({ el, rect, center, dx, dy });
+      }
+    }
+
+    if (candidates.length > 0) {
+      if (dir === 'DOWN' || dir === 'UP') {
+        // Group candidates into the closest vertical row tier
+        let targetTierY = dir === 'DOWN' ? Infinity : -Infinity;
+        for (const c of candidates) {
+          if (dir === 'DOWN') {
+            if (c.center.y < targetTierY) targetTierY = c.center.y;
+          } else {
+            if (c.center.y > targetTierY) targetTierY = c.center.y;
+          }
+        }
+
+        // Candidates within the immediate closest row tier (45px vertical band)
+        const tierCandidates = candidates.filter(c => Math.abs(c.center.y - targetTierY) <= 45);
+
+        // Pick the element in that row tier with the smallest horizontal distance
+        let minDx = Infinity;
+        for (const c of tierCandidates) {
+          const dist = Math.abs(c.center.x - currentCenter.x);
+          if (dist < minDx) {
+            minDx = dist;
+            bestCandidate = c.el;
+          }
+        }
+      } else if (dir === 'LEFT' || dir === 'RIGHT') {
+        // First check candidates in the same row (within 40px vertically)
+        const sameRowCandidates = candidates.filter(c => Math.abs(c.center.y - currentCenter.y) <= 40);
+        if (sameRowCandidates.length > 0) {
+          let closestX = dir === 'RIGHT' ? Infinity : -Infinity;
+          for (const c of sameRowCandidates) {
+            if (dir === 'RIGHT') {
+              if (c.center.x < closestX) {
+                closestX = c.center.x;
+                bestCandidate = c.el;
+              }
+            } else {
+              if (c.center.x > closestX) {
+                closestX = c.center.x;
+                bestCandidate = c.el;
+              }
+            }
+          }
+        } else {
+          // Cross-tier horizontal move (with weighted score)
+          let minScore = Infinity;
+          for (const c of candidates) {
+            const score = Math.abs(c.dx) + (Math.abs(c.dy) * 1.5);
+            if (score < minScore) {
+              minScore = score;
+              bestCandidate = c.el;
+            }
+          }
         }
       }
     }
@@ -566,7 +675,18 @@ class ControllerNavigationManager {
     if (el.tagName === 'INPUT' && el.type === 'checkbox') {
       el.checked = !el.checked;
       el.dispatchEvent(new Event('change', { bubbles: true }));
+      this.updateHudHints();
       return;
+    }
+
+    if (el.classList.contains('switch')) {
+      const input = el.querySelector('input[type="checkbox"]');
+      if (input) {
+        input.checked = !input.checked;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        this.updateHudHints();
+        return;
+      }
     }
 
     // Match item in search results: click it to select artwork
@@ -646,6 +766,8 @@ class ControllerNavigationManager {
       const activeFilter = document.querySelector('.filter-pill.active') || document.querySelector('.filter-pill');
       if (activeFilter) {
         this.setFocus(activeFilter);
+        const libraryScroll = document.querySelector('.library-scroll-area');
+        if (libraryScroll) libraryScroll.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }
   }
