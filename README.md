@@ -12,9 +12,7 @@
 
 ---
 
-<a href="https://buymeacoffee.com/enufstyle">
-  <img src="docs/donate-qr.png" alt="Buy Me A Coffee QR Code" width="160" height="160" />
-</a>
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/enufstyle)
 
 ---
 
