@@ -12,6 +12,12 @@
 
 ---
 
+<a href="https://buymeacoffee.com/enufstyle">
+  <img src="docs/donate-qr.png" alt="Buy Me A Coffee QR Code" width="160" height="160" />
+</a>
+
+---
+
 ## Overview
 
 The **Xbox PC App** provides a unified place to browse your PC game collection across Xbox Game Pass, Steam, Epic Games Launcher, GOG Galaxy, and custom desktop shortcuts. However, it suffers from two major limitations:
