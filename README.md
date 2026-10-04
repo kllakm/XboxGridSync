@@ -16,6 +16,10 @@
 
 ---
 
+![App Image](./docs/xboxgridsync1.png "Main App Screen")
+
+---
+
 ## Overview
 
 The **Xbox PC App** provides a unified place to browse your PC game collection across Xbox Game Pass, Steam, Epic Games Launcher, GOG Galaxy, and custom desktop shortcuts. However, it suffers from two major limitations:
@@ -60,6 +64,10 @@ It mirrors your Xbox PC App's authoritative library (`ThirdPartyLibraries` & `Ex
 
 ---
 
+![App Image](./docs/xboxgridsync2.png "Image Sync Screen")
+
+---
+
 ## Architecture & How It Works
 
 ```mermaid
@@ -93,6 +101,10 @@ flowchart TD
         N --> G
     end
 ```
+
+---
+
+![App Image](./docs/xboxgridsync3.png "Settings Screen")
 
 ---
 
