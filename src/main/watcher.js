@@ -107,23 +107,16 @@ class BackgroundWatcher {
 
       let missingCount = 0;
       for (const entry of entries) {
-        const safeId = vault.sanitizeIdentifier(entry.gameId);
-        const targetPng = path.join(this.customLibraryDir, `${safeId}.png`);
-
-        if (!fs.existsSync(targetPng)) {
-          missingCount++;
-          continue;
+        let expectedPath = entry.targetImagePath;
+        if (!expectedPath) {
+          expectedPath = injector.resolveTargetImagePath({
+            id: entry.gameId,
+            launcher: entry.launcher,
+            appId: entry.appId
+          });
         }
-
-        const launcherFolder = (entry.launcher || '').toLowerCase();
-        if (['steam', 'epic', 'gog', 'bnet', 'ea', 'ubi'].includes(launcherFolder)) {
-          const provDir = path.join(this.targetDir, launcherFolder);
-          if (fs.existsSync(provDir)) {
-            const provTargetPng = path.join(provDir, `${safeId}.png`);
-            if (!fs.existsSync(provTargetPng)) {
-              missingCount++;
-            }
-          }
+        if (!fs.existsSync(expectedPath)) {
+          missingCount++;
         }
       }
 

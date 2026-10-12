@@ -654,8 +654,8 @@ class ArtworkResolver {
       };
     }
 
-    // 2. Preselected Cover URL from initial scan or user modal override
-    if (game.coverUrl && !options.ignorePreselected) {
+    // 2. Preselected Cover URL from initial scan or user modal override (excluding fallback thumbnails)
+    if (game.coverUrl && !options.ignorePreselected && !game.isFallbackThumbnail) {
       try {
         if (game.coverUrl.startsWith('data:image/svg+xml;utf8,')) {
           const svgText = decodeURIComponent(game.coverUrl.replace(/^data:image\/svg\+xml;utf8,/, ''));
@@ -818,6 +818,23 @@ class ArtworkResolver {
       } catch (err) {
         console.warn(`[ArtResolver] Failed fetching matched cover for AppID ${topMatch.appId}:`, err.message);
       }
+    }
+
+    // Fallback: If no match found online, use fallback thumbnail if available
+    if (game.isFallbackThumbnail && game.coverUrl && game.coverUrl.startsWith('data:image/')) {
+      try {
+        const base64Data = game.coverUrl.replace(/^data:image\/[a-z+]+;base64,/i, '');
+        const buffer = Buffer.from(base64Data, 'base64');
+        vault.saveCover(game.id, buffer, {
+          title: game.title,
+          launcher: game.launcher,
+          appId: game.appId,
+          targetImagePath: game.targetImagePath,
+          isPreCropped: !!game.isSquare,
+          source: 'local_thumbnail_fallback'
+        });
+        return { buffer, source: 'local_thumbnail_fallback', gameId: game.id, isNew: true };
+      } catch (err) {}
     }
 
     // Tier 3: Secondary Fallback (Generated High-Res Acrylic Card)

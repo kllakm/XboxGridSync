@@ -209,6 +209,22 @@ npm run pack
 
 ## Changelog
 
+### [v1.8.10] - 2026-10-12
+- **Custom Shortcut Artwork Injection & Manifest Synchronization:**
+  - Resolved an issue where custom shortcuts added to the Xbox PC App failed to receive new artwork when syncing or re-adding shortcuts.
+  - Injector now updates artwork and manifests across both native `LocalState\CustomLibraryManagement` and `LocalState\ThirdPartyLibraries\CustomLibraryManagement`.
+  - Added native manifest updating for `LocalState\ExternalAppShortcut`, updating shortcut `iconPath` values to point directly to injected high-resolution PNGs without targeting or touching `.exe` binaries.
+  - Artwork Studio overrides now pass comprehensive target metadata (`targetImagePath`, `installPath`, `shortcutManifestPath`, `originalId`), ensuring custom cropped covers inject directly to the active shortcut destination.
+- **Elimination of Stale / Ghost Shortcuts on Rescan & App Reset:**
+  - Prevented orphan loose image files in `CustomLibraryManagement` (Step 5B) from resurrecting as phantom cards during rescans.
+  - Discovery pipelines (Steps 5A, 5C, 5D) now verify that target executables and install paths exist on disk, filtering out uninstalled, moved, or deleted shortcuts.
+  - Fixed artwork resolution short-circuiting on on-disk fallback thumbnails, allowing proper high-resolution community artwork lookups from SteamGridDB and Steam Store for custom shortcuts.
+- **Comprehensive Factory Reset & Xbox App ImageCache Purge:**
+  - Full Factory Reset and Xbox Cache Purge now sweep all custom game directories: native `LocalState\CustomLibraryManagement`, `LocalState\ExternalAppShortcut`, roaming libraries, and internal Xbox App `ImageCache` (`ImageCache.db` and hashed image buffers).
+  - Clears user-added custom games from `config.json` and resets the 0ms boot cache (`library_cache.json`) upon Full Factory Reset.
+- **Background Watcher Target Path Resolution Fix:**
+  - Fixed false-positive missing cover detections in the background watcher that previously assumed all game covers were stored in `CustomLibraryManagement`.
+
 ### [v1.8.9] - 2026-09-27
 - **Settings Toggle Switch Controller Tab Order:**
   - Integrated all configuration switches into the controller focus order and DOM tab indexing (`tabindex="0"`, `aria-label`).

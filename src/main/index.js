@@ -342,7 +342,11 @@ ipcMain.handle('art:applyCustomCover', async (event, gameId, dataUrlOrPath, meta
       id: gameId,
       title: metadata.title || gameId,
       launcher: metadata.launcher || 'CUSTOM',
-      targetImagePath
+      targetImagePath,
+      installPath: metadata.installPath || '',
+      originalId: metadata.originalId || null,
+      source: metadata.source || 'user_custom',
+      shortcutManifestPath: metadata.shortcutManifestPath || null
     });
 
     const coverUrl = vault.getCoverAsDataUrl(gameId);
@@ -366,6 +370,7 @@ ipcMain.handle('vault:clearAll', async () => {
   watcher.stop();
   const vaultResult = vault.clearAllData();
   const xboxResult = vault.clearXboxAppCache();
+  scanner.saveCachedLibrary([]);
   // Restart watcher after clearing
   if (config.get('watchEnabled')) watcher.start();
   return {

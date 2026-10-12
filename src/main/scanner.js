@@ -418,6 +418,16 @@ class GameScanner {
                 prov === 'steam' ? `steam_${externalPlatformId}` : (prov === 'epic' ? `epic_${externalPlatformId}` : `${prov}_${externalPlatformId}`)
               );
 
+              const installPath = item.installLocation || item.installPath || '';
+              const execName = item.executableName || '';
+              if (isCustom && installPath) {
+                const targetCheck = execName ? path.join(installPath, execName) : installPath;
+                if (!fs.existsSync(targetCheck) && !fs.existsSync(installPath)) {
+                  // Dead custom game whose executable/folder was deleted or uninstalled
+                  continue;
+                }
+              }
+
               rawGames.push({
                 id: safeId,
                 originalId: rawId,
@@ -427,9 +437,9 @@ class GameScanner {
                 title: item.title || item.name || item.displayName || null,
                 launcher,
                 targetImagePath,
-                installPath: item.installLocation || item.installPath || '',
-                executableName: item.executableName || '',
-                source: 'xbox_registry',
+                installPath,
+                executableName: execName,
+                source: isCustom ? 'custom_manifest' : 'xbox_registry',
                 currentThumbnail: fs.existsSync(targetImagePath) ? targetImagePath : null
               });
             }
@@ -492,23 +502,27 @@ class GameScanner {
               launcher === 'STEAM' ? `steam_${externalPlatformId}` : `${launcher.toLowerCase()}_${externalPlatformId}`
             );
 
+            // If this is an unmanifested image in CustomLibraryManagement, skip it.
+            // Loose images without a manifest entry are orphan remnants from deleted shortcuts.
+            if (isCustom) {
+              continue;
+            }
+
             // If this is an unmanifested image in a standard provider folder,
             // only treat it as a game if it is actually verified installed in the local launcher index.
             // This prevents orphan cache images from creating ghost games on machines where the game is not installed.
-            if (!isCustom) {
-              let isInstalled = false;
-              if (localIndexes) {
-                if (launcher === 'STEAM' && localIndexes.steam && localIndexes.steam.has(externalPlatformId)) {
-                  isInstalled = true;
-                } else if (launcher === 'EPIC' && localIndexes.epic && (localIndexes.epic.has(externalPlatformId) || localIndexes.epic.has(cleanBase))) {
-                  isInstalled = true;
-                } else if (launcher === 'GOG' && localIndexes.gog && localIndexes.gog.has(externalPlatformId)) {
-                  isInstalled = true;
-                }
+            let isInstalled = false;
+            if (localIndexes) {
+              if (launcher === 'STEAM' && localIndexes.steam && localIndexes.steam.has(externalPlatformId)) {
+                isInstalled = true;
+              } else if (launcher === 'EPIC' && localIndexes.epic && (localIndexes.epic.has(externalPlatformId) || localIndexes.epic.has(cleanBase))) {
+                isInstalled = true;
+              } else if (launcher === 'GOG' && localIndexes.gog && localIndexes.gog.has(externalPlatformId)) {
+                isInstalled = true;
               }
-              if (!isInstalled) {
-                continue;
-              }
+            }
+            if (!isInstalled) {
+              continue;
             }
 
             rawGames.push({
@@ -537,25 +551,39 @@ class GameScanner {
         for (const file of files) {
           if (file.endsWith('.json') || file.endsWith('.manifest')) {
             try {
-              const content = fs.readFileSync(path.join(externalShortcutDir, file), 'utf8');
+              const fullFilePath = path.join(externalShortcutDir, file);
+              const content = fs.readFileSync(fullFilePath, 'utf8');
               const parsed = JSON.parse(content);
-              const targetPath = parsed.targetPath || parsed.installPath || '';
+              const targetPath = parsed.targetPath || parsed.installPath || parsed.executablePath || '';
+              // Verify target actually exists on disk if targetPath is specified
+              if (targetPath && !fs.existsSync(targetPath)) {
+                continue; // Dead shortcut
+              }
+
               let title = parsed.title || parsed.name || '';
               if (!title || title.toLowerCase() === 'shortcutmanifest') {
                 title = targetPath ? path.parse(targetPath).name : 'Custom Shortcut';
               }
 
               const safeId = `shortcut_${vault.sanitizeIdentifier(parsed.id || title)}`;
+
+              // Ensure targetImagePath is never an .exe file
+              let targetImagePath = parsed.iconPath;
+              if (!targetImagePath || targetImagePath.toLowerCase().endsWith('.exe')) {
+                targetImagePath = path.join(externalShortcutDir, `${safeId}.png`);
+              }
+
               rawGames.push({
                 id: safeId,
                 originalId: parsed.id || title,
                 externalPlatformId: parsed.id || title,
                 title,
                 launcher: 'SHORTCUT',
-                targetImagePath: parsed.iconPath || path.join(externalShortcutDir, `${safeId}.png`),
+                targetImagePath,
+                shortcutManifestPath: fullFilePath,
                 installPath: targetPath,
                 source: 'xbox_shortcut',
-                currentThumbnail: parsed.iconPath && fs.existsSync(parsed.iconPath) ? parsed.iconPath : null
+                currentThumbnail: targetImagePath && fs.existsSync(targetImagePath) ? targetImagePath : (parsed.iconPath && fs.existsSync(parsed.iconPath) ? parsed.iconPath : null)
               });
             } catch (e) {}
           }
@@ -566,6 +594,9 @@ class GameScanner {
     // 5D. Include user-configured custom games from settings
     const customConfigGames = config.get('customGames') || [];
     for (const cg of customConfigGames) {
+      if (cg.path && !fs.existsSync(cg.path)) {
+        continue; // Dead custom game
+      }
       const safeId = cg.id || `custom_${vault.sanitizeIdentifier(cg.title)}`;
       const targetImagePath = cg.targetImagePath || path.join(this.xboxCustomLibraryDir, `${safeId}.png`);
       rawGames.push({
@@ -730,6 +761,7 @@ class GameScanner {
           const ext = path.extname(game.currentThumbnail).toLowerCase();
           const mime = ext === '.png' ? 'image/png' : 'image/jpeg';
           coverUrl = `data:${mime};base64,${buf.toString('base64')}`;
+          game.isFallbackThumbnail = true;
         } catch (e) {}
       }
 

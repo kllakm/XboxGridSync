@@ -257,45 +257,52 @@ class VaultManager {
       console.error('[Vault] Error clearing cache:', err.message);
     }
 
+    // Clear user-added custom games from config
+    try {
+      const config = require('./config');
+      config.set('customGames', []);
+    } catch (err) {}
+
     console.log(`[Vault] Full reset complete. Removed ${removedCovers} vault entries, cleared cache.`);
     return { removedCovers, removedCache };
   }
 
-  // Clear Xbox App's cached thumbnails from ThirdPartyLibraries and restore original backups
+  // Clear Xbox App's cached thumbnails from ThirdPartyLibraries, CustomLibraryManagement, ExternalAppShortcut, and ImageCache
   clearXboxAppCache() {
     const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
-    const thirdPartyDir = path.join(
+    const xboxPackageDir = path.join(
       localAppData,
       'Packages',
-      'Microsoft.GamingApp_8wekyb3d8bbwe',
-      'LocalState',
+      'Microsoft.GamingApp_8wekyb3d8bbwe'
+    );
+    const thirdPartyDir = path.join(xboxPackageDir, 'LocalState', 'ThirdPartyLibraries');
+    const customLibDir = path.join(thirdPartyDir, 'CustomLibraryManagement');
+    const altCustomLibDir = path.join(xboxPackageDir, 'LocalState', 'CustomLibraryManagement');
+    const externalShortcutDir = path.join(xboxPackageDir, 'LocalState', 'ExternalAppShortcut');
+    const roamingThirdPartyDir = path.join(
+      xboxPackageDir,
+      'LocalCache',
+      'Roaming',
+      'Microsoft',
+      'XboxPCApp',
       'ThirdPartyLibraries'
     );
-    const customLibDir = path.join(thirdPartyDir, 'CustomLibraryManagement');
-    const altCustomLibDir = path.join(
-      localAppData,
-      'Packages',
-      'Microsoft.GamingApp_8wekyb3d8bbwe',
-      'LocalState',
-      'CustomLibraryManagement'
-    );
+    const imageCacheDir = path.join(xboxPackageDir, 'LocalCache', 'ImageCache');
 
     let removedFiles = 0;
     let restoredFiles = 0;
 
-    const providers = ['steam', 'epic', 'gog', 'bnet', 'ea', 'ubi', 'CustomLibraryManagement'];
-    for (const prov of providers) {
-      const provDir = path.join(thirdPartyDir, prov);
-      if (!fs.existsSync(provDir)) continue;
-
+    // Helper to clean a directory of injected files and restore .bak
+    const cleanProviderDirectory = (dirPath, isCustom = false) => {
+      if (!fs.existsSync(dirPath)) return;
       try {
-        const files = fs.readdirSync(provDir);
+        const files = fs.readdirSync(dirPath);
 
-        // 1. First restore all .bak files to .png
+        // 1. Restore all .bak files to .png
         for (const file of files) {
           if (file.toLowerCase().endsWith('.bak')) {
-            const bakPath = path.join(provDir, file);
-            const originalPngPath = path.join(provDir, file.replace(/\.bak$/i, '.png'));
+            const bakPath = path.join(dirPath, file);
+            const originalPngPath = path.join(dirPath, file.replace(/\.bak$/i, '.png'));
             try {
               fs.copyFileSync(bakPath, originalPngPath);
               fs.unlinkSync(bakPath);
@@ -304,11 +311,11 @@ class VaultManager {
           }
         }
 
-        // 2. Remove .new, .tmp, stray _cover.png, unmanifested injected images, and injected custom files
-        const recheckFiles = fs.readdirSync(provDir);
+        // 2. Remove .new, .tmp, stray duplicate files, and injected custom images
+        const recheckFiles = fs.readdirSync(dirPath);
         let manifestContent = '';
-        for (const mName of [`${prov}.manifest`, `${prov}.json`]) {
-          const mPath = path.join(provDir, mName);
+        for (const mName of [path.basename(dirPath) + '.manifest', path.basename(dirPath) + '.json', 'CustomLibraryManagement.manifest']) {
+          const mPath = path.join(dirPath, mName);
           if (fs.existsSync(mPath)) {
             try { manifestContent += fs.readFileSync(mPath, 'utf8'); } catch (e) {}
           }
@@ -323,30 +330,55 @@ class VaultManager {
           let isStray = lower.endsWith('.new') ||
                         lower.endsWith('.tmp') ||
                         lower.includes('_cover.') ||
-                        (prov === 'CustomLibraryManagement' && isImg);
+                        (isCustom && isImg);
 
-          // If an image has no manifest and wasn't backed up from original Xbox App, it's an orphan injected image
-          if (!isStray && isImg && prov !== 'CustomLibraryManagement') {
+          if (!isStray && isImg && !isCustom) {
             const hasManifestMatch = manifestContent && manifestContent.includes(base);
-            const hasBackup = fs.existsSync(path.join(provDir, `${file}.bak`));
-            if (!hasManifestMatch && !hasBackup && (!manifestContent || base.startsWith('steam_') || base.startsWith('epic_') || base.startsWith('gog_'))) {
+            const hasBackup = fs.existsSync(path.join(dirPath, `${file}.bak`));
+            if (!hasManifestMatch && !hasBackup && (!manifestContent || base.startsWith('steam_') || base.startsWith('epic_') || base.startsWith('gog_') || base.startsWith('shortcut_') || base.startsWith('custom_'))) {
               isStray = true;
             }
           }
 
           if (isStray) {
             try {
-              fs.unlinkSync(path.join(provDir, file));
+              fs.unlinkSync(path.join(dirPath, file));
               removedFiles++;
             } catch (e) {}
           }
         }
       } catch (err) {
-        console.warn(`[Vault] Error cleaning ${provDir}:`, err.message);
+        console.warn(`[Vault] Error cleaning ${dirPath}:`, err.message);
       }
+    };
+
+    // Clean all providers in ThirdPartyLibraries and Roaming
+    const providers = ['steam', 'epic', 'gog', 'bnet', 'ea', 'ubi', 'CustomLibraryManagement'];
+    for (const prov of providers) {
+      cleanProviderDirectory(path.join(thirdPartyDir, prov), prov === 'CustomLibraryManagement');
+      cleanProviderDirectory(path.join(roamingThirdPartyDir, prov), prov === 'CustomLibraryManagement');
     }
 
-    // 3. Reset CustomLibraryManagement.manifest in both locations to a clean state
+    // Clean native CustomLibraryManagement
+    cleanProviderDirectory(altCustomLibDir, true);
+
+    // Clean ExternalAppShortcut loose injected images
+    if (fs.existsSync(externalShortcutDir)) {
+      try {
+        const sFiles = fs.readdirSync(externalShortcutDir);
+        for (const sf of sFiles) {
+          const lower = sf.toLowerCase();
+          if (lower.endsWith('.new') || lower.endsWith('.tmp') || lower.endsWith('.bak') || (lower.endsWith('.png') && lower.startsWith('shortcut_'))) {
+            try {
+              fs.unlinkSync(path.join(externalShortcutDir, sf));
+              removedFiles++;
+            } catch (e) {}
+          }
+        }
+      } catch (e) {}
+    }
+
+    // Reset CustomLibraryManagement.manifest in both locations to a clean state
     const cleanManifestJson = JSON.stringify({
       version: 1,
       provider: { version: 1, enabled: true },
@@ -364,6 +396,19 @@ class VaultManager {
           fs.writeFileSync(clmPath, cleanManifestJson, 'utf8');
         } catch (e) {}
       }
+    }
+
+    // Purge Xbox App internal thumbnail ImageCache
+    if (fs.existsSync(imageCacheDir)) {
+      try {
+        const icFiles = fs.readdirSync(imageCacheDir);
+        for (const icFile of icFiles) {
+          try {
+            fs.unlinkSync(path.join(imageCacheDir, icFile));
+            removedFiles++;
+          } catch (e) {}
+        }
+      } catch (e) {}
     }
 
     console.log(`[Vault] Xbox App cache reset. Removed ${removedFiles} injected files, restored ${restoredFiles} original backups.`);

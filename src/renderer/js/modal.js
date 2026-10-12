@@ -365,6 +365,11 @@ window.ModalManager = {
             {
               title: this.currentOverrideGame.title,
               launcher: this.currentOverrideGame.launcher,
+              targetImagePath: this.currentOverrideGame.targetImagePath,
+              installPath: this.currentOverrideGame.installPath,
+              originalId: this.currentOverrideGame.originalId,
+              source: this.currentOverrideGame.source,
+              shortcutManifestPath: this.currentOverrideGame.shortcutManifestPath,
               isPreCropped: true
             }
           );
