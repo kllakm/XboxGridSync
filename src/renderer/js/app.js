@@ -219,6 +219,8 @@ function renderGames() {
                      game.source === 'custom_manifest' ||
                      game.source === 'user_custom';
 
+    const posterSrc = game.coverUrl || '';
+
     card.innerHTML = `
       <div class="card-poster-wrapper">
         <img class="card-poster-img" id="img-${game.id}" src="${posterSrc}" alt="${game.title}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'200\\' height=\\'300\\' fill=\\'%231a1a1a\\'><rect width=\\'200\\' height=\\'300\\' fill=\\'%231a1a1a\\'/><text x=\\'50%\\' y=\\'50%\\' fill=\\'%23666\\' font-family=\\'sans-serif\\' font-size=\\'14\\' text-anchor=\\'middle\\'>No Artwork</text></svg>'">

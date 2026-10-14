@@ -209,6 +209,11 @@ npm run pack
 
 ## Changelog
 
+### [v1.8.12] - 2026-10-14
+- **Critical Fix for Library Rendering & Scanning Failure:**
+  - Resolved `ReferenceError: posterSrc is not defined` in `src/renderer/js/app.js` which caused grid card rendering to fail immediately upon scanning and prevented game tiles from populating.
+  - Restored `posterSrc` assignment for game cards, ensuring smooth fallback artwork loading and proper rendering of all games and shortcut cards.
+
 ### [v1.8.11] - 2026-10-14
 - **Zero Orphan Shortcut Ghosting & Ghost Pruning:**
   - Resolved an issue where manual games deleted from the Xbox PC App continued to be detected and displayed as ghost cards or duplicate titles in Xbox Grid Sync.
