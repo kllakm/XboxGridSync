@@ -209,6 +209,19 @@ npm run pack
 
 ## Changelog
 
+### [v1.8.13] - 2026-10-14
+- **Manifest-Centric Discovery & Elimination of Ghost Launcher Games:**
+  - Fixed an issue where games installed on PC (such as via Steam) but not recognized or added to the Xbox App were erroneously synthesized as library titles from loose cache thumbnails.
+  - Scanner now strictly respects Xbox PC App's active manifests (`ExternalAppShortcut`, `CustomLibraryManagement.manifest`, and verified provider manifests); loose unmanifested images are never promoted to games.
+- **Proper Shortcut / Custom Tagging for Manually Added Games:**
+  - Titles added manually to the Xbox App (e.g. *Ready or Not*, *Silent Hill: Townfall*) or via Xbox Grid Sync are now always identified with the `SHORTCUT` launcher identity instead of being erroneously reclassified as `STEAM`.
+  - Steam launch URIs and AppIDs are preserved strictly for community artwork enrichment without overriding the game's shortcut classification.
+- **Enhanced Multi-Tier Deduplication:**
+  - Resolved title duplication when custom titles (e.g. *Clive Barker's Hellraiser Revival*) are added to the library.
+  - Deduplication pipeline now gives absolute priority to user shortcuts and custom games, preventing third-party registry or cache entries from usurping shortcuts.
+- **Shortcuts Filter Pill Synchronization:**
+  - The "Shortcuts" filter pill and badge count now accurately include all shortcut and custom added titles.
+
 ### [v1.8.12] - 2026-10-14
 - **Critical Fix for Library Rendering & Scanning Failure:**
   - Resolved `ReferenceError: posterSrc is not defined` in `src/renderer/js/app.js` which caused grid card rendering to fail immediately upon scanning and prevented game tiles from populating.

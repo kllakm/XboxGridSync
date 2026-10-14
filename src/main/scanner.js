@@ -451,9 +451,19 @@ class GameScanner {
               const rawId = item.id || item._mapKey || item.title;
               if (!rawId) continue;
 
-              const isShortcutEntry = String(rawId).startsWith('shortcut_') ||
+              // Check for deleted / uninstalled states in Xbox App manifests
+              if (item.isDeleted || item.deleted || item.hidden || item.disabled || item.enabled === false ||
+                  item.status === 'deleted' || item.status === 'removed' ||
+                  item.state === 'deleted' || item.state === 'uninstalled' || item.isInstalled === false) {
+                if (isCustom) pruneKeys.push(item._mapKey || rawId);
+                continue;
+              }
+
+              const isShortcutEntry = isCustom ||
+                                      String(rawId).startsWith('shortcut_') ||
                                       (item.id && String(item.id).startsWith('shortcut_')) ||
-                                      (item.provider && String(item.provider).toLowerCase() === 'shortcut');
+                                      (item.provider && String(item.provider).toLowerCase() === 'shortcut') ||
+                                      (item.source && String(item.source).toLowerCase() === 'shortcut');
 
               const installPath = item.installLocation || item.installPath || '';
               const execName = item.executableName || '';
@@ -467,35 +477,26 @@ class GameScanner {
                 }
 
                 // If this is an orphan entry from a shortcut that was deleted from Xbox App:
-                if (isShortcutEntry) {
-                  const resolvedTarget = path.resolve(installPath).toLowerCase();
-                  const itemTitleNorm = (item.title || item.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                  const rawIdLower = String(rawId).toLowerCase();
-
-                  const stillActive = validShortcutTargets.has(resolvedTarget) ||
-                                      (itemTitleNorm && validShortcutTitles.has(itemTitleNorm)) ||
-                                      validShortcutIds.has(rawIdLower);
-
-                  if (!stillActive) {
-                    console.log(`[Scanner] Pruning orphan deleted shortcut from custom manifest: "${item.title || rawId}"`);
-                    pruneKeys.push(item._mapKey || rawId);
-                    continue;
-                  }
-                }
+                const resolvedTarget = path.resolve(installPath).toLowerCase();
+                const itemTitleNorm = (item.title || item.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                const rawIdLower = String(rawId).toLowerCase();
 
                 // If this game was already discovered from ExternalAppShortcut, do not duplicate from CLM
-                if (validShortcutTargets.has(path.resolve(installPath).toLowerCase())) {
+                if (validShortcutTargets.has(resolvedTarget) || validShortcutIds.has(rawIdLower) || (itemTitleNorm && validShortcutTitles.has(itemTitleNorm))) {
                   continue;
                 }
               }
 
               // Parse launcher & platform ID
-              let launcher = isCustom ? 'CUSTOM' : (prov === 'ubi' ? 'UBISOFT' : prov.toUpperCase());
+              // Anything in CustomLibraryManagement or with isShortcutEntry is a custom shortcut!
+              let launcher = isShortcutEntry ? 'SHORTCUT' : (prov === 'ubi' ? 'UBISOFT' : prov.toUpperCase());
               let externalPlatformId = String(rawId);
               let namespace = '';
+              let appId = null;
 
               if (prov === 'steam') {
                 externalPlatformId = rawId.replace(/^steam:/i, '');
+                appId = externalPlatformId;
               } else if (prov === 'epic') {
                 const parts = rawId.split(':');
                 if (parts.length >= 3) {
@@ -512,6 +513,15 @@ class GameScanner {
                 externalPlatformId = rawId.replace(/^ea:/i, '');
               }
 
+              // If it's a shortcut but has a Steam launch URI or appId in metadata, retain appId for artwork enrichment
+              if (isShortcutEntry && item.launchUri) {
+                const m = item.launchUri.match(/steam:\/\/(?:run|rungameid)\/(\d+)/i);
+                if (m) appId = m[1];
+              }
+              if (isShortcutEntry && item.appId) {
+                appId = String(item.appId);
+              }
+
               // Determine exact image path Xbox App uses
               let targetImagePath;
               if (isCustom && item.imagePath) {
@@ -523,7 +533,7 @@ class GameScanner {
               }
 
               const safeId = vault.sanitizeIdentifier(
-                prov === 'steam' ? `steam_${externalPlatformId}` : (prov === 'epic' ? `epic_${externalPlatformId}` : `${prov}_${externalPlatformId}`)
+                isShortcutEntry ? `shortcut_${rawId}` : (prov === 'steam' ? `steam_${externalPlatformId}` : (prov === 'epic' ? `epic_${externalPlatformId}` : `${prov}_${externalPlatformId}`))
               );
 
               rawGames.push({
@@ -531,7 +541,7 @@ class GameScanner {
                 originalId: rawId,
                 externalPlatformId,
                 namespace,
-                appId: prov === 'steam' ? externalPlatformId : null,
+                appId,
                 title: item.title || item.name || item.displayName || null,
                 launcher,
                 targetImagePath,
@@ -558,7 +568,7 @@ class GameScanner {
           }
         }
 
-        // Check directory files for any cached images without an explicit manifest entry
+        // Check directory files for any cached images to update currentThumbnail on verified games
         try {
           const files = fs.readdirSync(provDir);
           for (const file of files) {
@@ -572,79 +582,14 @@ class GameScanner {
             }
 
             const fullPath = path.join(provDir, file);
-            const baseName = path.parse(file).name;
 
             // If an entry already tracks this exact targetImagePath, update currentThumbnail
             const existing = rawGames.find(g => g.targetImagePath && g.targetImagePath.toLowerCase() === fullPath.toLowerCase());
             if (existing) {
               if (!existing.currentThumbnail) existing.currentThumbnail = fullPath;
-              continue;
             }
-
-            // Loose images without a manifest entry in CustomLibraryManagement are orphan remnants from deleted shortcuts
-            if (isCustom) {
-              continue;
-            }
-
-            // Otherwise, this is a standalone image cached in the Xbox folder
-            let launcher = prov === 'ubi' ? 'UBISOFT' : prov.toUpperCase();
-            let cleanBase = baseName;
-            let externalPlatformId = baseName;
-            let namespace = '';
-
-            if (prov === 'steam' || cleanBase.startsWith('steam_')) {
-              launcher = 'STEAM';
-              externalPlatformId = cleanBase.replace(/^steam_/i, '');
-            } else if (prov === 'epic' || cleanBase.startsWith('epic_')) {
-              launcher = 'EPIC';
-              const withoutPrefix = cleanBase.replace(/^epic_/i, '');
-              const parts = withoutPrefix.split('_');
-              if (parts.length >= 2) {
-                namespace = parts[0];
-                externalPlatformId = parts.slice(1).join('_');
-              } else {
-                externalPlatformId = withoutPrefix;
-              }
-            } else if (prov === 'gog' || cleanBase.startsWith('gog_')) {
-              launcher = 'GOG';
-              externalPlatformId = cleanBase.replace(/^gog_/i, '');
-            } else if (prov === 'ubi' || cleanBase.startsWith('ubi_')) {
-              launcher = 'UBISOFT';
-              externalPlatformId = cleanBase.replace(/^ubi_/i, '');
-            }
-
-            const safeId = vault.sanitizeIdentifier(
-              launcher === 'STEAM' ? `steam_${externalPlatformId}` : `${launcher.toLowerCase()}_${externalPlatformId}`
-            );
-
-            // Only treat loose launcher image as a game if verified installed in launcher index
-            let isInstalled = false;
-            if (localIndexes) {
-              if (launcher === 'STEAM' && localIndexes.steam && localIndexes.steam.has(externalPlatformId)) {
-                isInstalled = true;
-              } else if (launcher === 'EPIC' && localIndexes.epic && (localIndexes.epic.has(externalPlatformId) || localIndexes.epic.has(cleanBase))) {
-                isInstalled = true;
-              } else if (launcher === 'GOG' && localIndexes.gog && localIndexes.gog.has(externalPlatformId)) {
-                isInstalled = true;
-              }
-            }
-            if (!isInstalled) {
-              continue;
-            }
-
-            rawGames.push({
-              id: safeId,
-              originalId: baseName,
-              externalPlatformId,
-              namespace,
-              appId: launcher === 'STEAM' ? externalPlatformId : null,
-              title: null,
-              launcher,
-              targetImagePath: fullPath,
-              installPath: '',
-              source: 'xbox_cache',
-              currentThumbnail: fullPath
-            });
+            // Strict rule: NEVER fabricate new games from unmanifested loose cache images.
+            // Only titles actively registered in Xbox App manifests are part of the Xbox library.
           }
         } catch (e) {}
       }
@@ -653,7 +598,8 @@ class GameScanner {
     // 5C. Include user-configured custom games from settings
     const customConfigGames = config.get('customGames') || [];
     for (const cg of customConfigGames) {
-      if (cg.path && !fs.existsSync(cg.path)) {
+      const installPath = cg.installPath || cg.path || '';
+      if (installPath && !fs.existsSync(installPath)) {
         continue; // Dead custom game
       }
       const safeId = cg.id || `custom_${vault.sanitizeIdentifier(cg.title)}`;
@@ -663,9 +609,9 @@ class GameScanner {
         originalId: safeId,
         externalPlatformId: safeId,
         title: cg.title,
-        launcher: 'CUSTOM',
+        launcher: cg.launcher || 'SHORTCUT',
         targetImagePath,
-        installPath: cg.path || '',
+        installPath,
         source: 'user_custom',
         currentThumbnail: fs.existsSync(targetImagePath) ? targetImagePath : null
       });
@@ -694,13 +640,20 @@ class GameScanner {
       if (!uniqueMap.has(key)) {
         uniqueMap.set(key, game);
       } else {
-        // Merge entries if one has better metadata
+        // Merge entries: prioritize shortcuts/custom games to preserve manual user additions
         const existing = uniqueMap.get(key);
+        const isGameShortcut = game.source === 'xbox_shortcut' || game.source === 'user_custom' || game.source === 'custom_manifest' || game.launcher === 'SHORTCUT';
+        const isExistingShortcut = existing.source === 'xbox_shortcut' || existing.source === 'user_custom' || existing.source === 'custom_manifest' || existing.launcher === 'SHORTCUT';
+
+        const winner = (isGameShortcut && !isExistingShortcut) ? game : existing;
+        const loser = (isGameShortcut && !isExistingShortcut) ? existing : game;
+
         uniqueMap.set(key, {
-          ...existing,
-          title: existing.title || game.title,
-          installPath: existing.installPath || game.installPath,
-          currentThumbnail: existing.currentThumbnail || game.currentThumbnail
+          ...winner,
+          title: winner.title || loser.title,
+          installPath: winner.installPath || loser.installPath,
+          currentThumbnail: winner.currentThumbnail || loser.currentThumbnail,
+          appId: winner.appId || loser.appId
         });
       }
     }
@@ -750,7 +703,7 @@ class GameScanner {
       };
     }));
 
-    // 5. Final pass deduplication by normalized executable path and title to guarantee ONE card per game
+    // 5. Final pass deduplication by normalized executable path and cleaned title to guarantee ONE card per game
     const finalPathMap = new Map();
     for (const game of resolvedGames) {
       const normalizedPath = game.installPath ? path.resolve(game.installPath).toLowerCase().replace(/\\/g, '/') : '';
@@ -759,9 +712,22 @@ class GameScanner {
         finalPathMap.set(key, game);
       } else {
         const existing = finalPathMap.get(key);
-        // Prioritize active Xbox App shortcut over cloned custom manifest entries
-        if (game.source === 'xbox_shortcut' && existing.source !== 'xbox_shortcut') {
-          finalPathMap.set(key, game);
+        const isGameShortcut = game.source === 'xbox_shortcut' || game.source === 'user_custom' || game.source === 'custom_manifest' || game.launcher === 'SHORTCUT';
+        const isExistingShortcut = existing.source === 'xbox_shortcut' || existing.source === 'user_custom' || existing.source === 'custom_manifest' || existing.launcher === 'SHORTCUT';
+
+        if (isGameShortcut && !isExistingShortcut) {
+          finalPathMap.set(key, {
+            ...game,
+            currentThumbnail: game.currentThumbnail || existing.currentThumbnail,
+            appId: game.appId || existing.appId
+          });
+        } else if (isExistingShortcut) {
+          if (!existing.currentThumbnail && game.currentThumbnail) {
+            existing.currentThumbnail = game.currentThumbnail;
+          }
+          if (!existing.appId && game.appId) {
+            existing.appId = game.appId;
+          }
         } else if (!existing.currentThumbnail && game.currentThumbnail) {
           finalPathMap.set(key, game);
         }
@@ -770,13 +736,28 @@ class GameScanner {
 
     const finalTitleMap = new Map();
     for (const game of finalPathMap.values()) {
-      const normalizedTitle = (game.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const cleaned = this.cleanGameTitle(game.title);
+      const normalizedTitle = (cleaned || game.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
       if (!finalTitleMap.has(normalizedTitle)) {
         finalTitleMap.set(normalizedTitle, game);
       } else {
         const existing = finalTitleMap.get(normalizedTitle);
-        if (game.source === 'xbox_shortcut' && existing.source !== 'xbox_shortcut') {
-          finalTitleMap.set(normalizedTitle, game);
+        const isGameShortcut = game.source === 'xbox_shortcut' || game.source === 'user_custom' || game.source === 'custom_manifest' || game.launcher === 'SHORTCUT';
+        const isExistingShortcut = existing.source === 'xbox_shortcut' || existing.source === 'user_custom' || existing.source === 'custom_manifest' || existing.launcher === 'SHORTCUT';
+
+        if (isGameShortcut && !isExistingShortcut) {
+          finalTitleMap.set(normalizedTitle, {
+            ...game,
+            currentThumbnail: game.currentThumbnail || existing.currentThumbnail,
+            appId: game.appId || existing.appId
+          });
+        } else if (isExistingShortcut) {
+          if (!existing.currentThumbnail && game.currentThumbnail) {
+            existing.currentThumbnail = game.currentThumbnail;
+          }
+          if (!existing.appId && game.appId) {
+            existing.appId = game.appId;
+          }
         } else if (!existing.currentThumbnail && game.currentThumbnail) {
           finalTitleMap.set(normalizedTitle, game);
         }

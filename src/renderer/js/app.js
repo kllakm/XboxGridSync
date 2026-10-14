@@ -153,7 +153,10 @@ function updateCounts() {
   const steam = state.games.filter(g => (g.launcher || '').toLowerCase() === 'steam').length;
   const epic = state.games.filter(g => (g.launcher || '').toLowerCase() === 'epic').length;
   const gog = state.games.filter(g => (g.launcher || '').toLowerCase() === 'gog').length;
-  const shortcut = state.games.filter(g => (g.launcher || '').toLowerCase() === 'shortcut').length;
+  const shortcut = state.games.filter(g => {
+    const l = (g.launcher || '').toLowerCase();
+    return l === 'shortcut' || l === 'custom';
+  }).length;
   const pending = state.games.filter(g => g.status !== 'Synced').length;
 
   document.getElementById('countAll').textContent = total;
@@ -171,6 +174,9 @@ function filterGames() {
     if (state.activeFilter !== 'all') {
       if (state.activeFilter === 'pending') {
         if (game.status === 'Synced') return false;
+      } else if (state.activeFilter === 'shortcut') {
+        const gameLauncher = (game.launcher || '').toLowerCase();
+        if (gameLauncher !== 'shortcut' && gameLauncher !== 'custom') return false;
       } else {
         const gameLauncher = (game.launcher || '').toLowerCase();
         if (gameLauncher !== state.activeFilter) return false;
