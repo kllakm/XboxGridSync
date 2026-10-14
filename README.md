@@ -209,6 +209,20 @@ npm run pack
 
 ## Changelog
 
+### [v1.8.11] - 2026-10-14
+- **Zero Orphan Shortcut Ghosting & Ghost Pruning:**
+  - Resolved an issue where manual games deleted from the Xbox PC App continued to be detected and displayed as ghost cards or duplicate titles in Xbox Grid Sync.
+  - Shortcuts added natively via the Xbox App (`ExternalAppShortcut`) are now strictly kept to their own directory; artwork injection no longer clones shortcut entries into `CustomLibraryManagement.manifest`.
+  - The scanner now reads `ExternalAppShortcut` first as the authoritative registry for manual games and automatically filters and prunes any stale/orphan shortcut clones lingering in `CustomLibraryManagement.manifest`.
+  - Added inspection for deleted, disabled, and hidden flags (`isDeleted`, `deleted`, `hidden`, `disabled`, `state: uninstalled`) in shortcut manifests, ensuring removed shortcuts never resurrect.
+  - Multi-tier deduplication now checks normalized executable target paths before titles, guaranteeing that re-adding a game under a modified title never creates duplicate cards.
+- **Direct Custom Title Deletion & Clean Removal:**
+  - Added a prominent "Remove Game" action button in both the Customize Artwork studio header and on game card overlays for custom and shortcut titles.
+  - Deleting a title cleanly unlinks its shortcut file in `ExternalAppShortcut`, purges entries across local and roaming `CustomLibraryManagement.manifest` / `.json` files, deletes local artwork PNGs, clears Vault entries, and purges the Xbox App `ImageCache`.
+- **Bulletproof Factory Reset & Auto-Restore Guarding:**
+  - Full Factory Reset now cleans all candidate `CustomLibraryManagement` manifests (`.manifest` and `.json`), sweeps dead shortcut files in `ExternalAppShortcut`, and clears all caches.
+  - Background Watcher and startup restore now verify that shortcuts still genuinely exist in `ExternalAppShortcut` before attempting a restore, preventing automatic shielding from reviving deleted titles.
+
 ### [v1.8.10] - 2026-10-12
 - **Custom Shortcut Artwork Injection & Manifest Synchronization:**
   - Resolved an issue where custom shortcuts added to the Xbox PC App failed to receive new artwork when syncing or re-adding shortcuts.

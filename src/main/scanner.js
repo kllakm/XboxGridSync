@@ -331,13 +331,81 @@ class GameScanner {
     return null;
   }
 
-  // 5. Scan Xbox PC App's authoritative library from ThirdPartyLibraries and ExternalAppShortcut
+  // 5. Scan Xbox PC App's authoritative library from ExternalAppShortcut and ThirdPartyLibraries
   scanXboxAppRegistry(localIndexes = null) {
     const rawGames = [];
+
+    // 5A. Scan ExternalAppShortcut directory (manually added shortcuts in Xbox App) FIRST
+    const externalShortcutDir = path.join(this.xboxPackagePath, 'LocalState', 'ExternalAppShortcut');
+    const validShortcutTargets = new Set();
+    const validShortcutTitles = new Set();
+    const validShortcutIds = new Set();
+
+    if (fs.existsSync(externalShortcutDir)) {
+      try {
+        const files = fs.readdirSync(externalShortcutDir);
+        for (const file of files) {
+          if (file.endsWith('.json') || file.endsWith('.manifest')) {
+            try {
+              const fullFilePath = path.join(externalShortcutDir, file);
+              const content = fs.readFileSync(fullFilePath, 'utf8');
+              const parsed = JSON.parse(content);
+
+              // Check for deleted or disabled flags that Xbox App might set
+              if (parsed.isDeleted || parsed.deleted || parsed.hidden || parsed.disabled || parsed.enabled === false ||
+                  parsed.status === 'deleted' || parsed.status === 'removed' ||
+                  parsed.state === 'deleted' || parsed.state === 'uninstalled' || parsed.isInstalled === false) {
+                continue;
+              }
+
+              const targetPath = parsed.targetPath || parsed.installPath || parsed.executablePath || '';
+              // Verify target actually exists on disk
+              if (!targetPath || !fs.existsSync(targetPath)) {
+                continue; // Dead or deleted shortcut
+              }
+
+              let title = parsed.title || parsed.name || '';
+              if (!title || title.toLowerCase() === 'shortcutmanifest') {
+                title = path.parse(targetPath).name || 'Custom Shortcut';
+              }
+
+              const safeId = `shortcut_${vault.sanitizeIdentifier(parsed.id || title)}`;
+
+              // Track active shortcut targets and titles
+              validShortcutTargets.add(path.resolve(targetPath).toLowerCase());
+              validShortcutTitles.add(title.toLowerCase().replace(/[^a-z0-9]/g, ''));
+              if (parsed.id) validShortcutIds.add(String(parsed.id).toLowerCase());
+              validShortcutIds.add(safeId.toLowerCase());
+
+              // Ensure targetImagePath is never an .exe file
+              let targetImagePath = parsed.iconPath;
+              if (!targetImagePath || targetImagePath.toLowerCase().endsWith('.exe')) {
+                targetImagePath = path.join(externalShortcutDir, `${safeId}.png`);
+              }
+
+              rawGames.push({
+                id: safeId,
+                originalId: parsed.id || title,
+                externalPlatformId: parsed.id || title,
+                title,
+                launcher: 'SHORTCUT',
+                targetImagePath,
+                shortcutManifestPath: fullFilePath,
+                installPath: targetPath,
+                source: 'xbox_shortcut',
+                currentThumbnail: targetImagePath && fs.existsSync(targetImagePath) ? targetImagePath : (parsed.iconPath && fs.existsSync(parsed.iconPath) ? parsed.iconPath : null)
+              });
+            } catch (e) {}
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 5B. Scan third-party provider directories and CustomLibraryManagement
     const candidateDirs = [
       this.xboxThirdPartyDir,
       this.xboxRoamingThirdPartyDir,
-      path.join(this.xboxPackagePath, 'LocalState', 'CustomLibraryManagement')
+      path.join(this.xboxPackagePath, 'LocalState')
     ].filter(d => fs.existsSync(d));
 
     const providers = ['steam', 'epic', 'gog', 'bnet', 'ea', 'ubi', 'CustomLibraryManagement'];
@@ -353,7 +421,7 @@ class GameScanner {
           path.join(provDir, `${prov}.json`)
         ];
 
-        // 5A. Parse manifest files (Official Xbox App Manifest Structure)
+        // Parse manifest files (Official Xbox App Manifest Structure)
         for (const mPath of manifestCandidates) {
           if (!fs.existsSync(mPath)) continue;
           try {
@@ -377,9 +445,49 @@ class GameScanner {
               }
             }
 
+            const pruneKeys = [];
+
             for (const item of entries) {
               const rawId = item.id || item._mapKey || item.title;
               if (!rawId) continue;
+
+              const isShortcutEntry = String(rawId).startsWith('shortcut_') ||
+                                      (item.id && String(item.id).startsWith('shortcut_')) ||
+                                      (item.provider && String(item.provider).toLowerCase() === 'shortcut');
+
+              const installPath = item.installLocation || item.installPath || '';
+              const execName = item.executableName || '';
+              const targetCheck = execName ? path.join(installPath, execName) : installPath;
+
+              if (isCustom) {
+                // Verify custom game target executable actually exists on disk
+                if (!installPath || (!fs.existsSync(targetCheck) && !fs.existsSync(installPath))) {
+                  pruneKeys.push(item._mapKey || rawId);
+                  continue; // Dead custom game
+                }
+
+                // If this is an orphan entry from a shortcut that was deleted from Xbox App:
+                if (isShortcutEntry) {
+                  const resolvedTarget = path.resolve(installPath).toLowerCase();
+                  const itemTitleNorm = (item.title || item.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                  const rawIdLower = String(rawId).toLowerCase();
+
+                  const stillActive = validShortcutTargets.has(resolvedTarget) ||
+                                      (itemTitleNorm && validShortcutTitles.has(itemTitleNorm)) ||
+                                      validShortcutIds.has(rawIdLower);
+
+                  if (!stillActive) {
+                    console.log(`[Scanner] Pruning orphan deleted shortcut from custom manifest: "${item.title || rawId}"`);
+                    pruneKeys.push(item._mapKey || rawId);
+                    continue;
+                  }
+                }
+
+                // If this game was already discovered from ExternalAppShortcut, do not duplicate from CLM
+                if (validShortcutTargets.has(path.resolve(installPath).toLowerCase())) {
+                  continue;
+                }
+              }
 
               // Parse launcher & platform ID
               let launcher = isCustom ? 'CUSTOM' : (prov === 'ubi' ? 'UBISOFT' : prov.toUpperCase());
@@ -418,16 +526,6 @@ class GameScanner {
                 prov === 'steam' ? `steam_${externalPlatformId}` : (prov === 'epic' ? `epic_${externalPlatformId}` : `${prov}_${externalPlatformId}`)
               );
 
-              const installPath = item.installLocation || item.installPath || '';
-              const execName = item.executableName || '';
-              if (isCustom && installPath) {
-                const targetCheck = execName ? path.join(installPath, execName) : installPath;
-                if (!fs.existsSync(targetCheck) && !fs.existsSync(installPath)) {
-                  // Dead custom game whose executable/folder was deleted or uninstalled
-                  continue;
-                }
-              }
-
               rawGames.push({
                 id: safeId,
                 originalId: rawId,
@@ -443,12 +541,24 @@ class GameScanner {
                 currentThumbnail: fs.existsSync(targetImagePath) ? targetImagePath : null
               });
             }
+
+            // Prune any identified ghost keys from this manifest on disk
+            if (isCustom && pruneKeys.length > 0) {
+              try {
+                if (typeof root.gameCache === 'object' && !Array.isArray(root.gameCache)) {
+                  for (const pk of pruneKeys) {
+                    delete root.gameCache[pk];
+                  }
+                  fs.writeFileSync(mPath, JSON.stringify(root, null, 2), 'utf8');
+                }
+              } catch (e) {}
+            }
           } catch (e) {
             console.warn(`[Scanner] Warning parsing ${mPath}:`, e.message);
           }
         }
 
-        // 5B. Check directory files for any cached images without an explicit manifest entry
+        // Check directory files for any cached images without an explicit manifest entry
         try {
           const files = fs.readdirSync(provDir);
           for (const file of files) {
@@ -471,8 +581,13 @@ class GameScanner {
               continue;
             }
 
+            // Loose images without a manifest entry in CustomLibraryManagement are orphan remnants from deleted shortcuts
+            if (isCustom) {
+              continue;
+            }
+
             // Otherwise, this is a standalone image cached in the Xbox folder
-            let launcher = isCustom ? 'CUSTOM' : (prov === 'ubi' ? 'UBISOFT' : prov.toUpperCase());
+            let launcher = prov === 'ubi' ? 'UBISOFT' : prov.toUpperCase();
             let cleanBase = baseName;
             let externalPlatformId = baseName;
             let namespace = '';
@@ -502,15 +617,7 @@ class GameScanner {
               launcher === 'STEAM' ? `steam_${externalPlatformId}` : `${launcher.toLowerCase()}_${externalPlatformId}`
             );
 
-            // If this is an unmanifested image in CustomLibraryManagement, skip it.
-            // Loose images without a manifest entry are orphan remnants from deleted shortcuts.
-            if (isCustom) {
-              continue;
-            }
-
-            // If this is an unmanifested image in a standard provider folder,
-            // only treat it as a game if it is actually verified installed in the local launcher index.
-            // This prevents orphan cache images from creating ghost games on machines where the game is not installed.
+            // Only treat loose launcher image as a game if verified installed in launcher index
             let isInstalled = false;
             if (localIndexes) {
               if (launcher === 'STEAM' && localIndexes.steam && localIndexes.steam.has(externalPlatformId)) {
@@ -543,55 +650,7 @@ class GameScanner {
       }
     }
 
-    // 5C. Scan ExternalAppShortcut directory (manually added shortcuts)
-    const externalShortcutDir = path.join(this.xboxPackagePath, 'LocalState', 'ExternalAppShortcut');
-    if (fs.existsSync(externalShortcutDir)) {
-      try {
-        const files = fs.readdirSync(externalShortcutDir);
-        for (const file of files) {
-          if (file.endsWith('.json') || file.endsWith('.manifest')) {
-            try {
-              const fullFilePath = path.join(externalShortcutDir, file);
-              const content = fs.readFileSync(fullFilePath, 'utf8');
-              const parsed = JSON.parse(content);
-              const targetPath = parsed.targetPath || parsed.installPath || parsed.executablePath || '';
-              // Verify target actually exists on disk if targetPath is specified
-              if (targetPath && !fs.existsSync(targetPath)) {
-                continue; // Dead shortcut
-              }
-
-              let title = parsed.title || parsed.name || '';
-              if (!title || title.toLowerCase() === 'shortcutmanifest') {
-                title = targetPath ? path.parse(targetPath).name : 'Custom Shortcut';
-              }
-
-              const safeId = `shortcut_${vault.sanitizeIdentifier(parsed.id || title)}`;
-
-              // Ensure targetImagePath is never an .exe file
-              let targetImagePath = parsed.iconPath;
-              if (!targetImagePath || targetImagePath.toLowerCase().endsWith('.exe')) {
-                targetImagePath = path.join(externalShortcutDir, `${safeId}.png`);
-              }
-
-              rawGames.push({
-                id: safeId,
-                originalId: parsed.id || title,
-                externalPlatformId: parsed.id || title,
-                title,
-                launcher: 'SHORTCUT',
-                targetImagePath,
-                shortcutManifestPath: fullFilePath,
-                installPath: targetPath,
-                source: 'xbox_shortcut',
-                currentThumbnail: targetImagePath && fs.existsSync(targetImagePath) ? targetImagePath : (parsed.iconPath && fs.existsSync(parsed.iconPath) ? parsed.iconPath : null)
-              });
-            } catch (e) {}
-          }
-        }
-      } catch (e) {}
-    }
-
-    // 5D. Include user-configured custom games from settings
+    // 5C. Include user-configured custom games from settings
     const customConfigGames = config.get('customGames') || [];
     for (const cg of customConfigGames) {
       if (cg.path && !fs.existsSync(cg.path)) {
@@ -691,16 +750,34 @@ class GameScanner {
       };
     }));
 
-    // 5. Final pass deduplication by normalized title to guarantee ONE card per game
-    const finalTitleMap = new Map();
+    // 5. Final pass deduplication by normalized executable path and title to guarantee ONE card per game
+    const finalPathMap = new Map();
     for (const game of resolvedGames) {
-      const normalizedTitle = game.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const normalizedPath = game.installPath ? path.resolve(game.installPath).toLowerCase().replace(/\\/g, '/') : '';
+      const key = normalizedPath || (game.id || '').toLowerCase();
+      if (!finalPathMap.has(key)) {
+        finalPathMap.set(key, game);
+      } else {
+        const existing = finalPathMap.get(key);
+        // Prioritize active Xbox App shortcut over cloned custom manifest entries
+        if (game.source === 'xbox_shortcut' && existing.source !== 'xbox_shortcut') {
+          finalPathMap.set(key, game);
+        } else if (!existing.currentThumbnail && game.currentThumbnail) {
+          finalPathMap.set(key, game);
+        }
+      }
+    }
+
+    const finalTitleMap = new Map();
+    for (const game of finalPathMap.values()) {
+      const normalizedTitle = (game.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
       if (!finalTitleMap.has(normalizedTitle)) {
         finalTitleMap.set(normalizedTitle, game);
       } else {
         const existing = finalTitleMap.get(normalizedTitle);
-        // Keep the one with an existing thumbnail or Vault cover
-        if (!existing.currentThumbnail && game.currentThumbnail) {
+        if (game.source === 'xbox_shortcut' && existing.source !== 'xbox_shortcut') {
+          finalTitleMap.set(normalizedTitle, game);
+        } else if (!existing.currentThumbnail && game.currentThumbnail) {
           finalTitleMap.set(normalizedTitle, game);
         }
       }

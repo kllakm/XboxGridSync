@@ -107,6 +107,20 @@ class BackgroundWatcher {
 
       let missingCount = 0;
       for (const entry of entries) {
+        const isShortcut = (entry.launcher || '').toLowerCase() === 'shortcut' ||
+                           entry.source === 'xbox_shortcut';
+        if (isShortcut) {
+          const exists = injector.findShortcutManifest({
+            id: entry.gameId,
+            originalId: entry.originalId,
+            title: entry.title
+          });
+          if (!exists) {
+            // Shortcut was deleted from Xbox App; ignore
+            continue;
+          }
+        }
+
         let expectedPath = entry.targetImagePath;
         if (!expectedPath) {
           expectedPath = injector.resolveTargetImagePath({

@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld('api', {
   setConfig: (settings) => ipcRenderer.invoke('config:set', settings),
   addCustomGame: (game) => ipcRenderer.invoke('games:addCustom', game),
   removeCustomGame: (gameId) => ipcRenderer.invoke('games:removeCustom', gameId),
+  deleteCustomGame: (game) => ipcRenderer.invoke('games:deleteCustomGame', game),
   selectExecutableFile: () => ipcRenderer.invoke('dialog:selectExecutable'),
   selectImageFile: () => ipcRenderer.invoke('dialog:selectImage'),
 

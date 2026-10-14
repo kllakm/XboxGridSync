@@ -48,6 +48,7 @@ window.ModalManager = {
     const backBtn = document.getElementById('btnBackFromOverride');
     const cancelBtn = document.getElementById('btnCancelOverridePage');
     const applyBtn = document.getElementById('btnApplyOverridePage');
+    const deleteCustomBtn = document.getElementById('btnDeleteCustomTitle');
 
     const searchInput = document.getElementById('overrideSearchInput');
     const searchBtn = document.getElementById('btnSearchAlternatives');
@@ -400,6 +401,33 @@ window.ModalManager = {
         }
       });
     }
+
+    // Delete / Remove Custom Game
+    if (deleteCustomBtn) {
+      deleteCustomBtn.addEventListener('click', async () => {
+        if (!this.currentOverrideGame) return;
+        const g = this.currentOverrideGame;
+        if (!confirm(`Are you sure you want to remove "${g.title}"?\n\nThis will remove the game from Xbox Grid Sync and delete its shortcut/custom registration from the Xbox App.`)) {
+          return;
+        }
+
+        deleteCustomBtn.disabled = true;
+        try {
+          const res = await window.api.deleteCustomGame(g);
+          if (res && res.success) {
+            window.showToast('Game Removed', `"${g.title}" has been removed.`, 'info');
+            closeStudio();
+            if (window.rescanLibrary) await window.rescanLibrary();
+          } else {
+            window.showToast('Remove Failed', res?.error || 'Failed to remove game.', 'error');
+          }
+        } catch (err) {
+          window.showToast('Error', err.message, 'error');
+        } finally {
+          deleteCustomBtn.disabled = false;
+        }
+      });
+    }
   },
 
   // Open Full-App Override Page
@@ -416,6 +444,17 @@ window.ModalManager = {
     if (badgeEl) badgeEl.textContent = game.launcher || 'GAME';
     if (searchInput) searchInput.value = game.title;
     if (urlInput) urlInput.value = '';
+
+    // Show or hide Remove Game button for custom / shortcut titles
+    const isCustom = (game.launcher || '').toLowerCase() === 'custom' ||
+                     (game.launcher || '').toLowerCase() === 'shortcut' ||
+                     game.source === 'xbox_shortcut' ||
+                     game.source === 'custom_manifest' ||
+                     game.source === 'user_custom';
+    const deleteCustomBtn = document.getElementById('btnDeleteCustomTitle');
+    if (deleteCustomBtn) {
+      deleteCustomBtn.style.display = isCustom ? 'inline-flex' : 'none';
+    }
 
     // Switch views to full-app override view
     const libView = document.getElementById('libraryView');

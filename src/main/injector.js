@@ -110,14 +110,70 @@ class XboxAppInjector {
     }
   }
 
-  // Update or insert into CustomLibraryManagement.manifest and ExternalAppShortcut for Custom / Shortcut games
+  // Locate an existing shortcut manifest file in ExternalAppShortcut for a game
+  findShortcutManifest(game) {
+    if (!fs.existsSync(this.externalShortcutDir)) return null;
+    try {
+      if (game.shortcutManifestPath && fs.existsSync(game.shortcutManifestPath)) {
+        return game.shortcutManifestPath;
+      }
+      const cleanTitle = (game.title || '').toLowerCase().trim();
+      const origId = String(game.originalId || game.id || '').toLowerCase().trim();
+      const safeId = vault.sanitizeIdentifier(game.id || game.title).toLowerCase();
+      const targetInstallPath = (game.installPath || '').toLowerCase().trim();
+
+      const files = fs.readdirSync(this.externalShortcutDir);
+      for (const sFile of files) {
+        if (!sFile.endsWith('.json') && !sFile.endsWith('.manifest')) continue;
+        const fullSPath = path.join(this.externalShortcutDir, sFile);
+        try {
+          const sRaw = fs.readFileSync(fullSPath, 'utf8');
+          const sParsed = JSON.parse(sRaw);
+          const pId = String(sParsed.id || '').toLowerCase().trim();
+          const pTitle = String(sParsed.title || sParsed.name || '').toLowerCase().trim();
+          const pTarget = String(sParsed.targetPath || sParsed.installPath || sParsed.executablePath || '').toLowerCase().trim();
+
+          if ((pId && (pId === origId || pId === safeId || `shortcut_${pId}` === safeId)) ||
+              (cleanTitle && pTitle === cleanTitle) ||
+              (targetInstallPath && pTarget && pTarget === targetInstallPath)) {
+            return fullSPath;
+          }
+        } catch (e) {}
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  // Update only the ExternalAppShortcut manifest iconPath without polluting CustomLibraryManagement
+  updateShortcutManifestIcon(game, injectedImagePath) {
+    try {
+      this.ensureDirectories();
+      const manifestPath = this.findShortcutManifest(game);
+      if (manifestPath && fs.existsSync(manifestPath)) {
+        try {
+          const sRaw = fs.readFileSync(manifestPath, 'utf8');
+          const sParsed = JSON.parse(sRaw);
+          sParsed.iconPath = injectedImagePath;
+          if (sParsed.imagePath) sParsed.imagePath = injectedImagePath;
+          fs.writeFileSync(manifestPath, JSON.stringify(sParsed, null, 2), 'utf8');
+          console.log(`[Injector] Updated ExternalAppShortcut icon for "${game.title}" -> ${manifestPath}`);
+        } catch (e) {
+          console.warn(`[Injector] Could not update shortcut manifest ${manifestPath}:`, e.message);
+        }
+      }
+    } catch (err) {
+      console.warn('[Injector] Could not update shortcut icon:', err.message);
+    }
+  }
+
+  // Update or insert into CustomLibraryManagement.manifest ONLY for non-shortcut custom games
   updateCustomManifestGame(game, injectedImagePath) {
     try {
       this.ensureDirectories();
       const safeId = game.originalId || vault.sanitizeIdentifier(game.id || game.title);
       const cleanTitle = game.title || 'Game';
 
-      // 1. Update CustomLibraryManagement.manifest in BOTH locations (native LocalState and ThirdPartyLibraries)
+      // Update CustomLibraryManagement.manifest in BOTH locations (native LocalState and ThirdPartyLibraries)
       const manifestTargets = [this.altClmManifestPath, this.clmManifestPath];
       for (const mPath of manifestTargets) {
         try {
@@ -156,36 +212,7 @@ class XboxAppInjector {
         }
       }
 
-      // 2. If this is an ExternalAppShortcut, also update the shortcut's iconPath in its manifest file
-      if (fs.existsSync(this.externalShortcutDir)) {
-        try {
-          const shortcutFiles = fs.readdirSync(this.externalShortcutDir);
-          for (const sFile of shortcutFiles) {
-            if (!sFile.endsWith('.json') && !sFile.endsWith('.manifest')) continue;
-            const fullSPath = path.join(this.externalShortcutDir, sFile);
-            if (game.shortcutManifestPath && game.shortcutManifestPath.toLowerCase() !== fullSPath.toLowerCase()) {
-              continue;
-            }
-            try {
-              const sRaw = fs.readFileSync(fullSPath, 'utf8');
-              const sParsed = JSON.parse(sRaw);
-              const matchesGame = (game.shortcutManifestPath && game.shortcutManifestPath.toLowerCase() === fullSPath.toLowerCase()) ||
-                (sParsed.id && sParsed.id === game.originalId) ||
-                (sParsed.title && sParsed.title.toLowerCase() === cleanTitle.toLowerCase());
-
-              if (matchesGame) {
-                sParsed.iconPath = injectedImagePath;
-                if (sParsed.imagePath) sParsed.imagePath = injectedImagePath;
-                fs.writeFileSync(fullSPath, JSON.stringify(sParsed, null, 2), 'utf8');
-                console.log(`[Injector] Updated ExternalAppShortcut manifest for "${cleanTitle}" -> ${sFile}`);
-                break;
-              }
-            } catch (e) {}
-          }
-        } catch (sErr) {}
-      }
-
-      console.log(`[Injector] Updated custom metadata for "${cleanTitle}"`);
+      console.log(`[Injector] Updated CustomLibraryManagement metadata for "${cleanTitle}"`);
     } catch (err) {
       console.warn('[Injector] Could not update custom manifest:', err.message);
     }
@@ -302,19 +329,21 @@ class XboxAppInjector {
       }
     }
 
-    // 5. Update CustomLibraryManagement.manifest ONLY if this is a custom game
-    const isCustom = (game.launcher || '').toLowerCase() === 'custom' ||
-                     (game.launcher || '').toLowerCase() === 'shortcut' ||
-                     game.source === 'xbox_shortcut' ||
+    // 5. Update manifests based on game source (Shortcuts stay in ExternalAppShortcut)
+    const isShortcut = (game.launcher || '').toLowerCase() === 'shortcut' ||
+                       game.source === 'xbox_shortcut';
+    const isCustom = !isShortcut && (
+                     (game.launcher || '').toLowerCase() === 'custom' ||
                      game.source === 'user_custom' ||
                      game.source === 'custom_manifest' ||
-                     targetImagePath.includes('CustomLibraryManagement') ||
-                     targetImagePath.includes('ExternalAppShortcut');
+                     targetImagePath.includes('CustomLibraryManagement'));
 
-    if (isCustom) {
+    if (isShortcut) {
+      this.updateShortcutManifestIcon(game, targetImagePath);
+    } else if (isCustom) {
       this.updateCustomManifestGame(game, targetImagePath);
 
-      // Also ensure a mirror copy exists in native CustomLibraryManagement so all Xbox subsystems see it
+      // Ensure a mirror copy exists in native CustomLibraryManagement so all Xbox subsystems see it
       const safeId = vault.sanitizeIdentifier(game.id);
       const mirrorPng = path.join(this.altCustomLibraryDir, `${safeId}.png`);
       if (mirrorPng.toLowerCase() !== targetImagePath.toLowerCase()) {
@@ -381,8 +410,22 @@ class XboxAppInjector {
             title: entry.title,
             launcher: entry.launcher,
             appId: entry.appId,
+            source: entry.source || ((entry.launcher || '').toLowerCase() === 'shortcut' ? 'xbox_shortcut' : null),
             targetImagePath: entry.targetImagePath || null
           };
+
+          const isShortcut = (entry.launcher || '').toLowerCase() === 'shortcut' ||
+                             gameStub.source === 'xbox_shortcut';
+
+          // If this was an ExternalAppShortcut, verify the shortcut is still registered in Xbox App!
+          // If the user deleted the shortcut in the Xbox App, do NOT recreate dead files or ghosts!
+          if (isShortcut) {
+            const shortcutPath = this.findShortcutManifest(gameStub);
+            if (!shortcutPath) {
+              console.log(`[Injector] Skipping restore for deleted Xbox App shortcut "${gameStub.title}" (${gameStub.id})`);
+              continue;
+            }
+          }
 
           const targetImagePath = this.resolveTargetImagePath(gameStub);
           const targetDir = path.dirname(targetImagePath);
@@ -400,10 +443,13 @@ class XboxAppInjector {
           const newPath = targetImagePath.replace(/\.png$/i, '.new');
           this.writeFileWithRetry(newPath, coverBuffer);
 
-          const isCustom = (entry.launcher || '').toLowerCase() === 'custom' ||
-                           (entry.launcher || '').toLowerCase() === 'shortcut' ||
-                           targetImagePath.includes('CustomLibraryManagement');
-          if (isCustom) {
+          const isCustom = !isShortcut && (
+                           (entry.launcher || '').toLowerCase() === 'custom' ||
+                           targetImagePath.includes('CustomLibraryManagement'));
+
+          if (isShortcut) {
+            this.updateShortcutManifestIcon(gameStub, targetImagePath);
+          } else if (isCustom) {
             this.updateCustomManifestGame(gameStub, targetImagePath);
           }
 

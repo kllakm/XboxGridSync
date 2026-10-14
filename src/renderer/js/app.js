@@ -213,7 +213,11 @@ function renderGames() {
     const statusClass = isSynced ? 'synced' : (isReady ? 'ready' : (game.status === 'Needs Review' ? 'review' : 'pending'));
     const statusText = isSynced ? '✓ Synced' : (isReady ? 'Ready to Sync' : (game.status === 'Needs Review' ? 'Needs Review' : 'Pending'));
 
-    const posterSrc = game.coverUrl || '';
+    const isCustom = (game.launcher || '').toLowerCase() === 'custom' ||
+                     (game.launcher || '').toLowerCase() === 'shortcut' ||
+                     game.source === 'xbox_shortcut' ||
+                     game.source === 'custom_manifest' ||
+                     game.source === 'user_custom';
 
     card.innerHTML = `
       <div class="card-poster-wrapper">
@@ -239,6 +243,11 @@ function renderGames() {
               </svg>
               <span>Edit</span>
             </button>
+            ${isCustom ? `
+              <button class="overlay-btn overlay-btn-secondary btn-delete-custom" data-id="${game.id}" title="Remove Game" style="color: #f87171;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+            ` : ''}
           </div>
         </div>
       </div>
@@ -258,6 +267,18 @@ function renderGames() {
       if (e.target.closest('.btn-quick-sync')) {
         e.stopPropagation();
         syncSingleGame(game);
+        return;
+      }
+      if (e.target.closest('.btn-delete-custom')) {
+        e.stopPropagation();
+        if (confirm(`Remove "${game.title}" from library and Xbox App shortcuts?`)) {
+          window.api.deleteCustomGame(game).then((res) => {
+            if (res && res.success) {
+              window.showToast('Game Removed', `"${game.title}" has been removed.`, 'info');
+              window.rescanLibrary();
+            }
+          });
+        }
         return;
       }
       window.ModalManager.openOverrideModal(game, (gameId, newCoverUrl) => {

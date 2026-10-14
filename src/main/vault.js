@@ -378,7 +378,7 @@ class VaultManager {
       } catch (e) {}
     }
 
-    // Reset CustomLibraryManagement.manifest in both locations to a clean state
+    // Reset CustomLibraryManagement manifests in all candidate locations to clean state
     const cleanManifestJson = JSON.stringify({
       version: 1,
       provider: { version: 1, enabled: true },
@@ -387,7 +387,11 @@ class VaultManager {
 
     const clmCandidates = [
       path.join(customLibDir, 'CustomLibraryManagement.manifest'),
-      path.join(altCustomLibDir, 'CustomLibraryManagement.manifest')
+      path.join(customLibDir, 'CustomLibraryManagement.json'),
+      path.join(altCustomLibDir, 'CustomLibraryManagement.manifest'),
+      path.join(altCustomLibDir, 'CustomLibraryManagement.json'),
+      path.join(roamingThirdPartyDir, 'CustomLibraryManagement', 'CustomLibraryManagement.manifest'),
+      path.join(roamingThirdPartyDir, 'CustomLibraryManagement', 'CustomLibraryManagement.json')
     ];
 
     for (const clmPath of clmCandidates) {
@@ -396,6 +400,33 @@ class VaultManager {
           fs.writeFileSync(clmPath, cleanManifestJson, 'utf8');
         } catch (e) {}
       }
+    }
+
+    // Clean ExternalAppShortcut loose injected images and orphaned/dead shortcuts
+    if (fs.existsSync(externalShortcutDir)) {
+      try {
+        const sFiles = fs.readdirSync(externalShortcutDir);
+        for (const sf of sFiles) {
+          const lower = sf.toLowerCase();
+          const fullPath = path.join(externalShortcutDir, sf);
+          if (lower.endsWith('.new') || lower.endsWith('.tmp') || lower.endsWith('.bak') || (lower.endsWith('.png') && lower.startsWith('shortcut_'))) {
+            try {
+              fs.unlinkSync(fullPath);
+              removedFiles++;
+            } catch (e) {}
+          } else if (lower.endsWith('.json') || lower.endsWith('.manifest')) {
+            try {
+              const raw = fs.readFileSync(fullPath, 'utf8');
+              const parsed = JSON.parse(raw);
+              const target = parsed.targetPath || parsed.installPath || parsed.executablePath || '';
+              if (!target || !fs.existsSync(target) || parsed.isDeleted || parsed.deleted || parsed.disabled || parsed.enabled === false) {
+                fs.unlinkSync(fullPath);
+                removedFiles++;
+              }
+            } catch (e) {}
+          }
+        }
+      } catch (e) {}
     }
 
     // Purge Xbox App internal thumbnail ImageCache
@@ -413,6 +444,165 @@ class VaultManager {
 
     console.log(`[Vault] Xbox App cache reset. Removed ${removedFiles} injected files, restored ${restoredFiles} original backups.`);
     return { removedFiles, restoredFiles };
+  }
+
+  // Delete a custom game or shortcut completely from Xbox App manifests, shortcut files, Vault, and cache
+  deleteCustomGame(game) {
+    if (!game) return { success: false, error: 'No game specified' };
+
+    const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
+    const xboxPackageDir = path.join(
+      localAppData,
+      'Packages',
+      'Microsoft.GamingApp_8wekyb3d8bbwe'
+    );
+    const thirdPartyDir = path.join(xboxPackageDir, 'LocalState', 'ThirdPartyLibraries');
+    const customLibDir = path.join(thirdPartyDir, 'CustomLibraryManagement');
+    const altCustomLibDir = path.join(xboxPackageDir, 'LocalState', 'CustomLibraryManagement');
+    const externalShortcutDir = path.join(xboxPackageDir, 'LocalState', 'ExternalAppShortcut');
+    const roamingThirdPartyDir = path.join(
+      xboxPackageDir,
+      'LocalCache',
+      'Roaming',
+      'Microsoft',
+      'XboxPCApp',
+      'ThirdPartyLibraries'
+    );
+    const imageCacheDir = path.join(xboxPackageDir, 'LocalCache', 'ImageCache');
+
+    const safeId = this.sanitizeIdentifier(game.id || game.originalId || game.title);
+    const targetTitle = (game.title || '').toLowerCase().trim();
+    const targetInstallPath = (game.installPath || '').toLowerCase().trim();
+    const origId = String(game.originalId || '').toLowerCase().trim();
+
+    console.log(`[Vault] Permanently deleting custom game: "${game.title}" (${game.id})`);
+
+    // 1. Delete matching shortcut files in ExternalAppShortcut
+    if (fs.existsSync(externalShortcutDir)) {
+      try {
+        const sFiles = fs.readdirSync(externalShortcutDir);
+        for (const sf of sFiles) {
+          const fullSPath = path.join(externalShortcutDir, sf);
+          if (game.shortcutManifestPath && path.resolve(game.shortcutManifestPath).toLowerCase() === path.resolve(fullSPath).toLowerCase()) {
+            try { fs.unlinkSync(fullSPath); } catch (e) {}
+            continue;
+          }
+          if (sf.endsWith('.json') || sf.endsWith('.manifest')) {
+            try {
+              const raw = fs.readFileSync(fullSPath, 'utf8');
+              const parsed = JSON.parse(raw);
+              const pId = String(parsed.id || '').toLowerCase();
+              const pTitle = String(parsed.title || parsed.name || '').toLowerCase().trim();
+              const pTarget = String(parsed.targetPath || parsed.installPath || parsed.executablePath || '').toLowerCase().trim();
+
+              if ((pId && (pId === origId || pId === safeId || `shortcut_${pId}` === safeId)) ||
+                  (targetTitle && pTitle === targetTitle) ||
+                  (targetInstallPath && pTarget && pTarget === targetInstallPath)) {
+                try { fs.unlinkSync(fullSPath); } catch (e) {}
+              }
+            } catch (e) {}
+          }
+          // Remove associated image files
+          const lower = sf.toLowerCase();
+          if (lower === `${safeId}.png` || lower === `shortcut_${safeId}.png` || (origId && lower.includes(origId))) {
+            try { fs.unlinkSync(fullSPath); } catch (e) {}
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 2. Remove entry from CustomLibraryManagement manifests in all locations
+    const manifestCandidates = [
+      path.join(customLibDir, 'CustomLibraryManagement.manifest'),
+      path.join(customLibDir, 'CustomLibraryManagement.json'),
+      path.join(altCustomLibDir, 'CustomLibraryManagement.manifest'),
+      path.join(altCustomLibDir, 'CustomLibraryManagement.json'),
+      path.join(roamingThirdPartyDir, 'CustomLibraryManagement', 'CustomLibraryManagement.manifest'),
+      path.join(roamingThirdPartyDir, 'CustomLibraryManagement', 'CustomLibraryManagement.json')
+    ];
+
+    for (const mPath of manifestCandidates) {
+      if (!fs.existsSync(mPath)) continue;
+      try {
+        const raw = fs.readFileSync(mPath, 'utf8').trim().replace(/^\uFEFF/, '');
+        if (!raw) continue;
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.gameCache) {
+          let modified = false;
+          if (Array.isArray(parsed.gameCache.games)) {
+            const before = parsed.gameCache.games.length;
+            parsed.gameCache.games = parsed.gameCache.games.filter(it => {
+              const itId = String(it.id || it.title || '').toLowerCase();
+              const itTitle = String(it.title || it.name || '').toLowerCase().trim();
+              const itPath = String(it.installLocation || it.installPath || '').toLowerCase().trim();
+              return !(itId === safeId || itId === origId || (targetTitle && itTitle === targetTitle) || (targetInstallPath && itPath === targetInstallPath));
+            });
+            if (parsed.gameCache.games.length !== before) modified = true;
+          } else if (typeof parsed.gameCache === 'object') {
+            for (const [key, val] of Object.entries(parsed.gameCache)) {
+              if (key === 'version') continue;
+              const kLower = key.toLowerCase();
+              const vTitle = (val && (val.title || val.name) ? String(val.title || val.name).toLowerCase().trim() : '');
+              const vPath = (val && (val.installLocation || val.installPath) ? String(val.installLocation || val.installPath).toLowerCase().trim() : '');
+              if (kLower === safeId || kLower === origId || `shortcut_${kLower}` === safeId ||
+                  (targetTitle && vTitle === targetTitle) ||
+                  (targetInstallPath && vPath === targetInstallPath)) {
+                delete parsed.gameCache[key];
+                modified = true;
+              }
+            }
+          }
+          if (modified) {
+            fs.writeFileSync(mPath, JSON.stringify(parsed, null, 2), 'utf8');
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 3. Remove loose artwork images in CustomLibraryManagement directories
+    [customLibDir, altCustomLibDir, path.join(roamingThirdPartyDir, 'CustomLibraryManagement')].forEach(dir => {
+      if (!fs.existsSync(dir)) return;
+      try {
+        const files = fs.readdirSync(dir);
+        for (const f of files) {
+          const fLower = f.toLowerCase();
+          if (fLower === `${safeId}.png` || fLower === `${safeId}.jpg` || (origId && fLower.includes(origId))) {
+            try { fs.unlinkSync(path.join(dir, f)); } catch (e) {}
+          }
+        }
+      } catch (e) {}
+    });
+
+    // 4. Remove from Vault
+    const vDir = this.getGameVaultDir(game.id);
+    if (fs.existsSync(vDir)) {
+      try { fs.rmSync(vDir, { recursive: true, force: true }); } catch (e) {}
+    }
+    if (game.originalId && game.originalId !== game.id) {
+      const vDirAlt = this.getGameVaultDir(game.originalId);
+      if (fs.existsSync(vDirAlt)) {
+        try { fs.rmSync(vDirAlt, { recursive: true, force: true }); } catch (e) {}
+      }
+    }
+
+    // 5. Remove from user customGames config if stored there
+    try {
+      const config = require('./config');
+      config.removeCustomGame(game.id);
+      if (game.originalId) config.removeCustomGame(game.originalId);
+    } catch (e) {}
+
+    // 6. Purge Xbox App internal thumbnail ImageCache
+    if (fs.existsSync(imageCacheDir)) {
+      try {
+        const icFiles = fs.readdirSync(imageCacheDir);
+        for (const ic of icFiles) {
+          try { fs.unlinkSync(path.join(imageCacheDir, ic)); } catch (e) {}
+        }
+      } catch (e) {}
+    }
+
+    return { success: true };
   }
 }
 

@@ -426,6 +426,10 @@ ipcMain.handle('games:removeCustom', async (event, gameId) => {
   return config.removeCustomGame(gameId);
 });
 
+ipcMain.handle('games:deleteCustomGame', async (event, game) => {
+  return vault.deleteCustomGame(game);
+});
+
 // 5. File Dialogs
 ipcMain.handle('dialog:selectExecutable', async () => {
   if (!mainWindow) return null;
