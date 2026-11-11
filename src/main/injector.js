@@ -51,7 +51,7 @@ class XboxAppInjector {
 
   isXboxAppRunning() {
     try {
-      const out = execSync('powershell.exe -NoProfile -Command "Get-Process XboxPcApp, Xbox -ErrorAction SilentlyContinue | Select-Object -ExpandProperty ProcessName"', {
+      const out = execSync('powershell.exe -NoProfile -Command "Get-Process XboxPcApp, Xbox, XboxAppServices -ErrorAction SilentlyContinue | Select-Object -ExpandProperty ProcessName"', {
         encoding: 'utf8',
         stdio: ['pipe', 'pipe', 'ignore']
       });
@@ -61,18 +61,40 @@ class XboxAppInjector {
     }
   }
 
-  async restartXboxApp() {
-    console.log('[Injector] Restarting Xbox PC App...');
+  getRunningXboxProcesses() {
     try {
-      execSync('powershell.exe -NoProfile -Command "Stop-Process -Name XboxPcApp, Xbox -Force -ErrorAction SilentlyContinue"', {
+      const out = execSync('powershell.exe -NoProfile -Command "Get-Process XboxPcApp, Xbox, XboxAppServices -ErrorAction SilentlyContinue | Select-Object -ExpandProperty ProcessName"', {
+        encoding: 'utf8',
         stdio: ['pipe', 'pipe', 'ignore']
       });
+      return out.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    } catch (err) {
+      return [];
+    }
+  }
+
+  terminateXboxProcesses() {
+    console.log('[Injector] Terminating Xbox app processes and background services...');
+    try {
+      execSync('powershell.exe -NoProfile -Command "Stop-Process -Name XboxPcApp, Xbox, XboxAppServices -Force -ErrorAction SilentlyContinue"', {
+        stdio: ['pipe', 'pipe', 'ignore']
+      });
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  async restartXboxApp() {
+    console.log('[Injector] Restarting Xbox PC App & background services...');
+    try {
+      this.terminateXboxProcesses();
       await new Promise(r => setTimeout(r, 1200));
       spawn('cmd.exe', ['/c', 'start', 'xbox:'], {
         detached: true,
         stdio: 'ignore'
       }).unref();
-      return { success: true, message: 'Xbox App restarted successfully.' };
+      return { success: true, message: 'Xbox App and background services restarted successfully.' };
     } catch (err) {
       console.error('[Injector] Error restarting Xbox App:', err.message);
       return { success: false, error: err.message };
@@ -236,6 +258,66 @@ class XboxAppInjector {
     return false;
   }
 
+  // Resolves the exact active thumbnail cache path registered in CustomLibraryManagement
+  resolveClmActiveThumbnailPath(game) {
+    const candidateDirs = [this.customLibraryDir, this.altCustomLibraryDir];
+    const targetTitle = (game.title || '').toLowerCase().trim();
+    const targetInstall = (game.installPath || '').toLowerCase().trim();
+    const origId = String(game.originalId || '').toLowerCase().trim();
+    const gameId = String(game.id || '').toLowerCase().trim();
+    const safeId = vault.sanitizeIdentifier(game.id || game.title);
+
+    for (const dir of candidateDirs) {
+      const manifestCandidates = [
+        path.join(dir, 'CustomLibraryManagement.manifest'),
+        path.join(dir, 'CustomLibraryManagement.json')
+      ];
+
+      for (const mPath of manifestCandidates) {
+        if (!fs.existsSync(mPath)) continue;
+        try {
+          const raw = fs.readFileSync(mPath, 'utf8').trim().replace(/^\uFEFF/, '');
+          if (!raw) continue;
+          const root = JSON.parse(raw);
+          if (!root || !root.gameCache) continue;
+
+          let entries = [];
+          if (Array.isArray(root.gameCache.games)) {
+            entries = root.gameCache.games;
+          } else if (typeof root.gameCache === 'object') {
+            for (const [k, v] of Object.entries(root.gameCache)) {
+              if (k === 'version') continue;
+              if (v && typeof v === 'object') entries.push({ ...v, _mapKey: k });
+            }
+          }
+
+          for (const item of entries) {
+            const itemKey = String(item._mapKey || item.id || '').toLowerCase().trim();
+            const itemTitle = (item.title || item.name || '').toLowerCase().trim();
+            const itemInstall = (item.installLocation || item.installPath || '').toLowerCase().trim();
+            const itemExec = (item.executableName || '').toLowerCase().trim();
+            const itemCombined = itemExec ? path.join(itemInstall, itemExec).toLowerCase() : itemInstall;
+
+            const isMatch = (itemKey && (itemKey === origId || itemKey === gameId || itemKey === safeId)) ||
+                            (targetTitle && itemTitle === targetTitle) ||
+                            (targetInstall && (itemInstall === targetInstall || itemCombined === targetInstall));
+
+            if (isMatch) {
+              if (item.imagePath) {
+                const resPath = path.isAbsolute(item.imagePath) ? item.imagePath : path.resolve(dir, item.imagePath);
+                return resPath;
+              }
+              const keyName = item._mapKey || item.id || safeId;
+              return path.join(this.customLibraryDir, `${vault.sanitizeIdentifier(keyName)}.png`);
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
+    return null;
+  }
+
   // Resolve the exact filesystem path that Xbox App expects for a game cover
   resolveTargetImagePath(game) {
     if (game.targetImagePath) {
@@ -245,13 +327,26 @@ class XboxAppInjector {
         if (game.source === 'xbox_shortcut' || game.launcher === 'SHORTCUT') {
           return path.join(this.externalShortcutDir, `${safeId}.png`);
         }
-        return path.join(this.altCustomLibraryDir, `${safeId}.png`);
+        return path.join(this.customLibraryDir, `${safeId}.png`);
       }
       return game.targetImagePath;
     }
 
     const launcher = (game.launcher || 'custom').toLowerCase();
     const safeId = vault.sanitizeIdentifier(game.id);
+
+    const isCustomOrShortcut = launcher === 'shortcut' ||
+                               game.source === 'xbox_shortcut' ||
+                               game.source === 'user_custom' ||
+                               game.source === 'custom_manifest' ||
+                               (game.targetImagePath && game.targetImagePath.includes('CustomLibraryManagement'));
+
+    if (isCustomOrShortcut) {
+      const activeClmPath = this.resolveClmActiveThumbnailPath(game);
+      if (activeClmPath) {
+        return activeClmPath;
+      }
+    }
 
     if (launcher === 'steam') {
       const appId = game.appId || safeId.replace(/^steam_/i, '');
@@ -277,20 +372,20 @@ class XboxAppInjector {
       return path.join(this.externalShortcutDir, `${safeId}.png`);
     }
 
-    // Default to native Xbox App CustomLibraryManagement
-    return path.join(this.altCustomLibraryDir, `${safeId}.png`);
+    // Default to active Xbox App ThirdPartyLibraries CustomLibraryManagement
+    return path.join(this.customLibraryDir, `${safeId}.png`);
   }
 
   // Inject a single game cover from Vault into Xbox App
   injectGame(game) {
-    if (!vault.hasCover(game.id)) {
+    if (!vault.hasCover(game)) {
       throw new Error(`Vault does not contain a cover for game: ${game.title} (${game.id})`);
     }
 
     this.ensureDirectories();
     this.lastWriteTime = Date.now();
 
-    const coverBuffer = vault.getCoverBuffer(game.id);
+    const coverBuffer = vault.getCoverBuffer(game);
     const targetImagePath = this.resolveTargetImagePath(game);
     const targetDir = path.dirname(targetImagePath);
 
@@ -298,38 +393,63 @@ class XboxAppInjector {
       fs.mkdirSync(targetDir, { recursive: true });
     }
 
+    // Prepare JPEG buffer variant for preview app compatibility
+    let jpgBuffer = coverBuffer;
+    try {
+      const { nativeImage } = require('electron');
+      const nImg = nativeImage.createFromBuffer(coverBuffer);
+      if (!nImg.isEmpty()) {
+        jpgBuffer = nImg.toJPEG(95);
+      }
+    } catch (e) {
+      jpgBuffer = coverBuffer;
+    }
+
+    const basePathWithoutExt = targetImagePath.replace(/\.(png|jpg|jpeg)$/i, '');
+    const pngPath = `${basePathWithoutExt}.png`;
+    const jpgPath = `${basePathWithoutExt}.jpg`;
+    const newPath = `${basePathWithoutExt}.new`;
+
     // 1. Create .bak backup of original Xbox artwork if it exists and backup doesn't already exist
-    const backupPath = targetImagePath.replace(/\.png$/i, '.bak');
-    if (!fs.existsSync(backupPath) && fs.existsSync(targetImagePath)) {
+    const backupPath = `${basePathWithoutExt}.bak`;
+    if (!fs.existsSync(backupPath) && fs.existsSync(pngPath)) {
       try {
-        fs.copyFileSync(targetImagePath, backupPath);
+        fs.copyFileSync(pngPath, backupPath);
         console.log(`[Injector] Backed up original artwork to ${backupPath}`);
       } catch (e) {
         console.warn('[Injector] Could not create .bak backup:', e.message);
       }
     }
 
-    // 2. Write the new image directly to targetImagePath
-    this.writeFileWithRetry(targetImagePath, coverBuffer);
-
-    // 3. Write companion .new file (compatible with SteamGridDB widget)
-    const newPath = targetImagePath.replace(/\.png$/i, '.new');
-    this.writeFileWithRetry(newPath, coverBuffer);
-
-    // 4. Clean up any stale legacy duplicate files in the target directory (e.g. .jpg, _cover.png)
-    const baseName = path.parse(targetImagePath).name;
-    const strayPatterns = [
-      path.join(targetDir, `${baseName}.jpg`),
-      path.join(targetDir, `${baseName}_cover.png`),
-      path.join(targetDir, `${baseName}_cover.jpg`)
-    ];
-    for (const sf of strayPatterns) {
-      if (fs.existsSync(sf)) {
-        try { fs.unlinkSync(sf); } catch (e) {}
+    // 2. Write both PNG and JPG variants (and companion .new file) with retry logic
+    try {
+      this.writeFileWithRetry(pngPath, coverBuffer);
+      this.writeFileWithRetry(jpgPath, jpgBuffer);
+      this.writeFileWithRetry(newPath, coverBuffer);
+    } catch (writeErr) {
+      // Check if file locking by Xbox process caused write error
+      if (this.isXboxAppRunning()) {
+        console.warn('[Injector] Xbox App process locked artwork file. Attempting cleanup/refresh...');
+        this.terminateXboxProcesses();
+        this.writeFileWithRetry(pngPath, coverBuffer);
+        this.writeFileWithRetry(jpgPath, jpgBuffer);
+        this.writeFileWithRetry(newPath, coverBuffer);
+      } else {
+        throw writeErr;
       }
     }
 
-    // 5. Update manifests based on game source (Shortcuts stay in ExternalAppShortcut)
+    // 3. Touch files with current UTC timestamp for instant cache busting
+    const now = new Date();
+    try {
+      fs.utimesSync(pngPath, now, now);
+      fs.utimesSync(jpgPath, now, now);
+      if (fs.existsSync(newPath)) fs.utimesSync(newPath, now, now);
+    } catch (touchErr) {
+      console.warn('[Injector] Warning updating utimes on injected covers:', touchErr.message);
+    }
+
+    // 4. Update manifests based on game source (Shortcuts stay in ExternalAppShortcut)
     const isShortcut = (game.launcher || '').toLowerCase() === 'shortcut' ||
                        game.source === 'xbox_shortcut';
     const isCustom = !isShortcut && (
@@ -339,29 +459,34 @@ class XboxAppInjector {
                      targetImagePath.includes('CustomLibraryManagement'));
 
     if (isShortcut) {
-      this.updateShortcutManifestIcon(game, targetImagePath);
+      this.updateShortcutManifestIcon(game, pngPath);
     } else if (isCustom) {
-      this.updateCustomManifestGame(game, targetImagePath);
+      this.updateCustomManifestGame(game, pngPath);
 
-      // Ensure a mirror copy exists in native CustomLibraryManagement so all Xbox subsystems see it
+      // Ensure mirror copies exist in both native and ThirdParty CustomLibraryManagement
       const safeId = vault.sanitizeIdentifier(game.id);
       const mirrorPng = path.join(this.altCustomLibraryDir, `${safeId}.png`);
-      if (mirrorPng.toLowerCase() !== targetImagePath.toLowerCase()) {
+      const mirrorJpg = path.join(this.altCustomLibraryDir, `${safeId}.jpg`);
+      if (mirrorPng.toLowerCase() !== pngPath.toLowerCase()) {
         try {
-          fs.copyFileSync(targetImagePath, mirrorPng);
+          fs.copyFileSync(pngPath, mirrorPng);
+          fs.copyFileSync(jpgPath, mirrorJpg);
+          fs.utimesSync(mirrorPng, now, now);
+          fs.utimesSync(mirrorJpg, now, now);
         } catch (e) {}
       }
     }
 
-    // 6. Purge Xbox App internal thumbnail ImageCache so new artwork refreshes immediately
+    // 5. Purge Xbox App internal thumbnail ImageCache so new artwork refreshes immediately
     this.clearImageCache();
 
-    console.log(`[Injector] Successfully injected artwork for "${game.title}" -> ${targetImagePath}`);
+    console.log(`[Injector] Successfully injected artwork for "${game.title}" -> ${pngPath} / ${jpgPath}`);
     return {
       success: true,
-      injectedPath: targetImagePath,
+      injectedPath: pngPath,
       gameId: game.id,
-      title: game.title
+      title: game.title,
+      xboxRunning: this.isXboxAppRunning()
     };
   }
 
@@ -376,7 +501,7 @@ class XboxAppInjector {
     };
 
     for (const game of games) {
-      if (vault.hasCover(game.id)) {
+      if (vault.hasCover(game)) {
         results.total++;
         try {
           this.injectGame(game);

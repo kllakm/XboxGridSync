@@ -808,6 +808,59 @@ window.ModalManager = {
       });
     }
 
+    // Clean Orphaned Vault Folders
+    const cleanOrphansBtn = document.getElementById('btnCleanOrphans');
+    if (cleanOrphansBtn) {
+      cleanOrphansBtn.addEventListener('click', async () => {
+        try {
+          cleanOrphansBtn.disabled = true;
+          window.showToast('Cleaning Vault', 'Scanning for orphaned artwork folders...', 'info');
+          const res = await window.api.cleanOrphanedVaultFolders();
+          const freedMb = (res.freedBytes / (1024 * 1024)).toFixed(2);
+          window.showToast('Vault Cleanup Complete', `Pruned ${res.prunedCount} orphaned folders (${freedMb} MB freed).`, 'success');
+        } catch (err) {
+          window.showToast('Cleanup Error', err.message, 'error');
+        } finally {
+          cleanOrphansBtn.disabled = false;
+        }
+      });
+    }
+
+    // Check for Updates in Settings
+    const checkUpdatesBtn = document.getElementById('btnCheckUpdates');
+    const updateCheckStatus = document.getElementById('updateCheckStatus');
+    if (checkUpdatesBtn) {
+      checkUpdatesBtn.addEventListener('click', async () => {
+        try {
+          checkUpdatesBtn.disabled = true;
+          if (updateCheckStatus) updateCheckStatus.textContent = 'Checking GitHub...';
+          const info = await window.api.checkForUpdates(true); // force query
+          if (info.updateAvailable) {
+            if (updateCheckStatus) {
+              updateCheckStatus.innerHTML = `<span style="color: #00FF87; font-weight: 600;">Update v${info.latestVersion} available!</span>`;
+            }
+            if (window.showUpdateBanner) {
+              window.showUpdateBanner(info);
+            }
+            window.showToast('Update Available', `Xbox Grid Sync v${info.latestVersion} is available.`, 'success');
+          } else if (info.error) {
+            if (updateCheckStatus) updateCheckStatus.textContent = 'Check failed';
+            window.showToast('Update Check', info.error, 'error');
+          } else {
+            if (updateCheckStatus) {
+              updateCheckStatus.innerHTML = `<span style="color: var(--text-muted);">You're on the latest version (v${info.currentVersion})</span>`;
+            }
+            window.showToast('Up to Date', `Xbox Grid Sync v${info.currentVersion} is the latest version.`, 'success');
+          }
+        } catch (err) {
+          if (updateCheckStatus) updateCheckStatus.textContent = 'Check failed';
+          window.showToast('Update Check Error', err.message, 'error');
+        } finally {
+          checkUpdatesBtn.disabled = false;
+        }
+      });
+    }
+
     // Clear Xbox App Thumbnails
     const clearXboxCacheBtn = document.getElementById('btnClearXboxCache');
     if (clearXboxCacheBtn) {

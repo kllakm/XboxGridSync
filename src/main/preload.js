@@ -16,11 +16,23 @@ contextBridge.exposeInMainWorld('api', {
 
   // Xbox App Injection & Repair
   restartXboxApp: () => ipcRenderer.invoke('xbox:restart'),
+  getXboxProcessStatus: () => ipcRenderer.invoke('xbox:status'),
+  terminateXboxProcesses: () => ipcRenderer.invoke('xbox:terminate'),
   restoreVaultToXbox: () => ipcRenderer.invoke('xbox:restoreVault'),
+  cleanOrphanedVaultFolders: () => ipcRenderer.invoke('vault:cleanOrphans'),
   clearAllData: () => ipcRenderer.invoke('vault:clearAll'),
   clearXboxCache: () => ipcRenderer.invoke('vault:clearXboxCache'),
   openVaultFolder: () => ipcRenderer.invoke('shell:openVault'),
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
+
+  // Updates & Maintenance
+  checkForUpdates: (force = false) => ipcRenderer.invoke('updater:check', force),
+  downloadUpdate: (url) => ipcRenderer.invoke('updater:download', url),
+  onUpdateAvailable: (callback) => {
+    const handler = (event, data) => callback(data);
+    ipcRenderer.on('app:updateAvailable', handler);
+    return () => ipcRenderer.removeListener('app:updateAvailable', handler);
+  },
 
   // Config & Custom Games
   getConfig: () => ipcRenderer.invoke('config:get'),

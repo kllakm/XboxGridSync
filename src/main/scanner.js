@@ -370,12 +370,16 @@ class GameScanner {
               }
 
               const safeId = `shortcut_${vault.sanitizeIdentifier(parsed.id || title)}`;
+              const persistentKey = vault.getPersistentCustomKey(title, targetPath);
+              vault.registerShortcutMapping(safeId, persistentKey, { title, installPath: targetPath });
+              if (parsed.id) vault.registerShortcutMapping(parsed.id, persistentKey, { title, installPath: targetPath });
 
               // Track active shortcut targets and titles
               validShortcutTargets.add(path.resolve(targetPath).toLowerCase());
               validShortcutTitles.add(title.toLowerCase().replace(/[^a-z0-9]/g, ''));
               if (parsed.id) validShortcutIds.add(String(parsed.id).toLowerCase());
               validShortcutIds.add(safeId.toLowerCase());
+              validShortcutIds.add(persistentKey.toLowerCase());
 
               // Ensure targetImagePath is never an .exe file
               let targetImagePath = parsed.iconPath;
@@ -383,8 +387,14 @@ class GameScanner {
                 targetImagePath = path.join(externalShortcutDir, `${safeId}.png`);
               }
 
+              let currentThumbnail = targetImagePath && fs.existsSync(targetImagePath) ? targetImagePath : (parsed.iconPath && fs.existsSync(parsed.iconPath) ? parsed.iconPath : null);
+              if (!currentThumbnail && (vault.hasCover(persistentKey) || vault.hasCover(safeId))) {
+                currentThumbnail = vault.getCoverPath(persistentKey);
+              }
+
               rawGames.push({
                 id: safeId,
+                vaultKey: persistentKey,
                 originalId: parsed.id || title,
                 externalPlatformId: parsed.id || title,
                 title,
@@ -393,7 +403,7 @@ class GameScanner {
                 shortcutManifestPath: fullFilePath,
                 installPath: targetPath,
                 source: 'xbox_shortcut',
-                currentThumbnail: targetImagePath && fs.existsSync(targetImagePath) ? targetImagePath : (parsed.iconPath && fs.existsSync(parsed.iconPath) ? parsed.iconPath : null)
+                currentThumbnail
               });
             } catch (e) {}
           }
@@ -536,19 +546,33 @@ class GameScanner {
                 isShortcutEntry ? `shortcut_${rawId}` : (prov === 'steam' ? `steam_${externalPlatformId}` : (prov === 'epic' ? `epic_${externalPlatformId}` : `${prov}_${externalPlatformId}`))
               );
 
+              const itemTitle = item.title || item.name || item.displayName || null;
+              let persistentKey = null;
+              if (isShortcutEntry && !appId) {
+                persistentKey = vault.getPersistentCustomKey(itemTitle, targetCheck || installPath);
+                vault.registerShortcutMapping(safeId, persistentKey, { title: itemTitle, installPath: targetCheck || installPath });
+                if (rawId) vault.registerShortcutMapping(rawId, persistentKey, { title: itemTitle, installPath: targetCheck || installPath });
+              }
+
+              let currentThumbnail = fs.existsSync(targetImagePath) ? targetImagePath : null;
+              if (!currentThumbnail && persistentKey && (vault.hasCover(persistentKey) || vault.hasCover(safeId))) {
+                currentThumbnail = vault.getCoverPath(persistentKey);
+              }
+
               rawGames.push({
                 id: safeId,
+                vaultKey: persistentKey,
                 originalId: rawId,
                 externalPlatformId,
                 namespace,
                 appId,
-                title: item.title || item.name || item.displayName || null,
+                title: itemTitle,
                 launcher,
                 targetImagePath,
                 installPath,
                 executableName: execName,
                 source: isCustom ? 'custom_manifest' : 'xbox_registry',
-                currentThumbnail: fs.existsSync(targetImagePath) ? targetImagePath : null
+                currentThumbnail
               });
             }
 
@@ -603,9 +627,16 @@ class GameScanner {
         continue; // Dead custom game
       }
       const safeId = cg.id || `custom_${vault.sanitizeIdentifier(cg.title)}`;
+      const persistentKey = vault.getPersistentCustomKey(cg.title, installPath);
+      vault.registerShortcutMapping(safeId, persistentKey, { title: cg.title, installPath });
       const targetImagePath = cg.targetImagePath || path.join(this.xboxCustomLibraryDir, `${safeId}.png`);
+      let currentThumbnail = fs.existsSync(targetImagePath) ? targetImagePath : null;
+      if (!currentThumbnail && (vault.hasCover(persistentKey) || vault.hasCover(safeId))) {
+        currentThumbnail = vault.getCoverPath(persistentKey);
+      }
       rawGames.push({
         id: safeId,
+        vaultKey: persistentKey,
         originalId: safeId,
         externalPlatformId: safeId,
         title: cg.title,
@@ -613,7 +644,7 @@ class GameScanner {
         targetImagePath,
         installPath,
         source: 'user_custom',
-        currentThumbnail: fs.existsSync(targetImagePath) ? targetImagePath : null
+        currentThumbnail
       });
     }
 
@@ -791,9 +822,9 @@ class GameScanner {
 
     // 6. Process Sync Status & Artwork Preview (Auto-selects best available community artwork)
     const processedGames = await mapConcurrent(uniqueFinalGames, 4, async (game) => {
-      const hasVaultCover = vault.hasCover(game.id);
-      const vaultMeta = vault.getMetadata(game.id);
-      let coverUrl = hasVaultCover ? vault.getCoverAsDataUrl(game.id) : null;
+      const hasVaultCover = vault.hasCover(game);
+      const vaultMeta = vault.getMetadata(game);
+      let coverUrl = hasVaultCover ? vault.getCoverAsDataUrl(game) : null;
       let isSquare = true;
 
       // Primary Selection on scan: Automatically select best available community artwork

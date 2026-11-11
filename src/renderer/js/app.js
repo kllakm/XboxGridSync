@@ -407,6 +407,30 @@ async function syncAllGames() {
   }
 }
 
+let currentUpdateInfo = null;
+
+window.showUpdateBanner = function(updateInfo) {
+  currentUpdateInfo = updateInfo;
+  const banner = document.getElementById('updateBanner');
+  const versionEl = document.getElementById('updateBannerVersion');
+  const notesEl = document.getElementById('updateBannerNotes');
+  if (!banner) return;
+
+  if (versionEl) versionEl.textContent = `v${updateInfo.latestVersion}`;
+  if (notesEl && updateInfo.releaseNotes) {
+    const lines = updateInfo.releaseNotes.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const firstBullet = lines.find(l => l.startsWith('-') || l.startsWith('*') || l.startsWith('#')) || lines[0] || '';
+    const cleanBullet = firstBullet.replace(/^[#*\s-]+/, '').trim();
+    notesEl.textContent = cleanBullet ? cleanBullet : `Release ${updateInfo.releaseTag || ''} is available on GitHub.`;
+  }
+  banner.style.display = 'flex';
+};
+
+window.hideUpdateBanner = function() {
+  const banner = document.getElementById('updateBanner');
+  if (banner) banner.style.display = 'none';
+};
+
 // ============================================================================
 // Event Listeners & Initialization
 // ============================================================================
@@ -418,6 +442,27 @@ function initEventListeners() {
   document.getElementById('btnRescan').addEventListener('click', () => {
     window.rescanLibrary();
   });
+
+  // Update Banner actions
+  const btnUpdateDownload = document.getElementById('btnUpdateDownload');
+  if (btnUpdateDownload) {
+    btnUpdateDownload.addEventListener('click', () => {
+      if (currentUpdateInfo && currentUpdateInfo.downloadUrl) {
+        window.api.downloadUpdate(currentUpdateInfo.downloadUrl);
+      } else if (currentUpdateInfo && currentUpdateInfo.releaseUrl) {
+        window.api.downloadUpdate(currentUpdateInfo.releaseUrl);
+      } else {
+        window.api.downloadUpdate('https://github.com/kllakm/XboxGridSync/releases/latest');
+      }
+    });
+  }
+
+  const btnUpdateDismiss = document.getElementById('btnUpdateDismiss');
+  if (btnUpdateDismiss) {
+    btnUpdateDismiss.addEventListener('click', () => {
+      window.hideUpdateBanner();
+    });
+  }
 
   // Add Game (optional)
   const addGameBtn = document.getElementById('btnAddGame');
@@ -487,9 +532,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (badge) badge.textContent = `v${version}`;
       const settingsVer = document.getElementById('settingsPageVersion') || document.getElementById('settingsModalVersion');
       if (settingsVer) settingsVer.textContent = `v${version}`;
+      const settingsDesc = document.getElementById('settingsUpdateDesc');
+      if (settingsDesc) settingsDesc.textContent = `Currently on v${version}. Queries GitHub releases for the latest versions.`;
     }
   } catch (err) {
     console.warn('[App] Could not fetch version:', err);
+  }
+
+  // Listen for automatic GitHub updates detected in background
+  if (window.api && window.api.onUpdateAvailable) {
+    window.api.onUpdateAvailable((updateInfo) => {
+      console.log('[App] New update available from GitHub:', updateInfo);
+      window.showUpdateBanner(updateInfo);
+    });
   }
 
   // Check initial shield status & first-launch tutorial

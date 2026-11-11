@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const crypto = require('crypto');
 
 class VaultManager {
   constructor() {
@@ -14,6 +15,8 @@ class VaultManager {
     this.cacheDir = path.join(this.baseDir, 'cache');
     this.nameToAppIdPath = path.join(this.cacheDir, 'name_to_appid.json');
     this.nameToAppId = {};
+    this.shortcutMappingsPath = path.join(this.baseDir, 'shortcut_mappings.json');
+    this.shortcutMappings = {};
     this.init();
   }
 
@@ -31,9 +34,92 @@ class VaultManager {
       } else {
         this.saveNameToAppId();
       }
+      if (fs.existsSync(this.shortcutMappingsPath)) {
+        const mRaw = fs.readFileSync(this.shortcutMappingsPath, 'utf8');
+        this.shortcutMappings = JSON.parse(mRaw);
+      } else {
+        this.saveShortcutMappings();
+      }
     } catch (err) {
       console.error('[Vault] Error initializing vault directories:', err.message);
     }
+  }
+
+  saveShortcutMappings() {
+    try {
+      fs.writeFileSync(this.shortcutMappingsPath, JSON.stringify(this.shortcutMappings, null, 2), 'utf8');
+    } catch (err) {
+      console.error('[Vault] Error saving shortcut mappings:', err.message);
+    }
+  }
+
+  // Generate a persistent, deduplicated key for non-Steam custom shortcuts
+  // based on sanitized title and a deterministic hash of target executable path
+  getPersistentCustomKey(title, targetPathOrInstallLocation) {
+    const safeTitle = (title || 'custom')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '') || 'app';
+
+    const normPath = (targetPathOrInstallLocation || '')
+      .toLowerCase()
+      .trim()
+      .replace(/\\/g, '/');
+
+    const pathHash = crypto
+      .createHash('md5')
+      .update(normPath || safeTitle)
+      .digest('hex')
+      .substring(0, 10);
+
+    return `custom_${safeTitle}_${pathHash}`;
+  }
+
+  // Map transient Xbox shortcut instance ID or GUID to a persistent Vault key
+  registerShortcutMapping(instanceId, persistentKey, details = {}) {
+    if (!instanceId || !persistentKey) return;
+    const safeInst = this.sanitizeIdentifier(instanceId);
+    this.shortcutMappings[safeInst] = {
+      persistentKey,
+      title: details.title || null,
+      installPath: details.installPath || null,
+      updatedAt: new Date().toISOString()
+    };
+    this.saveShortcutMappings();
+  }
+
+  // Resolve whether game or ID maps to a persistent Vault key
+  resolveVaultKey(gameOrId) {
+    if (!gameOrId) return 'unknown';
+
+    if (typeof gameOrId === 'object') {
+      const game = gameOrId;
+      if (game.vaultKey) return this.sanitizeIdentifier(game.vaultKey);
+
+      const launcher = (game.launcher || '').toUpperCase();
+      const source = (game.source || '').toLowerCase();
+      const isCustomShortcut = (launcher === 'SHORTCUT' || source === 'xbox_shortcut' || source === 'user_custom' || source === 'custom_manifest') && !game.appId;
+
+      if (isCustomShortcut) {
+        const pKey = this.getPersistentCustomKey(game.title, game.installPath || game.targetImagePath);
+        if (game.id) this.registerShortcutMapping(game.id, pKey, game);
+        if (game.originalId) this.registerShortcutMapping(game.originalId, pKey, game);
+        return pKey;
+      }
+
+      const safeId = this.sanitizeIdentifier(game.id || game.title);
+      if (this.shortcutMappings[safeId]) {
+        return this.shortcutMappings[safeId].persistentKey;
+      }
+      return safeId;
+    }
+
+    const safeId = this.sanitizeIdentifier(gameOrId);
+    if (this.shortcutMappings[safeId]) {
+      return this.shortcutMappings[safeId].persistentKey;
+    }
+    return safeId;
   }
 
   sanitizeIdentifier(id) {
@@ -42,21 +128,36 @@ class VaultManager {
     return String(id).replace(/[^a-zA-Z0-9_\-\.]/g, '_').toLowerCase();
   }
 
-  getGameVaultDir(gameId) {
-    const safeId = this.sanitizeIdentifier(gameId);
-    return path.join(this.vaultDir, safeId);
+  getGameVaultDir(gameIdOrGame) {
+    const key = this.resolveVaultKey(gameIdOrGame);
+    return path.join(this.vaultDir, key);
   }
 
-  getCoverPath(gameId) {
-    const dir = this.getGameVaultDir(gameId);
+  getCoverPath(gameIdOrGame) {
+    const dir = this.getGameVaultDir(gameIdOrGame);
     const pngPath = path.join(dir, 'cover.png');
     if (fs.existsSync(pngPath)) return pngPath;
-    return path.join(dir, 'cover.jpg');
+    const jpgPath = path.join(dir, 'cover.jpg');
+    if (fs.existsSync(jpgPath)) return jpgPath;
+
+    // Fallback: check raw unmapped gameId folder in case it was saved before normalization
+    const rawId = typeof gameIdOrGame === 'object' ? (gameIdOrGame.id || gameIdOrGame.title) : gameIdOrGame;
+    if (rawId) {
+      const rawDir = path.join(this.vaultDir, this.sanitizeIdentifier(rawId));
+      if (rawDir !== dir) {
+        const rawPng = path.join(rawDir, 'cover.png');
+        if (fs.existsSync(rawPng)) return rawPng;
+        const rawJpg = path.join(rawDir, 'cover.jpg');
+        if (fs.existsSync(rawJpg)) return rawJpg;
+      }
+    }
+
+    return pngPath;
   }
 
-  hasCover(gameId) {
+  hasCover(gameIdOrGame) {
     try {
-      const coverPath = this.getCoverPath(gameId);
+      const coverPath = this.getCoverPath(gameIdOrGame);
       if (fs.existsSync(coverPath)) {
         const stats = fs.statSync(coverPath);
         return stats.size > 500; // valid image size
@@ -104,11 +205,21 @@ class VaultManager {
     }
   }
 
-  saveCover(gameId, imageBuffer, metadata = {}) {
+  saveCover(gameIdOrGame, imageBuffer, metadata = {}) {
     try {
-      const dir = this.getGameVaultDir(gameId);
+      const targetObj = typeof gameIdOrGame === 'object'
+        ? gameIdOrGame
+        : { id: gameIdOrGame, ...metadata };
+
+      const vKey = this.resolveVaultKey(metadata.vaultKey ? metadata.vaultKey : targetObj);
+      const dir = path.join(this.vaultDir, vKey);
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
+      }
+
+      const rawId = typeof gameIdOrGame === 'object' ? gameIdOrGame.id : gameIdOrGame;
+      if (rawId && rawId !== vKey) {
+        this.registerShortcutMapping(rawId, vKey, metadata);
       }
 
       // Convert to 1:1 Square PNG unless explicitly bypassed
@@ -119,11 +230,14 @@ class VaultManager {
       const metaPath = path.join(dir, 'metadata.json');
 
       const meta = {
-        gameId,
+        gameId: rawId,
+        vaultKey: vKey,
         savedAt: new Date().toISOString(),
         size: pngBuffer.length,
         format: 'png',
         aspectRatio: '1:1',
+        title: metadata.title || null,
+        installPath: metadata.installPath || null,
         targetImagePath: metadata.targetImagePath || null,
         ...metadata
       };
@@ -131,40 +245,48 @@ class VaultManager {
       fs.writeFileSync(coverPngPath, pngBuffer);
       fs.writeFileSync(coverJpgPath, pngBuffer);
       fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2), 'utf8');
-      console.log(`[Vault] Stored 1:1 square PNG cover for ${gameId} (${pngBuffer.length} bytes)`);
+      console.log(`[Vault] Stored 1:1 square PNG cover in ${vKey} (${pngBuffer.length} bytes)`);
       return coverPngPath;
     } catch (err) {
-      console.error(`[Vault] Failed to save cover for ${gameId}:`, err.message);
+      console.error(`[Vault] Failed to save cover:`, err.message);
       throw err;
     }
   }
 
-  getCoverBuffer(gameId) {
+  getCoverBuffer(gameIdOrGame) {
     try {
-      const coverPath = this.getCoverPath(gameId);
+      const coverPath = this.getCoverPath(gameIdOrGame);
       if (fs.existsSync(coverPath)) {
         return fs.readFileSync(coverPath);
       }
     } catch (err) {
-      console.error(`[Vault] Error reading cover buffer for ${gameId}:`, err.message);
+      console.error(`[Vault] Error reading cover buffer:`, err.message);
     }
     return null;
   }
 
-  getCoverAsDataUrl(gameId) {
-    const buffer = this.getCoverBuffer(gameId);
+  getCoverAsDataUrl(gameIdOrGame) {
+    const buffer = this.getCoverBuffer(gameIdOrGame);
     if (buffer) {
       return `data:image/png;base64,${buffer.toString('base64')}`;
     }
     return null;
   }
 
-  getMetadata(gameId) {
+  getMetadata(gameIdOrGame) {
     try {
-      const dir = this.getGameVaultDir(gameId);
+      const dir = this.getGameVaultDir(gameIdOrGame);
       const metaPath = path.join(dir, 'metadata.json');
       if (fs.existsSync(metaPath)) {
         return JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+      }
+      // Fallback to raw folder
+      const rawId = typeof gameIdOrGame === 'object' ? gameIdOrGame.id : gameIdOrGame;
+      if (rawId) {
+        const rawMeta = path.join(this.vaultDir, this.sanitizeIdentifier(rawId), 'metadata.json');
+        if (fs.existsSync(rawMeta)) {
+          return JSON.parse(fs.readFileSync(rawMeta, 'utf8'));
+        }
       }
     } catch (err) {
       // ignore
@@ -225,6 +347,132 @@ class VaultManager {
     }
   }
 
+  // Prune cached artwork folders in Vault whose corresponding games/shortcuts
+  // no longer exist in any active launcher, config, or Xbox App cache
+  cleanOrphanedVaultFolders(activeGames = null) {
+    let prunedCount = 0;
+    let freedBytes = 0;
+    const prunedFolders = [];
+
+    if (!fs.existsSync(this.vaultDir)) {
+      return { prunedCount, freedBytes, prunedFolders };
+    }
+
+    // Build authoritative set of active keys, IDs, titles, and target paths
+    const activeKeys = new Set();
+    const activePaths = new Set();
+    const activeTitles = new Set();
+
+    let games = activeGames;
+    if (!games || !Array.isArray(games) || games.length === 0) {
+      try {
+        const scanner = require('./scanner');
+        games = scanner.getCachedLibrary() || [];
+      } catch (e) {
+        games = [];
+      }
+    }
+
+    for (const g of games) {
+      if (g.id) activeKeys.add(this.sanitizeIdentifier(g.id));
+      if (g.originalId) activeKeys.add(this.sanitizeIdentifier(g.originalId));
+      if (g.vaultKey) activeKeys.add(this.sanitizeIdentifier(g.vaultKey));
+      if (g.appId) activeKeys.add(`steam_${g.appId}`);
+      if (g.title) {
+        activeTitles.add(g.title.toLowerCase().trim());
+        activeTitles.add(g.title.toLowerCase().replace(/[^a-z0-9]/g, ''));
+      }
+      if (g.installPath) {
+        activePaths.add(path.resolve(g.installPath).toLowerCase());
+      }
+    }
+
+    // Include registered persistent keys from shortcut mappings
+    for (const [sId, mapped] of Object.entries(this.shortcutMappings)) {
+      activeKeys.add(this.sanitizeIdentifier(sId));
+      if (mapped.persistentKey) {
+        activeKeys.add(this.sanitizeIdentifier(mapped.persistentKey));
+      }
+      if (mapped.installPath) {
+        activePaths.add(path.resolve(mapped.installPath).toLowerCase());
+      }
+      if (mapped.title) {
+        activeTitles.add(mapped.title.toLowerCase().trim());
+      }
+    }
+
+    try {
+      const subdirs = fs.readdirSync(this.vaultDir, { withFileTypes: true });
+      for (const d of subdirs) {
+        if (!d.isDirectory()) continue;
+        const folderName = d.name;
+        const folderPath = path.join(this.vaultDir, folderName);
+        const folderKey = this.sanitizeIdentifier(folderName);
+
+        // Check 1: Is folder directly matched to an active key?
+        if (activeKeys.has(folderKey)) {
+          continue;
+        }
+
+        // Check 2: Inspect metadata.json if present
+        let isReferenced = false;
+        const metaPath = path.join(folderPath, 'metadata.json');
+        if (fs.existsSync(metaPath)) {
+          try {
+            const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+            const mId = meta.gameId ? this.sanitizeIdentifier(meta.gameId) : null;
+            const mVKey = meta.vaultKey ? this.sanitizeIdentifier(meta.vaultKey) : null;
+            const mTitle = meta.title ? meta.title.toLowerCase().trim() : null;
+            const mTitleNorm = meta.title ? meta.title.toLowerCase().replace(/[^a-z0-9]/g, '') : null;
+            const mPath = meta.installPath ? path.resolve(meta.installPath).toLowerCase() : null;
+
+            if (mId && activeKeys.has(mId)) isReferenced = true;
+            if (mVKey && activeKeys.has(mVKey)) isReferenced = true;
+            if (mTitle && (activeTitles.has(mTitle) || (mTitleNorm && activeTitles.has(mTitleNorm)))) isReferenced = true;
+            if (mPath && (activePaths.has(mPath) || fs.existsSync(mPath))) isReferenced = true;
+          } catch (e) {}
+        }
+
+        if (isReferenced) continue;
+
+        // Folder is confirmed orphaned -> prune it
+        let folderSize = 0;
+        try {
+          const files = fs.readdirSync(folderPath);
+          for (const f of files) {
+            try {
+              const stat = fs.statSync(path.join(folderPath, f));
+              folderSize += stat.size;
+            } catch (e) {}
+          }
+          fs.rmSync(folderPath, { recursive: true, force: true });
+          prunedCount++;
+          freedBytes += folderSize;
+          prunedFolders.push(folderName);
+          console.log(`[Vault] Pruned orphaned vault folder: ${folderName} (${folderSize} bytes)`);
+        } catch (rmErr) {
+          console.warn(`[Vault] Could not prune folder ${folderName}:`, rmErr.message);
+        }
+      }
+
+      // Also clean dead mappings from shortcut_mappings.json
+      let mappingsChanged = false;
+      for (const [sId, mapped] of Object.entries(this.shortcutMappings)) {
+        if (!activeKeys.has(this.sanitizeIdentifier(sId)) && (!mapped.installPath || !fs.existsSync(mapped.installPath))) {
+          delete this.shortcutMappings[sId];
+          mappingsChanged = true;
+        }
+      }
+      if (mappingsChanged) this.saveShortcutMappings();
+
+    } catch (err) {
+      console.error('[Vault] Error in cleanOrphanedVaultFolders:', err.message);
+    }
+
+    console.log(`[Vault] Orphan cleanup completed: ${prunedCount} folders pruned, ${(freedBytes / (1024 * 1024)).toFixed(2)} MB freed.`);
+    return { prunedCount, freedBytes, prunedFolders };
+  }
+
   // Full reset: delete all vault covers and local cache
   clearAllData() {
     let removedCovers = 0;
@@ -256,6 +504,11 @@ class VaultManager {
     } catch (err) {
       console.error('[Vault] Error clearing cache:', err.message);
     }
+
+    try {
+      this.shortcutMappings = {};
+      this.saveShortcutMappings();
+    } catch (err) {}
 
     // Clear user-added custom games from config
     try {

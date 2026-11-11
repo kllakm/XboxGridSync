@@ -209,6 +209,23 @@ npm run pack
 
 ## Changelog
 
+### [v1.9.0] - 2026-11-11
+- **Image Injection Robustness for Re-added Custom Shortcuts (e.g. NuvioDeck):**
+  - Resolved active thumbnail cache path registration directly within `%LOCALAPPDATA%\Packages\Microsoft.GamingApp_8wekyb3d8bbwe\LocalState\ThirdPartyLibraries\CustomLibraryManagement\` and native `LocalState\CustomLibraryManagement`.
+  - Added automatic file touch / modified timestamp update (`LastWriteTimeUtc` / mtime via `fs.utimesSync`) on all injected `.png` and `.jpg` variants to invalidate Xbox App's internal visual memory cache immediately.
+  - Implemented dual-format injection (writing both `.png` and true 1:1 `.jpg` buffers) for custom shortcuts to satisfy both naming and decoding variants expected by Xbox App preview builds.
+  - Enhanced process monitoring and locking detection for `XboxPcApp`, `Xbox`, and `XboxAppServices` with automated termination and cache refresh options.
+- **Vault Deduplication & Identifier Normalization:**
+  - Normalized non-Steam custom shortcuts using deterministic persistent Vault keys (`custom_<sanitizedTitle>_<pathHash>`) computed from target executable path and title rather than transient Xbox shortcut GUIDs.
+  - Added a persistent shortcut mapping index (`shortcut_mappings.json`) linking active Xbox shortcut instance GUIDs to persistent Vault entries, ensuring re-added shortcuts immediately reuse existing artwork without duplicating assets.
+  - Introduced "Clean Orphaned Vault Folders" routine (in Settings and background maintenance) to prune cached artwork directories whose corresponding titles no longer exist in any launcher, config, or Xbox cache.
+- **GitHub Auto-Update Detection & Prompt:**
+  - Added asynchronous background update checker on startup querying GitHub API (`https://api.github.com/repos/kllakm/XboxGridSync/releases/latest`) without blocking UI.
+  - Added "Check for Updates" button and live status display in Settings.
+  - Integrated SemVer comparison and intelligent target asset matching (`XboxGridSync-portable.exe` for portable mode, `XboxGridSync-Setup.exe` for installer mode).
+  - Designed an Xbox Green acrylic notification banner with release notes preview, "Download Update", and "Dismiss / Later" actions.
+  - Implemented 4-hour rate limit caching to prevent GitHub API rate limit throttling.
+
 ### [v1.8.13] - 2026-10-14
 - **Manifest-Centric Discovery & Elimination of Ghost Launcher Games:**
   - Fixed an issue where games installed on PC (such as via Steam) but not recognized or added to the Xbox App were erroneously synthesized as library titles from loose cache thumbnails.

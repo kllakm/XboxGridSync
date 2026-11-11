@@ -10,6 +10,7 @@ const injector = require('./injector');
 const watcher = require('./watcher');
 const scheduler = require('./scheduler');
 const tray = require('./tray');
+const updater = require('./updater');
 
 // 1. Check for CLI headless flags (--restore-silent or --headless)
 const isSilentRestore = process.argv.includes('--restore-silent') || process.argv.includes('--headless');
@@ -207,6 +208,18 @@ app.on('second-instance', () => {
 app.whenReady().then(() => {
   createWindow();
 
+  // Asynchronous background update check on startup without blocking UI
+  setTimeout(async () => {
+    try {
+      const updateInfo = await updater.checkUpdate({ force: false });
+      if (updateInfo && updateInfo.updateAvailable && mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('app:updateAvailable', updateInfo);
+      }
+    } catch (e) {
+      console.warn('[Index] Startup update check warning:', e.message);
+    }
+  }, 3500);
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
@@ -362,8 +375,23 @@ ipcMain.handle('xbox:restart', async () => {
   return await injector.restartXboxApp();
 });
 
+ipcMain.handle('xbox:status', async () => {
+  return {
+    running: injector.isXboxAppRunning(),
+    processes: injector.getRunningXboxProcesses()
+  };
+});
+
+ipcMain.handle('xbox:terminate', async () => {
+  return injector.terminateXboxProcesses();
+});
+
 ipcMain.handle('xbox:restoreVault', async () => {
   return injector.restoreAllFromVault();
+});
+
+ipcMain.handle('vault:cleanOrphans', async () => {
+  return vault.cleanOrphanedVaultFolders();
 });
 
 ipcMain.handle('vault:clearAll', async () => {
@@ -565,5 +593,18 @@ ipcMain.handle('window:isFse', () => {
 
 ipcMain.handle('system:isHandheld', () => {
   return isHandheldDevice();
+});
+
+// 9. GitHub Auto-Update Detection
+ipcMain.handle('updater:check', async (event, force = false) => {
+  return await updater.checkUpdate({ force });
+});
+
+ipcMain.handle('updater:download', async (event, url) => {
+  if (url && (url.startsWith('https://') || url.startsWith('http://'))) {
+    shell.openExternal(url);
+    return true;
+  }
+  return false;
 });
 
