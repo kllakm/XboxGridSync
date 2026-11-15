@@ -296,7 +296,7 @@ class ArtworkResolver {
             resolvedAppId = steamMatches[0].appId;
             vault.setCachedAppId(cleaned, resolvedAppId);
           }
-        } catch (e) {}
+        } catch (e) { }
       }
     }
 
@@ -328,7 +328,7 @@ class ArtworkResolver {
             }
           }
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // 3. Query SteamGridDB by Title Autocomplete if no grids by AppID
@@ -370,7 +370,7 @@ class ArtworkResolver {
             }
           }
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // 4. Score and pick best square candidate
@@ -468,7 +468,7 @@ class ArtworkResolver {
               }
             }
           }
-        } catch (err) {}
+        } catch (err) { }
       }
 
       const searchUrl = `https://www.steamgriddb.com/api/v2/search/autocomplete/${encodeURIComponent(gameTitle)}`;
@@ -506,7 +506,7 @@ class ArtworkResolver {
               }
             }
           }
-        } catch (e) {}
+        } catch (e) { }
 
         // Fetch Official / Community Icons
         const iconsUrl = `https://www.steamgriddb.com/api/v2/icons/game/${game.id}`;
@@ -531,7 +531,7 @@ class ArtworkResolver {
               }
             }
           }
-        } catch (e) {}
+        } catch (e) { }
 
         // Fetch standard 600x900 vertical posters
         const vertUrl = `https://www.steamgriddb.com/api/v2/grids/game/${game.id}?dimensions=600x900`;
@@ -556,7 +556,7 @@ class ArtworkResolver {
               }
             }
           }
-        } catch (e) {}
+        } catch (e) { }
       }
       return results;
     } catch (err) {
@@ -807,7 +807,7 @@ class ArtworkResolver {
           source: 'local_thumbnail_fallback'
         });
         return { buffer, source: 'local_thumbnail_fallback', gameId: game.id, isNew: true };
-      } catch (err) {}
+      } catch (err) { }
     }
 
     // Tier 3: Secondary Fallback (Generated High-Res Acrylic Card)
