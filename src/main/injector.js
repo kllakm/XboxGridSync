@@ -23,6 +23,12 @@ class XboxAppInjector {
       'LocalState',
       'CustomLibraryManagement'
     );
+    this.clmImagesDir = path.join(
+      this.packagePath,
+      'LocalState',
+      'CustomLibraryManagement',
+      'images'
+    );
     this.externalShortcutDir = path.join(
       this.packagePath,
       'LocalState',
@@ -38,6 +44,43 @@ class XboxAppInjector {
       'LocalCache',
       'ImageCache'
     );
+    this.ebWebViewCacheDir = path.join(
+      this.packagePath,
+      'LocalState',
+      'EBWebView',
+      'Default',
+      'Cache'
+    );
+    this.ebWebViewCodeCacheDir = path.join(
+      this.packagePath,
+      'LocalState',
+      'EBWebView',
+      'Default',
+      'Code Cache'
+    );
+    this.wcfWebViewCacheDir = path.join(
+      this.packagePath,
+      'LocalState',
+      'wcf.data',
+      'webview.data',
+      'EBWebView',
+      'Default',
+      'Cache'
+    );
+    this.wcfWebViewCodeCacheDir = path.join(
+      this.packagePath,
+      'LocalState',
+      'wcf.data',
+      'webview.data',
+      'EBWebView',
+      'Default',
+      'Code Cache'
+    );
+    this.asyncCachePath = path.join(
+      this.packagePath,
+      'LocalState',
+      'AsyncCache.db'
+    );
     this.clmManifestPath = path.join(
       this.customLibraryDir,
       'CustomLibraryManagement.manifest'
@@ -51,7 +94,7 @@ class XboxAppInjector {
 
   isXboxAppRunning() {
     try {
-      const out = execSync('powershell.exe -NoProfile -Command "Get-Process XboxPcApp, Xbox, XboxAppServices -ErrorAction SilentlyContinue | Select-Object -ExpandProperty ProcessName"', {
+      const out = execSync('powershell.exe -NoProfile -Command "Get-Process XboxPcApp, Xbox, XboxAppServices, XboxPcTray, XboxPcAppCE -ErrorAction SilentlyContinue | Select-Object -ExpandProperty ProcessName"', {
         encoding: 'utf8',
         stdio: ['pipe', 'pipe', 'ignore']
       });
@@ -63,7 +106,7 @@ class XboxAppInjector {
 
   getRunningXboxProcesses() {
     try {
-      const out = execSync('powershell.exe -NoProfile -Command "Get-Process XboxPcApp, Xbox, XboxAppServices -ErrorAction SilentlyContinue | Select-Object -ExpandProperty ProcessName"', {
+      const out = execSync('powershell.exe -NoProfile -Command "Get-Process XboxPcApp, Xbox, XboxAppServices, XboxPcTray, XboxPcAppCE -ErrorAction SilentlyContinue | Select-Object -ExpandProperty ProcessName"', {
         encoding: 'utf8',
         stdio: ['pipe', 'pipe', 'ignore']
       });
@@ -76,7 +119,7 @@ class XboxAppInjector {
   terminateXboxProcesses() {
     console.log('[Injector] Terminating Xbox app processes and background services...');
     try {
-      execSync('powershell.exe -NoProfile -Command "Stop-Process -Name XboxPcApp, Xbox, XboxAppServices -Force -ErrorAction SilentlyContinue"', {
+      execSync('powershell.exe -NoProfile -Command "Stop-Process -Name XboxPcApp, Xbox, XboxAppServices, XboxPcTray, XboxPcAppCE -Force -ErrorAction SilentlyContinue"', {
         stdio: ['pipe', 'pipe', 'ignore']
       });
       return { success: true };
@@ -108,6 +151,9 @@ class XboxAppInjector {
     if (!fs.existsSync(this.altCustomLibraryDir)) {
       fs.mkdirSync(this.altCustomLibraryDir, { recursive: true });
     }
+    if (!fs.existsSync(this.clmImagesDir)) {
+      fs.mkdirSync(this.clmImagesDir, { recursive: true });
+    }
     if (!fs.existsSync(this.externalShortcutDir)) {
       fs.mkdirSync(this.externalShortcutDir, { recursive: true });
     }
@@ -116,8 +162,15 @@ class XboxAppInjector {
     }
   }
 
-  // Invalidate Xbox App's internal image thumbnail cache
-  clearImageCache() {
+  // Invalidate Xbox App's internal image thumbnail cache, WebView2 caches, and database caches
+  clearImageCache(terminateFirst = false) {
+    if (terminateFirst || this.isXboxAppRunning()) {
+      this.terminateXboxProcesses();
+      const end = Date.now() + 600;
+      while (Date.now() < end) {}
+    }
+
+    // 1. Purge LocalCache\ImageCache (all files + ImageCache.db)
     try {
       if (fs.existsSync(this.imageCacheDir)) {
         const files = fs.readdirSync(this.imageCacheDir);
@@ -130,6 +183,45 @@ class XboxAppInjector {
     } catch (err) {
       console.warn('[Injector] Could not purge ImageCache:', err.message);
     }
+
+    // 2. Purge Edge WebView2 disk caches
+    const webViewDirs = [
+      this.ebWebViewCacheDir,
+      this.ebWebViewCodeCacheDir,
+      this.wcfWebViewCacheDir,
+      this.wcfWebViewCodeCacheDir
+    ];
+    for (const wDir of webViewDirs) {
+      if (fs.existsSync(wDir)) {
+        try {
+          const files = fs.readdirSync(wDir);
+          for (const f of files) {
+            try {
+              const fullF = path.join(wDir, f);
+              if (fs.statSync(fullF).isDirectory()) {
+                fs.rmSync(fullF, { recursive: true, force: true });
+              } else {
+                fs.unlinkSync(fullF);
+              }
+            } catch (e) {}
+          }
+        } catch (e) {}
+      }
+    }
+
+    // 3. Invalidate AsyncCache.db if present
+    try {
+      const dbFiles = [
+        this.asyncCachePath,
+        `${this.asyncCachePath}-shm`,
+        `${this.asyncCachePath}-wal`
+      ];
+      for (const dbf of dbFiles) {
+        if (fs.existsSync(dbf)) {
+          try { fs.unlinkSync(dbf); } catch (e) {}
+        }
+      }
+    } catch (e) {}
   }
 
   // Locate an existing shortcut manifest file in ExternalAppShortcut for a game
@@ -407,6 +499,7 @@ class XboxAppInjector {
 
     const basePathWithoutExt = targetImagePath.replace(/\.(png|jpg|jpeg)$/i, '');
     const pngPath = `${basePathWithoutExt}.png`;
+    const v2Path = `${basePathWithoutExt}_v2.png`;
     const jpgPath = `${basePathWithoutExt}.jpg`;
     const newPath = `${basePathWithoutExt}.new`;
 
@@ -421,9 +514,10 @@ class XboxAppInjector {
       }
     }
 
-    // 2. Write both PNG and JPG variants (and companion .new file) with retry logic
+    // 2. Write PNG, _v2.png, JPG, and companion .new file with retry logic
     try {
       this.writeFileWithRetry(pngPath, coverBuffer);
+      this.writeFileWithRetry(v2Path, coverBuffer);
       this.writeFileWithRetry(jpgPath, jpgBuffer);
       this.writeFileWithRetry(newPath, coverBuffer);
     } catch (writeErr) {
@@ -432,6 +526,7 @@ class XboxAppInjector {
         console.warn('[Injector] Xbox App process locked artwork file. Attempting cleanup/refresh...');
         this.terminateXboxProcesses();
         this.writeFileWithRetry(pngPath, coverBuffer);
+        this.writeFileWithRetry(v2Path, coverBuffer);
         this.writeFileWithRetry(jpgPath, jpgBuffer);
         this.writeFileWithRetry(newPath, coverBuffer);
       } else {
@@ -443,13 +538,44 @@ class XboxAppInjector {
     const now = new Date();
     try {
       fs.utimesSync(pngPath, now, now);
+      fs.utimesSync(v2Path, now, now);
       fs.utimesSync(jpgPath, now, now);
       if (fs.existsSync(newPath)) fs.utimesSync(newPath, now, now);
     } catch (touchErr) {
       console.warn('[Injector] Warning updating utimes on injected covers:', touchErr.message);
     }
 
-    // 4. Update manifests based on game source (Shortcuts stay in ExternalAppShortcut)
+    // 4. Write mirror copies into LocalState\CustomLibraryManagement\images (New Xbox App Experience Requirement)
+    const safeId = vault.sanitizeIdentifier(game.id);
+    const clmCandidates = [
+      path.join(this.clmImagesDir, `${safeId}.png`),
+      path.join(this.clmImagesDir, `${safeId}_v2.png`),
+      path.join(this.clmImagesDir, `${safeId}.jpg`)
+    ];
+    if (game.appId) {
+      clmCandidates.push(
+        path.join(this.clmImagesDir, `steam_${game.appId}.png`),
+        path.join(this.clmImagesDir, `steam_${game.appId}_v2.png`),
+        path.join(this.clmImagesDir, `steam_${game.appId}.jpg`)
+      );
+    }
+    if (game.originalId) {
+      const origSafe = vault.sanitizeIdentifier(game.originalId);
+      clmCandidates.push(
+        path.join(this.clmImagesDir, `${origSafe}.png`),
+        path.join(this.clmImagesDir, `${origSafe}_v2.png`),
+        path.join(this.clmImagesDir, `${origSafe}.jpg`)
+      );
+    }
+    for (const cPath of clmCandidates) {
+      try {
+        const isJpg = cPath.endsWith('.jpg');
+        this.writeFileWithRetry(cPath, isJpg ? jpgBuffer : coverBuffer);
+        fs.utimesSync(cPath, now, now);
+      } catch (e) {}
+    }
+
+    // 5. Update manifests based on game source (Shortcuts stay in ExternalAppShortcut)
     const isShortcut = (game.launcher || '').toLowerCase() === 'shortcut' ||
                        game.source === 'xbox_shortcut';
     const isCustom = !isShortcut && (
@@ -458,13 +584,14 @@ class XboxAppInjector {
                      game.source === 'custom_manifest' ||
                      targetImagePath.includes('CustomLibraryManagement'));
 
+    const clmCanonicalImg = path.join(this.clmImagesDir, `${safeId}.png`);
+
     if (isShortcut) {
       this.updateShortcutManifestIcon(game, pngPath);
     } else if (isCustom) {
-      this.updateCustomManifestGame(game, pngPath);
+      this.updateCustomManifestGame(game, clmCanonicalImg);
 
       // Ensure mirror copies exist in both native and ThirdParty CustomLibraryManagement
-      const safeId = vault.sanitizeIdentifier(game.id);
       const mirrorPng = path.join(this.altCustomLibraryDir, `${safeId}.png`);
       const mirrorJpg = path.join(this.altCustomLibraryDir, `${safeId}.jpg`);
       if (mirrorPng.toLowerCase() !== pngPath.toLowerCase()) {
@@ -477,10 +604,10 @@ class XboxAppInjector {
       }
     }
 
-    // 5. Purge Xbox App internal thumbnail ImageCache so new artwork refreshes immediately
+    // 6. Purge Xbox App internal thumbnail ImageCache & WebView2 cache so artwork refreshes immediately
     this.clearImageCache();
 
-    console.log(`[Injector] Successfully injected artwork for "${game.title}" -> ${pngPath} / ${jpgPath}`);
+    console.log(`[Injector] Successfully injected artwork for "${game.title}" -> ${pngPath} / ${v2Path}`);
     return {
       success: true,
       injectedPath: pngPath,
@@ -528,8 +655,7 @@ class XboxAppInjector {
 
     for (const entry of entries) {
       try {
-        const coverBuffer = vault.getCoverBuffer(entry.gameId);
-        if (coverBuffer) {
+        if (vault.hasCover(entry.gameId)) {
           const gameStub = {
             id: entry.gameId,
             title: entry.title,
@@ -552,32 +678,7 @@ class XboxAppInjector {
             }
           }
 
-          const targetImagePath = this.resolveTargetImagePath(gameStub);
-          const targetDir = path.dirname(targetImagePath);
-          if (!fs.existsSync(targetDir)) {
-            fs.mkdirSync(targetDir, { recursive: true });
-          }
-
-          // Backup if not yet backed up
-          const backupPath = targetImagePath.replace(/\.png$/i, '.bak');
-          if (!fs.existsSync(backupPath) && fs.existsSync(targetImagePath)) {
-            try { fs.copyFileSync(targetImagePath, backupPath); } catch (e) {}
-          }
-
-          this.writeFileWithRetry(targetImagePath, coverBuffer);
-          const newPath = targetImagePath.replace(/\.png$/i, '.new');
-          this.writeFileWithRetry(newPath, coverBuffer);
-
-          const isCustom = !isShortcut && (
-                           (entry.launcher || '').toLowerCase() === 'custom' ||
-                           targetImagePath.includes('CustomLibraryManagement'));
-
-          if (isShortcut) {
-            this.updateShortcutManifestIcon(gameStub, targetImagePath);
-          } else if (isCustom) {
-            this.updateCustomManifestGame(gameStub, targetImagePath);
-          }
-
+          this.injectGame(gameStub);
           restored++;
         }
       } catch (err) {
@@ -585,7 +686,10 @@ class XboxAppInjector {
       }
     }
 
+    this.clearImageCache();
     console.log(`[Injector] Restored ${restored}/${entries.length} covers.`);
+    return { total: entries.length, restored };
+  }
     return { total: entries.length, restored };
   }
 }

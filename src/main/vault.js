@@ -97,6 +97,17 @@ class VaultManager {
       const game = gameOrId;
       if (game.vaultKey) return this.sanitizeIdentifier(game.vaultKey);
 
+      const safeId = this.sanitizeIdentifier(game.id || game.title);
+      if (this.shortcutMappings[safeId]) {
+        return this.shortcutMappings[safeId].persistentKey;
+      }
+      if (game.originalId) {
+        const safeOrig = this.sanitizeIdentifier(game.originalId);
+        if (this.shortcutMappings[safeOrig]) {
+          return this.shortcutMappings[safeOrig].persistentKey;
+        }
+      }
+
       const launcher = (game.launcher || '').toUpperCase();
       const source = (game.source || '').toLowerCase();
       const isCustomShortcut = (launcher === 'SHORTCUT' || source === 'xbox_shortcut' || source === 'user_custom' || source === 'custom_manifest') && !game.appId;
@@ -108,10 +119,6 @@ class VaultManager {
         return pKey;
       }
 
-      const safeId = this.sanitizeIdentifier(game.id || game.title);
-      if (this.shortcutMappings[safeId]) {
-        return this.shortcutMappings[safeId].persistentKey;
-      }
       return safeId;
     }
 
@@ -119,6 +126,14 @@ class VaultManager {
     if (this.shortcutMappings[safeId]) {
       return this.shortcutMappings[safeId].persistentKey;
     }
+
+    // Check if any mapping targets this exact persistent key
+    for (const [mId, mapped] of Object.entries(this.shortcutMappings)) {
+      if (mapped.persistentKey === safeId) {
+        return safeId;
+      }
+    }
+
     return safeId;
   }
 
@@ -140,7 +155,7 @@ class VaultManager {
     const jpgPath = path.join(dir, 'cover.jpg');
     if (fs.existsSync(jpgPath)) return jpgPath;
 
-    // Fallback: check raw unmapped gameId folder in case it was saved before normalization
+    // Fallback 1: check raw unmapped gameId folder in case it was saved before normalization
     const rawId = typeof gameIdOrGame === 'object' ? (gameIdOrGame.id || gameIdOrGame.title) : gameIdOrGame;
     if (rawId) {
       const rawDir = path.join(this.vaultDir, this.sanitizeIdentifier(rawId));
@@ -149,6 +164,82 @@ class VaultManager {
         if (fs.existsSync(rawPng)) return rawPng;
         const rawJpg = path.join(rawDir, 'cover.jpg');
         if (fs.existsSync(rawJpg)) return rawJpg;
+      }
+    }
+
+    // Fallback 2: check game.vaultKey if passed directly in object
+    if (typeof gameIdOrGame === 'object' && gameIdOrGame.vaultKey) {
+      const vkDir = path.join(this.vaultDir, this.sanitizeIdentifier(gameIdOrGame.vaultKey));
+      if (vkDir !== dir) {
+        const vkPng = path.join(vkDir, 'cover.png');
+        if (fs.existsSync(vkPng)) return vkPng;
+        const vkJpg = path.join(vkDir, 'cover.jpg');
+        if (fs.existsSync(vkJpg)) return vkJpg;
+      }
+    }
+
+    // Fallback 3: Title-based fuzzy / directory matching fallback:
+    // If the title is known, search the Vault directory for any existing folder for this title!
+    const title = typeof gameIdOrGame === 'object' ? gameIdOrGame.title : (rawId && this.shortcutMappings[this.sanitizeIdentifier(rawId)]?.title ? this.shortcutMappings[this.sanitizeIdentifier(rawId)].title : null);
+    if (title) {
+      const safeTitle = title.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (safeTitle.length >= 2 && !['game', 'custom', 'shortcut', 'app'].includes(safeTitle)) {
+        try {
+          if (fs.existsSync(this.vaultDir)) {
+            const dirs = fs.readdirSync(this.vaultDir, { withFileTypes: true });
+            for (const d of dirs) {
+              if (d.isDirectory()) {
+                const dNameLower = d.name.toLowerCase();
+                // Match custom_<safeTitle>_* or shortcut_<safeTitle> or <safeTitle>
+                if (dNameLower.startsWith(`custom_${safeTitle}_`    ) ||
+                    dNameLower.startsWith(`shortcut_${safeTitle}`) ||
+                    dNameLower === safeTitle ||
+                    dNameLower.includes(safeTitle)) {
+                  const candidateDir = path.join(this.vaultDir, d.name);
+                  const cPng = path.join(candidateDir, 'cover.png');
+                  if (fs.existsSync(cPng)) {
+                    try {
+                      if (fs.statSync(cPng).size > 500) {
+                        if (rawId) this.registerShortcutMapping(rawId, d.name, { title });
+                        return cPng;
+                      }
+                    } catch (e) {}
+                  }
+                  const cJpg = path.join(candidateDir, 'cover.jpg');
+                  if (fs.existsSync(cJpg)) {
+                    try {
+                      if (fs.statSync(cJpg).size > 500) {
+                        if (rawId) this.registerShortcutMapping(rawId, d.name, { title });
+                        return cJpg;
+                      }
+                    } catch (e) {}
+                  }
+                }
+              }
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
+    // Fallback 4: check if the game has an active targetImagePath or currentThumbnail already on disk!
+    if (typeof gameIdOrGame === 'object') {
+      const activeThumbnail = gameIdOrGame.currentThumbnail || gameIdOrGame.targetImagePath;
+      if (activeThumbnail && typeof activeThumbnail === 'string' && fs.existsSync(activeThumbnail) && !activeThumbnail.toLowerCase().endsWith('.exe')) {
+        try {
+          const stats = fs.statSync(activeThumbnail);
+          if (stats.size > 500) {
+            // Auto-ingest into Vault under the resolved directory so future lookups find it instantly!
+            try {
+              const buf = fs.readFileSync(activeThumbnail);
+              if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+              fs.writeFileSync(pngPath, buf);
+              fs.writeFileSync(jpgPath, buf);
+              return pngPath;
+            } catch (ingestErr) {}
+            return activeThumbnail;
+          }
+        } catch (e) {}
       }
     }
 
@@ -218,8 +309,16 @@ class VaultManager {
       }
 
       const rawId = typeof gameIdOrGame === 'object' ? gameIdOrGame.id : gameIdOrGame;
+      const combinedTitle = metadata.title || (typeof gameIdOrGame === 'object' ? gameIdOrGame.title : null);
+      const combinedInstallPath = metadata.installPath || (typeof gameIdOrGame === 'object' ? gameIdOrGame.installPath : null);
+      const combinedTargetImage = metadata.targetImagePath || (typeof gameIdOrGame === 'object' ? gameIdOrGame.targetImagePath : null);
+      const originalId = metadata.originalId || (typeof gameIdOrGame === 'object' ? gameIdOrGame.originalId : null);
+
       if (rawId && rawId !== vKey) {
-        this.registerShortcutMapping(rawId, vKey, metadata);
+        this.registerShortcutMapping(rawId, vKey, { title: combinedTitle, installPath: combinedInstallPath });
+      }
+      if (originalId && originalId !== vKey) {
+        this.registerShortcutMapping(originalId, vKey, { title: combinedTitle, installPath: combinedInstallPath });
       }
 
       // Convert to 1:1 Square PNG unless explicitly bypassed
@@ -232,13 +331,15 @@ class VaultManager {
       const meta = {
         gameId: rawId,
         vaultKey: vKey,
+        originalId: originalId || null,
         savedAt: new Date().toISOString(),
         size: pngBuffer.length,
         format: 'png',
         aspectRatio: '1:1',
-        title: metadata.title || null,
-        installPath: metadata.installPath || null,
-        targetImagePath: metadata.targetImagePath || null,
+        title: combinedTitle,
+        installPath: combinedInstallPath,
+        targetImagePath: combinedTargetImage,
+        ...(typeof gameIdOrGame === 'object' ? gameIdOrGame : {}),
         ...metadata
       };
 

@@ -644,10 +644,10 @@ class ArtworkResolver {
     console.log(`[ArtResolver] Resolving artwork for: "${game.title}" (${game.launcher})`);
 
     // 1. Check Vault first (if already protected and not forcing re-fetch)
-    if (!options.force && vault.hasCover(game.id)) {
+    if (!options.force && vault.hasCover(game)) {
       console.log(`[ArtResolver] Found existing cover in Vault for ${game.id}`);
       return {
-        buffer: vault.getCoverBuffer(game.id),
+        buffer: vault.getCoverBuffer(game),
         source: 'vault',
         gameId: game.id,
         isNew: false
@@ -660,11 +660,8 @@ class ArtworkResolver {
         if (game.coverUrl.startsWith('data:image/svg+xml;utf8,')) {
           const svgText = decodeURIComponent(game.coverUrl.replace(/^data:image\/svg\+xml;utf8,/, ''));
           const buffer = Buffer.from(svgText, 'utf8');
-          vault.saveCover(game.id, buffer, {
-            title: game.title,
-            launcher: game.launcher,
-            appId: game.appId,
-            targetImagePath: game.targetImagePath,
+          vault.saveCover(game, buffer, {
+            ...game,
             isPreCropped: true,
             source: 'preselected_template'
           });
@@ -672,11 +669,8 @@ class ArtworkResolver {
         } else if (game.coverUrl.startsWith('data:image/')) {
           const base64Data = game.coverUrl.replace(/^data:image\/[a-z+]+;base64,/i, '');
           const buffer = Buffer.from(base64Data, 'base64');
-          vault.saveCover(game.id, buffer, {
-            title: game.title,
-            launcher: game.launcher,
-            appId: game.appId,
-            targetImagePath: game.targetImagePath,
+          vault.saveCover(game, buffer, {
+            ...game,
             isPreCropped: !!game.isSquare,
             source: 'preselected_data'
           });
@@ -684,11 +678,8 @@ class ArtworkResolver {
         } else if (game.coverUrl.startsWith('http://') || game.coverUrl.startsWith('https://')) {
           console.log(`[ArtResolver] Downloading preselected cover for "${game.title}" from ${game.coverUrl}`);
           const buffer = await this.downloadBuffer(game.coverUrl);
-          vault.saveCover(game.id, buffer, {
-            title: game.title,
-            launcher: game.launcher,
-            appId: game.appId,
-            targetImagePath: game.targetImagePath,
+          vault.saveCover(game, buffer, {
+            ...game,
             url: game.coverUrl,
             isPreCropped: !!game.isSquare,
             source: 'preselected_url'
@@ -696,11 +687,8 @@ class ArtworkResolver {
           return { buffer, source: 'preselected_url', url: game.coverUrl, gameId: game.id, isNew: true };
         } else if (fs.existsSync(game.coverUrl)) {
           const buffer = fs.readFileSync(game.coverUrl);
-          vault.saveCover(game.id, buffer, {
-            title: game.title,
-            launcher: game.launcher,
-            appId: game.appId,
-            targetImagePath: game.targetImagePath,
+          vault.saveCover(game, buffer, {
+            ...game,
             isPreCropped: !!game.isSquare,
             source: 'preselected_file'
           });
@@ -715,11 +703,8 @@ class ArtworkResolver {
     try {
       const squareResult = await this.fetchBestSquareArtwork(game);
       if (squareResult && squareResult.buffer) {
-        vault.saveCover(game.id, squareResult.buffer, {
-          title: game.title,
-          launcher: game.launcher,
-          appId: game.appId,
-          targetImagePath: game.targetImagePath,
+        vault.saveCover(game, squareResult.buffer, {
+          ...game,
           source: squareResult.source,
           url: squareResult.url,
           isPreCropped: true
@@ -740,11 +725,8 @@ class ArtworkResolver {
     if (game.appId) {
       try {
         const result = await this.fetchSteamCoverByAppId(game.appId);
-        vault.saveCover(game.id, result.buffer, {
-          title: game.title,
-          launcher: game.launcher,
-          appId: game.appId,
-          targetImagePath: game.targetImagePath,
+        vault.saveCover(game, result.buffer, {
+          ...game,
           source: result.source,
           url: result.url
         });
@@ -758,10 +740,8 @@ class ArtworkResolver {
     if (game.localArtwork && fs.existsSync(game.localArtwork)) {
       try {
         const buffer = fs.readFileSync(game.localArtwork);
-        vault.saveCover(game.id, buffer, {
-          title: game.title,
-          launcher: game.launcher,
-          targetImagePath: game.targetImagePath,
+        vault.saveCover(game, buffer, {
+          ...game,
           source: 'steam_local_cache'
         });
         return { buffer, source: 'steam_local_cache', gameId: game.id, isNew: true };
@@ -778,11 +758,9 @@ class ArtworkResolver {
       console.log(`[ArtResolver] Found cached AppID ${resolvedAppId} for "${cleaned}"`);
       try {
         const result = await this.fetchSteamCoverByAppId(resolvedAppId);
-        vault.saveCover(game.id, result.buffer, {
-          title: game.title,
-          launcher: game.launcher,
+        vault.saveCover(game, result.buffer, {
+          ...game,
           appId: resolvedAppId,
-          targetImagePath: game.targetImagePath,
           source: 'steam_cached_fallback',
           url: result.url
         });
@@ -804,12 +782,10 @@ class ArtworkResolver {
         const result = await this.fetchSteamCoverByAppId(topMatch.appId);
         // Cache this mapping permanently
         vault.setCachedAppId(cleaned, topMatch.appId);
-        vault.saveCover(game.id, result.buffer, {
-          title: game.title,
+        vault.saveCover(game, result.buffer, {
+          ...game,
           matchedTitle: topMatch.name,
-          launcher: game.launcher,
           appId: topMatch.appId,
-          targetImagePath: game.targetImagePath,
           similarity: topMatch.similarity,
           source: 'steam_store_search',
           url: result.url
@@ -825,11 +801,8 @@ class ArtworkResolver {
       try {
         const base64Data = game.coverUrl.replace(/^data:image\/[a-z+]+;base64,/i, '');
         const buffer = Buffer.from(base64Data, 'base64');
-        vault.saveCover(game.id, buffer, {
-          title: game.title,
-          launcher: game.launcher,
-          appId: game.appId,
-          targetImagePath: game.targetImagePath,
+        vault.saveCover(game, buffer, {
+          ...game,
           isPreCropped: !!game.isSquare,
           source: 'local_thumbnail_fallback'
         });
@@ -840,10 +813,8 @@ class ArtworkResolver {
     // Tier 3: Secondary Fallback (Generated High-Res Acrylic Card)
     console.log(`[ArtResolver] No Steam match found for "${game.title}". Generating Tier 3 card template.`);
     const cardBuffer = this.generateCardTemplate(game.title, game.launcher);
-    vault.saveCover(game.id, cardBuffer, {
-      title: game.title,
-      launcher: game.launcher,
-      targetImagePath: game.targetImagePath,
+    vault.saveCover(game, cardBuffer, {
+      ...game,
       source: 'tier3_template'
     });
     return { buffer: cardBuffer, source: 'tier3_template', gameId: game.id, isNew: true };

@@ -209,6 +209,18 @@ npm run pack
 
 ## Changelog
 
+### [v1.9.1] - 2026-11-15
+- **Applied Artwork Rendering & Multi-Tier Vault Fallback for Shortcuts (e.g. NuvioDeck):**
+  - Resolved an issue where applied custom images for shortcuts (such as NuvioDeck) failed to display in the XboxGridSync UI when reopening the app.
+  - Implemented multi-tier fuzzy and title-based fallback lookup in `VaultManager.getCoverPath()`, scanning for matching `custom_<sanitizedTitle>_*` and `shortcut_<sanitizedTitle>` directories to guarantee instant cover resolution across shortcut re-additions and hash migrations.
+  - Added automatic on-disk active thumbnail ingestion during scan: any cover actively applied in the Xbox App is seamlessly imported into the Vault and immediately rendered in the UI.
+  - Fixed IPC handlers (`art:resolve`, `art:resolveAll`, `art:applyCustomCover`) and the Custom Art Studio modal to pass complete game objects (including `vaultKey`, `installPath`, `launcher`, and `title`) directly to `vault.saveCover()` and `vault.getCoverAsDataUrl()`.
+- **Full Compatibility with Latest Xbox PC App Updates & WebView2 "New Experience":**
+  - Reverse-engineered the latest Xbox PC App WebView2 architecture (`Microsoft.GamingApp_2701.1001.10.0`), identifying the strict local image Content Security Policy and URI validation scheme (`msgamecatalog-local://image/customlibrarymanagement/images/<file>`).
+  - Implemented multi-variant image injection across all Xbox App library paths: writing `.png`, `_v2.png` (required by native `ImageComponentHelper`), `.jpg`, and companion `.new` files with synchronized UTC timestamps.
+  - All injected covers are now automatically mirrored to `LocalState\CustomLibraryManagement\images\` to satisfy both the new experience WebView2 CSP protocol and legacy layout rendering.
+  - Enhanced cache invalidation: cleanly terminates locked Xbox processes (`XboxPcApp`, `XboxAppServices`, `XboxPcTray`, `XboxPcAppCE`) before purging `LocalCache\ImageCache` (files and SQLite databases), Edge WebView2 HTTP disk caches (`EBWebView\Default\Cache`, `wcf.data\webview.data\EBWebView\Default\Cache`), and `AsyncCache.db`, allowing third-party games (Steam, Epic, GOG) and custom apps to refresh their custom artwork seamlessly upon resync.
+
 ### [v1.9.0] - 2026-11-11
 - **Image Injection Robustness for Re-added Custom Shortcuts (e.g. NuvioDeck):**
   - Resolved active thumbnail cache path registration directly within `%LOCALAPPDATA%\Packages\Microsoft.GamingApp_8wekyb3d8bbwe\LocalState\ThirdPartyLibraries\CustomLibraryManagement\` and native `LocalState\CustomLibraryManagement`.

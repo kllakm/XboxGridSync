@@ -263,7 +263,7 @@ ipcMain.handle('art:resolve', async (event, game, options = {}) => {
     const resolveResult = await artResolver.resolveArtwork(game, options);
     // Inject directly to Xbox App
     const injectResult = injector.injectGame(game);
-    const coverUrl = vault.getCoverAsDataUrl(game.id);
+    const coverUrl = vault.getCoverAsDataUrl(game);
 
     return {
       success: true,
@@ -294,7 +294,7 @@ ipcMain.handle('art:resolveAll', async (event, games, options = {}) => {
 
       const resolveResult = await artResolver.resolveArtwork(game, options);
       const injectResult = injector.injectGame(game);
-      const coverUrl = vault.getCoverAsDataUrl(game.id);
+      const coverUrl = vault.getCoverAsDataUrl(game);
 
       results.push({
         success: true,
@@ -341,28 +341,32 @@ ipcMain.handle('art:applyCustomCover', async (event, gameId, dataUrlOrPath, meta
       throw new Error('Invalid image source provided.');
     }
 
-    const targetImagePath = metadata.targetImagePath || (vault.getMetadata(gameId) ? vault.getMetadata(gameId).targetImagePath : null);
+    const existingMeta = vault.getMetadata(gameId) || {};
+    const targetImagePath = metadata.targetImagePath || existingMeta.targetImagePath || null;
 
-    vault.saveCover(gameId, buffer, {
-      ...metadata,
+    const gameObj = {
+      id: gameId,
+      title: metadata.title || existingMeta.title || gameId,
+      launcher: metadata.launcher || existingMeta.launcher || 'CUSTOM',
       targetImagePath,
+      installPath: metadata.installPath || existingMeta.installPath || '',
+      originalId: metadata.originalId || existingMeta.originalId || null,
+      source: metadata.source || existingMeta.source || 'user_custom',
+      shortcutManifestPath: metadata.shortcutManifestPath || existingMeta.shortcutManifestPath || null,
+      vaultKey: metadata.vaultKey || existingMeta.vaultKey || null,
+      ...metadata
+    };
+
+    vault.saveCover(gameObj, buffer, {
+      ...gameObj,
       source: 'manual_override',
       appliedAt: new Date().toISOString()
     });
 
     // Inject to Xbox App
-    injector.injectGame({
-      id: gameId,
-      title: metadata.title || gameId,
-      launcher: metadata.launcher || 'CUSTOM',
-      targetImagePath,
-      installPath: metadata.installPath || '',
-      originalId: metadata.originalId || null,
-      source: metadata.source || 'user_custom',
-      shortcutManifestPath: metadata.shortcutManifestPath || null
-    });
+    injector.injectGame(gameObj);
 
-    const coverUrl = vault.getCoverAsDataUrl(gameId);
+    const coverUrl = vault.getCoverAsDataUrl(gameObj);
     return { success: true, coverUrl };
   } catch (err) {
     console.error(`[IPC] Error applying custom cover to ${gameId}:`, err.message);

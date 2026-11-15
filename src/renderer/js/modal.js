@@ -371,6 +371,7 @@ window.ModalManager = {
               originalId: this.currentOverrideGame.originalId,
               source: this.currentOverrideGame.source,
               shortcutManifestPath: this.currentOverrideGame.shortcutManifestPath,
+              vaultKey: this.currentOverrideGame.vaultKey || null,
               isPreCropped: true
             }
           );

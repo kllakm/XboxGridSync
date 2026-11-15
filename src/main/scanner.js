@@ -387,7 +387,27 @@ class GameScanner {
                 targetImagePath = path.join(externalShortcutDir, `${safeId}.png`);
               }
 
-              let currentThumbnail = targetImagePath && fs.existsSync(targetImagePath) ? targetImagePath : (parsed.iconPath && fs.existsSync(parsed.iconPath) ? parsed.iconPath : null);
+              let currentThumbnail = null;
+              const shortcutImgCandidates = [
+                targetImagePath,
+                targetImagePath ? targetImagePath.replace(/\.png$/i, '_v2.png') : null,
+                targetImagePath ? targetImagePath.replace(/\.png$/i, '.jpg') : null,
+                parsed.iconPath,
+                path.join(path.dirname(externalShortcutDir), 'CustomLibraryManagement', 'images', `${safeId}.png`),
+                path.join(path.dirname(externalShortcutDir), 'CustomLibraryManagement', 'images', `${safeId}_v2.png`)
+              ].filter(Boolean);
+
+              for (const cand of shortcutImgCandidates) {
+                if (fs.existsSync(cand) && !cand.toLowerCase().endsWith('.exe')) {
+                  try {
+                    if (fs.statSync(cand).size > 500) {
+                      currentThumbnail = cand;
+                      break;
+                    }
+                  } catch (e) {}
+                }
+              }
+
               if (!currentThumbnail && (vault.hasCover(persistentKey) || vault.hasCover(safeId))) {
                 currentThumbnail = vault.getCoverPath(persistentKey);
               }
@@ -537,7 +557,12 @@ class GameScanner {
               if (isCustom && item.imagePath) {
                 targetImagePath = item.imagePath;
               } else if (isCustom) {
-                targetImagePath = path.join(provDir, `${vault.sanitizeIdentifier(rawId)}.png`);
+                const clmImgCandidate = path.join(provDir, 'images', `${vault.sanitizeIdentifier(rawId)}.png`);
+                if (fs.existsSync(clmImgCandidate)) {
+                  targetImagePath = clmImgCandidate;
+                } else {
+                  targetImagePath = path.join(provDir, `${vault.sanitizeIdentifier(rawId)}.png`);
+                }
               } else {
                 targetImagePath = path.join(provDir, `${rawId.replace(/:/g, '_')}.png`);
               }
@@ -554,7 +579,26 @@ class GameScanner {
                 if (rawId) vault.registerShortcutMapping(rawId, persistentKey, { title: itemTitle, installPath: targetCheck || installPath });
               }
 
-              let currentThumbnail = fs.existsSync(targetImagePath) ? targetImagePath : null;
+              let currentThumbnail = null;
+              const clmCandidates = [
+                targetImagePath,
+                targetImagePath ? targetImagePath.replace(/\.png$/i, '_v2.png') : null,
+                targetImagePath ? targetImagePath.replace(/\.png$/i, '.jpg') : null,
+                isCustom ? path.join(path.dirname(provDir), 'CustomLibraryManagement', 'images', `${vault.sanitizeIdentifier(rawId)}.png`) : null,
+                isCustom ? path.join(path.dirname(provDir), 'CustomLibraryManagement', 'images', `${vault.sanitizeIdentifier(rawId)}_v2.png`) : null
+              ].filter(Boolean);
+
+              for (const cand of clmCandidates) {
+                if (fs.existsSync(cand) && !cand.toLowerCase().endsWith('.exe')) {
+                  try {
+                    if (fs.statSync(cand).size > 500) {
+                      currentThumbnail = cand;
+                      break;
+                    }
+                  } catch (e) {}
+                }
+              }
+
               if (!currentThumbnail && persistentKey && (vault.hasCover(persistentKey) || vault.hasCover(safeId))) {
                 currentThumbnail = vault.getCoverPath(persistentKey);
               }
@@ -822,10 +866,28 @@ class GameScanner {
 
     // 6. Process Sync Status & Artwork Preview (Auto-selects best available community artwork)
     const processedGames = await mapConcurrent(uniqueFinalGames, 4, async (game) => {
-      const hasVaultCover = vault.hasCover(game);
-      const vaultMeta = vault.getMetadata(game);
+      let hasVaultCover = vault.hasCover(game);
+      let vaultMeta = vault.getMetadata(game);
       let coverUrl = hasVaultCover ? vault.getCoverAsDataUrl(game) : null;
       let isSquare = true;
+
+      // Ingest active on-disk thumbnail into Vault if Vault doesn't already have one
+      if (!coverUrl && game.currentThumbnail && fs.existsSync(game.currentThumbnail) && !game.currentThumbnail.toLowerCase().endsWith('.exe')) {
+        try {
+          const stats = fs.statSync(game.currentThumbnail);
+          if (stats.size > 500) {
+            const buf = fs.readFileSync(game.currentThumbnail);
+            vault.saveCover(game, buf, {
+              ...game,
+              source: 'active_thumbnail_ingest',
+              isPreCropped: true
+            });
+            hasVaultCover = true;
+            vaultMeta = vault.getMetadata(game);
+            coverUrl = vault.getCoverAsDataUrl(game);
+          }
+        } catch (e) {}
+      }
 
       // Primary Selection on scan: Automatically select best available community artwork
       if (!coverUrl) {
