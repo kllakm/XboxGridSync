@@ -111,8 +111,11 @@ class AppUpdater {
     // Respect rate limits: check cache if not forced and within 4-hour window
     if (!force && cachedResult && (now - lastCheck < this.rateLimitHours * 60 * 60 * 1000)) {
       console.log('[Updater] Returning cached update check result.');
+      const isNewer = this.compareSemVer(cachedResult.latestVersion, currentVersion) > 0;
       return {
         ...cachedResult,
+        currentVersion,
+        updateAvailable: isNewer,
         cached: true
       };
     }

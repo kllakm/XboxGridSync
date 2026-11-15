@@ -2,7 +2,7 @@
   "name": "xboxgridsync",
   "productName": "Xbox Grid Sync",
   "version": "1.9.2",
-  "description": "Artwork discovery, upgrade, and persistent protection shield for the Xbox PC App",
+  "description": "XboxGridSync",
   "main": "src/main/index.js",
   "author": "Antigravity",
   "license": "MIT",

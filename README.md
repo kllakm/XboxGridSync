@@ -213,6 +213,8 @@ npm run pack
 - **Critical Hotfix for Main Process Startup Syntax Error & Packaged UI Scripts:**
   - Resolved `SyntaxError: Unexpected token '{'` in `src/main/injector.js` at line 693 caused by a duplicate return statement during packaging, which prevented both portable and installer builds from opening.
   - Fixed a packaging issue where `src/renderer/index.html` was truncated inside `app.asar` before the `<script>` tags, which left UI buttons unresponsive in the packaged installer build.
+  - Updated the Windows executable `description` metadata to `XboxGridSync` for cleaner Task Manager display.
+  - Fixed cached update checks in `src/main/updater.js` to re-compare `latestVersion` against the running `currentVersion` so older cached releases never trigger false update prompts after upgrading.
   - Verified clean launch, full script loading, and clickable UI controls across both portable and installer builds.
 
 ### [v1.9.1] - 2026-11-15
