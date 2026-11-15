@@ -209,6 +209,12 @@ npm run pack
 
 ## Changelog
 
+### [v1.9.2] - 2026-11-15
+- **Critical Hotfix for Main Process Startup Syntax Error & Packaged UI Scripts:**
+  - Resolved `SyntaxError: Unexpected token '{'` in `src/main/injector.js` at line 693 caused by a duplicate return statement during packaging, which prevented both portable and installer builds from opening.
+  - Fixed a packaging issue where `src/renderer/index.html` was truncated inside `app.asar` before the `<script>` tags, which left UI buttons unresponsive in the packaged installer build.
+  - Verified clean launch, full script loading, and clickable UI controls across both portable and installer builds.
+
 ### [v1.9.1] - 2026-11-15
 - **Applied Artwork Rendering & Multi-Tier Vault Fallback for Shortcuts (e.g. NuvioDeck):**
   - Resolved an issue where applied custom images for shortcuts (such as NuvioDeck) failed to display in the XboxGridSync UI when reopening the app.

@@ -690,8 +690,6 @@ class XboxAppInjector {
     console.log(`[Injector] Restored ${restored}/${entries.length} covers.`);
     return { total: entries.length, restored };
   }
-    return { total: entries.length, restored };
-  }
 }
 
 module.exports = new XboxAppInjector();
