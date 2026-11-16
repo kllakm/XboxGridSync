@@ -4257,3 +4257,92 @@ body.fse-mode .games-grid.list-view {
 .btn-icon:hover {
   background: rgba(255, 255, 255, 0.22);
 }
+
+
+/* ==========================================================================
+   Anti-Banding Dithered Gradient, Transparent FSE Header, Roomier List View
+   ========================================================================== */
+/* 1. Multi-stop smooth gradient + SVG fractalNoise dithering to eliminate 8-bit banding */
+body {
+  background-color: #111214;
+  background-image:
+    radial-gradient(ellipse 95% 85% at 42% 0%,
+      rgba(46, 66, 46, 0.38) 0%,
+      rgba(36, 52, 36, 0.30) 20%,
+      rgba(28, 40, 29, 0.22) 40%,
+      rgba(21, 27, 23, 0.14) 60%,
+      rgba(17, 18, 20, 0.06) 80%,
+      #111214 100%);
+  background-attachment: fixed;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.032;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.titlebar,
+.app-container {
+  position: relative;
+  z-index: 1;
+}
+
+/* 2. Completely Transparent FSE Top Area with Generous Xbox FSE Padding */
+body.fse-mode .titlebar {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  height: 76px;
+  padding: 16px 42px 0 42px;
+}
+
+body.fse-mode .app-header {
+  padding: 18px clamp(72px, 7.5vw, 136px) 20px clamp(72px, 7.5vw, 136px);
+  gap: 22px;
+}
+
+body.fse-mode .library-scroll-area {
+  padding: 4px clamp(72px, 7.5vw, 136px) 48px clamp(72px, 7.5vw, 136px);
+}
+
+/* 3. Larger, Line-Free List View Rows */
+.list-view-header {
+  border: none !important;
+  padding: 10px 16px 14px 16px;
+  font-size: 12.5px;
+}
+
+.games-grid.list-view {
+  gap: 4px;
+}
+
+.games-grid.list-view .game-card {
+  border: none !important;
+  box-shadow: none !important;
+  padding: 10px 16px;
+  gap: 18px;
+}
+
+.games-grid.list-view .card-poster-wrapper {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.games-grid.list-view .card-title {
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.games-grid.list-view .list-col-platform,
+.games-grid.list-view .list-col-status {
+  font-size: 13.5px;
+}
