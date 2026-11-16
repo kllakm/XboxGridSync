@@ -360,6 +360,20 @@ window.ModalManager = {
           // Render lossless high-res 1:1 square PNG from canvas
           const pngDataUrl = canvas.toDataURL('image/png', 1.0);
 
+          if (this.currentOverrideGame.isDemo) {
+            this.currentOverrideGame.coverUrl = pngDataUrl;
+            window.showToast(
+              'Demo Preview Updated',
+              `Updated in-memory 1:1 preview for "${this.currentOverrideGame.title}" (no system files modified).`,
+              'success'
+            );
+            if (this.onOverrideApplyCallback) {
+              this.onOverrideApplyCallback(this.currentOverrideGame.id, pngDataUrl);
+            }
+            this.closeOverridePage();
+            return;
+          }
+
           const res = await window.api.applyCustomCover(
             this.currentOverrideGame.id,
             pngDataUrl,

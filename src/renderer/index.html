@@ -49,6 +49,12 @@
     </div>
 
     <div class="titlebar-center">
+      <button class="win-btn titlebar-back-btn" id="btnTitlebarBack" title="Back to Library" style="display: none;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
       <div class="titlebar-search-pill">
         <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
           stroke-width="2">
@@ -154,101 +160,177 @@
       </div>
     </div>
 
-    <!-- View 1: Game Library Grid -->
+    <!-- View 1: Game Library Grid (Xbox PC App Workspace with Floating Nav Rail) -->
     <section class="app-view active" id="libraryView">
       <!-- Progress Indicator -->
       <div class="sync-progress-bar">
         <div class="progress-fill" id="syncProgressFill"></div>
       </div>
 
-      <!-- Header & Controls Toolbar (Xbox App Style) -->
-      <section class="app-header">
-        <div class="header-top">
-          <div class="xbox-segmented-bar" id="libraryQuickTabs" role="tablist" aria-label="Library Views">
-            <button type="button" class="segmented-tab active" data-quick-filter="all">My games</button>
-            <button type="button" class="segmented-tab" data-quick-filter="pending">Pending sync</button>
-            <button type="button" class="segmented-tab" data-quick-filter="synced">Protected</button>
-          </div>
-
-          <div class="header-actions">
-            <button class="btn btn-primary" id="btnSyncAll"
-              title="Automated artwork discovery and Xbox injection for all titles">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                stroke-linecap="round" stroke-linejoin="round">
+      <div class="xbox-workspace">
+        <!-- Left Floating Navigation Rail (Desktop Mode) -->
+        <aside class="xbox-nav-rail" id="xboxNavRail" aria-label="Primary Navigation">
+          <div class="xbox-rail-group">
+            <button type="button" class="xbox-rail-btn active" id="railLibrary" title="My Library">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+                <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+                <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+                <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+              </svg>
+            </button>
+            <button type="button" class="xbox-rail-btn" id="railSyncAll" title="Sync All Artwork">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
               </svg>
-              <span>Sync All Artwork</span>
             </button>
-
-            <button class="btn btn-secondary" id="btnRescan" title="Scan local libraries and Xbox App manifests">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
+            <button type="button" class="xbox-rail-btn" id="railRescan" title="Rescan Libraries">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M23 4v6h-6"></path>
                 <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
               </svg>
-              <span>Rescan</span>
             </button>
-
-            <button class="btn btn-icon" id="btnRestoreVault" title="Force Restore Vault Artwork into Xbox App">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
+            <button type="button" class="xbox-rail-btn" id="railSettings" title="Settings">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+            </button>
+          </div>
+          <div class="xbox-rail-group xbox-rail-bottom">
+            <button type="button" class="xbox-rail-btn" id="railRestoreVault" title="Force Restore Vault Artwork">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
               </svg>
             </button>
+          </div>
+        </aside>
 
-            <button class="btn btn-icon" id="btnSettings" title="App Settings">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="3"></circle>
-                <path
-                  d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
-                </path>
+        <div class="xbox-main-column">
+          <!-- Header & Controls Toolbar (Xbox App Style) -->
+          <section class="app-header">
+            <div class="header-top">
+              <div class="xbox-segmented-bar" id="libraryQuickTabs" role="tablist" aria-label="Library Views">
+                <button type="button" class="segmented-tab active" data-quick-filter="all">My games</button>
+                <button type="button" class="segmented-tab" data-quick-filter="pending">Pending sync</button>
+                <button type="button" class="segmented-tab" data-quick-filter="synced">Protected</button>
+              </div>
+
+              <div class="header-actions">
+                <button class="btn btn-primary" id="btnSyncAll"
+                  title="Automated artwork discovery and Xbox injection for all titles">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+                  </svg>
+                  <span>Sync All</span>
+                </button>
+
+                <button class="btn btn-icon" id="btnRescan" title="Scan local libraries and Xbox App manifests">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M23 4v6h-6"></path>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                  </svg>
+                </button>
+
+                <button class="btn btn-icon" id="btnRestoreVault" title="Force Restore Vault Artwork into Xbox App">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                  </svg>
+                </button>
+
+                <button class="btn btn-icon" id="btnSettings" title="App Settings">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path
+                      d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                    </path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="toolbar-lower">
+              <div class="filter-pills" id="filterPillsContainer">
+                <button class="filter-pill active" data-filter="all">All <span class="filter-count"
+                    id="countAll">0</span></button>
+                <button class="filter-pill" data-filter="steam">Steam <span class="filter-count"
+                    id="countSteam">0</span></button>
+                <button class="filter-pill" data-filter="epic">Epic <span class="filter-count"
+                    id="countEpic">0</span></button>
+                <button class="filter-pill" data-filter="gog">GOG <span class="filter-count" id="countGog">0</span></button>
+                <button class="filter-pill" data-filter="shortcut">Shortcuts <span class="filter-count"
+                    id="countShortcut">0</span></button>
+                <button class="filter-pill" data-filter="pending">Pending Sync <span class="filter-count"
+                    id="countPending">0</span></button>
+              </div>
+            </div>
+
+            <div class="toolbar-sort-row">
+              <div class="sort-controls-left">
+                <button type="button" class="xbox-square-btn" id="btnFilterToggle" title="Toggle Pending Filter">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="4" y1="6" x2="20" y2="6"></line>
+                    <line x1="7" y1="12" x2="17" y2="12"></line>
+                    <line x1="10" y1="18" x2="14" y2="18"></line>
+                  </svg>
+                </button>
+                <div class="xbox-sort-pill">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 5h10M11 9h7M11 13h4M3 17l3 3 3-3M6 18V4"></path>
+                  </svg>
+                  <select id="sortGamesSelect" class="xbox-sort-select" aria-label="Sort games">
+                    <option value="alpha">Alphabetical</option>
+                    <option value="status">Sync Status</option>
+                    <option value="launcher">Platform</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="sort-controls-right">
+                <div class="library-count-label" id="gamesCountSummary">1 game</div>
+                <button type="button" class="xbox-view-toggle-btn" id="btnViewModeToggle" title="Toggle Grid / List View">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+                    <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+                    <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+                    <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+                  </svg>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Games Library Grid -->
+          <section class="library-scroll-area">
+            <div class="games-grid-loading" id="gamesLoadingIndicator" style="display: none;">
+              <div class="scanning-spinner"></div>
+              <span>Discovering Xbox App titles...</span>
+            </div>
+
+            <div class="games-grid" id="gamesGrid">
+              <!-- Rendered dynamically -->
+            </div>
+
+            <div class="empty-state" id="emptyState" style="display: none;">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
               </svg>
-            </button>
-          </div>
+              <h3>No games match your filter</h3>
+              <p>Try searching for a different game or rescan your library.</p>
+              <button class="btn btn-primary" onclick="window.rescanLibrary()">Rescan Library</button>
+            </div>
+          </section>
         </div>
-
-        <div class="toolbar-lower">
-          <div class="filter-pills" id="filterPillsContainer">
-            <button class="filter-pill active" data-filter="all">All <span class="filter-count"
-                id="countAll">0</span></button>
-            <button class="filter-pill" data-filter="steam">Steam <span class="filter-count"
-                id="countSteam">0</span></button>
-            <button class="filter-pill" data-filter="epic">Epic <span class="filter-count"
-                id="countEpic">0</span></button>
-            <button class="filter-pill" data-filter="gog">GOG <span class="filter-count" id="countGog">0</span></button>
-            <button class="filter-pill" data-filter="shortcut">Shortcuts <span class="filter-count"
-                id="countShortcut">0</span></button>
-            <button class="filter-pill" data-filter="pending">Pending Sync <span class="filter-count"
-                id="countPending">0</span></button>
-          </div>
-
-          <div class="library-count-label" id="gamesCountSummary">Scanning...</div>
-        </div>
-      </section>
-
-      <!-- Games Library Grid -->
-      <section class="library-scroll-area">
-        <div class="games-grid-loading" id="gamesLoadingIndicator" style="display: none;">
-          <div class="scanning-spinner"></div>
-          <span>Discovering Xbox App titles...</span>
-        </div>
-
-        <div class="games-grid" id="gamesGrid">
-          <!-- Rendered dynamically -->
-        </div>
-
-        <div class="empty-state" id="emptyState" style="display: none;">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-            <line x1="8" y1="21" x2="16" y2="21"></line>
-            <line x1="12" y1="17" x2="12" y2="21"></line>
-          </svg>
-          <h3>No games match your filter</h3>
-          <p>Try searching for a different game or rescan your library.</p>
-          <button class="btn btn-primary" onclick="window.rescanLibrary()">Rescan Library</button>
-        </div>
-      </section>
+      </div>
     </section>
 
     <!-- View 2: Full-App Size Settings View (Xbox App Master-Detail Style) -->

@@ -210,10 +210,11 @@ npm run pack
 ## Changelog
 
 ### [v1.10.0] - 2026-11-16
-- **2026 Xbox PC App ("New Experience") Fluent UI Overhaul:**
-  - Redesigned the app chrome with the modern Xbox PC App dark obsidian & subtle olive-green ambient gradient, centered pill search bar in the titlebar, and segmented navigation pill bar (`My games`, `Pending sync`, `Protected`).
+- **2026 Xbox PC App ("New Experience") High-Fidelity UI Recreation:**
+  - Recreated the Xbox PC App Desktop & FSE shell with the dark obsidian & olive-green atmospheric gradient, centered pill search bar, left floating navigation rail, full-width segmented navigation pill bar (`My games`, `Pending sync`, `Protected`), borderless secondary filter tabs, sort dropdown, and grid/list view toggle.
   - Updated game library tiles to match the Xbox PC App's unobstructed 1:1 square artwork preview cards (`aspect-ratio: 1 / 1`) with crisp hover/controller focus rings and clean launcher/status badges and titles stacked neatly underneath.
-  - Overhauled Settings into a 2-column master-detail layout matching the new Xbox App Settings experience, featuring a category sidebar (`Update Shield`, `System`, `Vault & Diagnostics`, `App Updates`, `Support & Donate`), grouped Fluent cards, and Xbox-style pill toggle switches.
+  - Overhauled Settings into a 2-column master-detail layout matching the new Xbox App Settings experience, featuring a category sidebar (`Update Shield`, `System`, `Vault & Diagnostics`, `App Updates`, `Support & Donate`), grouped charcoal cards, and Xbox-style white/outlined pill toggle switches.
+  - Added a single pre-populated `Demo Game` entry on startup so the redesigned library, detail/override studio, and 1:1 tile preview can be explored immediately without initiating a system scan or modifying any system files.
 
 ### [v1.9.2] - 2026-11-15
 - **Critical Hotfix for Main Process Startup Syntax Error & Packaged UI Scripts:**

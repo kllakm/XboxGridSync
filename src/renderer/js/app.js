@@ -6,9 +6,53 @@ const state = {
   games: [],
   activeFilter: 'all',
   searchQuery: '',
+  sortBy: 'alpha',
+  viewMode: 'grid',
   isSyncing: false
 };
 window.state = state;
+
+function createDemoGame() {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+    <defs>
+      <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#0f3d22"/>
+        <stop offset="52%" stop-color="#14231c"/>
+        <stop offset="100%" stop-color="#0c1015"/>
+      </linearGradient>
+      <radialGradient id="glow" cx="50%" cy="38%" r="48%">
+        <stop offset="0%" stop-color="#107c10" stop-opacity="0.72"/>
+        <stop offset="100%" stop-color="#107c10" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <rect width="512" height="512" fill="url(#bg)"/>
+    <rect width="512" height="512" fill="url(#glow)"/>
+    <circle cx="256" cy="196" r="80" fill="none" stroke="#4ade80" stroke-width="6" stroke-opacity="0.5"/>
+    <path d="M214 166 L298 226 M298 166 L214 226" stroke="#86efac" stroke-width="10" stroke-linecap="round" stroke-opacity="0.8"/>
+    <text x="256" y="346" fill="#ffffff" font-family="Segoe UI, sans-serif" font-size="42" font-weight="800" letter-spacing="3" text-anchor="middle">DEMO GAME</text>
+    <text x="256" y="388" fill="#86efac" font-family="Segoe UI, sans-serif" font-size="18" font-weight="600" letter-spacing="4" text-anchor="middle">XBOX GRID SYNC PREVIEW</text>
+  </svg>`;
+  return {
+    id: 'demo-game-seed',
+    title: 'Demo Game',
+    launcher: 'Xbox',
+    appId: 'DEMO-001',
+    status: 'Synced',
+    inXboxRegistry: true,
+    isDemo: true,
+    installPath: 'Virtual Demo Library',
+    coverUrl: `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
+  };
+}
+
+function ensureDemoGame(games) {
+  const list = Array.isArray(games) ? [...games] : [];
+  const hasDemo = list.some(g => g && (g.id === 'demo-game-seed' || g.isDemo));
+  if (!hasDemo) {
+    list.unshift(createDemoGame());
+  }
+  return list;
+}
 
 // ============================================================================
 // Toast Notification Utility
@@ -136,10 +180,10 @@ window.rescanLibrary = async function () {
 
   try {
     const games = await window.api.scanAll({ includeSamplesIfEmpty: false });
-    state.games = games;
+    state.games = ensureDemoGame(games);
     updateCounts();
     renderGames();
-    summaryEl.textContent = `${games.length} ${games.length === 1 ? 'game' : 'games'}`;
+    summaryEl.textContent = `${state.games.length} ${state.games.length === 1 ? 'game' : 'games'}`;
   } catch (err) {
     summaryEl.textContent = 'Error scanning';
     window.showToast('Scan Error', err.message, 'error');
@@ -169,7 +213,7 @@ function updateCounts() {
 window.updateCounts = updateCounts;
 
 function filterGames() {
-  return state.games.filter(game => {
+  const list = state.games.filter(game => {
     // Filter pill matching
     if (state.activeFilter !== 'all') {
       if (state.activeFilter === 'pending') {
@@ -194,6 +238,19 @@ function filterGames() {
     }
 
     return true;
+  });
+
+  // Sort results
+  return list.sort((a, b) => {
+    if (state.sortBy === 'status') {
+      const sa = a.status === 'Synced' ? 0 : 1;
+      const sb = b.status === 'Synced' ? 0 : 1;
+      if (sa !== sb) return sa - sb;
+    } else if (state.sortBy === 'launcher') {
+      const la = (a.launcher || '').localeCompare(b.launcher || '');
+      if (la !== 0) return la;
+    }
+    return (a.title || '').localeCompare(b.title || '');
   });
 }
 
@@ -338,6 +395,11 @@ function onGameCoverUpdated(gameId, newCoverUrl) {
 // Artwork Synchronization
 // ============================================================================
 async function syncSingleGame(game) {
+  if (game && game.isDemo) {
+    onGameCoverUpdated(game.id, game.coverUrl);
+    window.showToast('Demo Preview', `"${game.title}" is a virtual demo entry — no system files were modified.`, 'success');
+    return;
+  }
   window.showToast('Syncing Artwork', `Pushing thumbnail for "${game.title}" to Xbox App...`, 'info');
   try {
     const res = await window.api.resolveArtwork(game);
@@ -375,7 +437,8 @@ async function syncAllGames() {
   });
 
   try {
-    const results = await window.api.resolveAll(state.games);
+    const realGames = state.games.filter(g => !g.isDemo);
+    const results = realGames.length > 0 ? await window.api.resolveAll(realGames) : [];
     let succeeded = 0;
     for (const r of results) {
       if (r.success) {
@@ -384,11 +447,15 @@ async function syncAllGames() {
       }
     }
 
-    window.showToast(
-      'Sync Completed!',
-      `Successfully upgraded and protected ${succeeded}/${results.length} titles in the Xbox PC App.`,
-      'success'
-    );
+    if (realGames.length === 0) {
+      window.showToast('Demo Mode Active', 'Demo Game preview is protected. Click Rescan to discover installed games.', 'info');
+    } else {
+      window.showToast(
+        'Sync Completed!',
+        `Successfully upgraded and protected ${succeeded}/${results.length} titles in the Xbox PC App.`,
+        'success'
+      );
+    }
   } catch (err) {
     window.showToast('Batch Sync Error', err.message, 'error');
   } finally {
@@ -505,6 +572,66 @@ function initEventListeners() {
     });
   }
 
+  // Left Floating Navigation Rail
+  const railMap = [
+    ['railLibrary', () => window.ModalManager.closeSettingsPage()],
+    ['railSyncAll', syncAllGames],
+    ['railRescan', window.rescanLibrary],
+    ['railSettings', () => window.ModalManager.openSettingsPage()],
+    ['railRestoreVault', () => document.getElementById('btnRestoreVault').click()]
+  ];
+  railMap.forEach(([id, fn]) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', fn);
+  });
+
+  // Sort Dropdown
+  const sortSelect = document.getElementById('sortGamesSelect');
+  if (sortSelect) {
+    sortSelect.addEventListener('change', () => {
+      state.sortBy = sortSelect.value;
+      renderGames();
+    });
+  }
+
+  // Grid / List View Toggle
+  const btnViewMode = document.getElementById('btnViewModeToggle');
+  if (btnViewMode) {
+    btnViewMode.addEventListener('click', () => {
+      state.viewMode = state.viewMode === 'grid' ? 'list' : 'grid';
+      const grid = document.getElementById('gamesGrid');
+      if (grid) grid.classList.toggle('list-view', state.viewMode === 'list');
+      btnViewMode.classList.toggle('active', state.viewMode === 'list');
+    });
+  }
+
+  // Quick Filter Toggle Button
+  const btnFilterToggle = document.getElementById('btnFilterToggle');
+  if (btnFilterToggle) {
+    btnFilterToggle.addEventListener('click', () => {
+      const next = state.activeFilter === 'pending' ? 'all' : 'pending';
+      state.activeFilter = next;
+      document.querySelectorAll('.filter-pill').forEach(b => b.classList.toggle('active', b.dataset.filter === next));
+      document.querySelectorAll('#libraryQuickTabs .segmented-tab').forEach(t => t.classList.toggle('active', t.dataset.quickFilter === next));
+      btnFilterToggle.classList.toggle('active', next === 'pending');
+      renderGames();
+    });
+  }
+
+  // Titlebar Back Button
+  const btnTitlebarBack = document.getElementById('btnTitlebarBack');
+  if (btnTitlebarBack) {
+    btnTitlebarBack.addEventListener('click', () => {
+      const settingsView = document.getElementById('settingsView');
+      const overrideView = document.getElementById('overrideView');
+      if (settingsView && settingsView.style.display !== 'none') {
+        window.ModalManager.closeSettingsPage();
+      } else if (overrideView && overrideView.style.display !== 'none') {
+        document.getElementById('btnBackFromOverride')?.click();
+      }
+    });
+  }
+
   // Top Segmented Quick Tabs
   document.querySelectorAll('#libraryQuickTabs .segmented-tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -605,21 +732,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Instant Library Rendering from Cache (0ms on startup for FSE & PC)
+  // Instant Library Rendering from Cache + Mandatory Demo Game (no auto drive scan on startup)
+  let initialGames = [];
   try {
     if (window.api && window.api.getCachedLibrary) {
       const cached = await window.api.getCachedLibrary();
-      if (cached && cached.length > 0 && (!state.games || state.games.length === 0)) {
-        state.games = cached;
-        updateCounts();
-        renderGames();
-        const summaryEl = document.getElementById('gamesCountSummary');
-        if (summaryEl) summaryEl.textContent = `(${cached.length} titles discovered)`;
+      if (Array.isArray(cached) && cached.length > 0) {
+        initialGames = cached;
       }
     }
   } catch (e) {}
 
-  // Initial scan
-  window.rescanLibrary();
+  state.games = ensureDemoGame(initialGames);
+  updateCounts();
+  renderGames();
+  const summaryEl = document.getElementById('gamesCountSummary');
+  if (summaryEl) {
+    summaryEl.textContent = `${state.games.length} ${state.games.length === 1 ? 'game' : 'games'}`;
+  }
 });
 

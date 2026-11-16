@@ -366,12 +366,16 @@ class ControllerNavigationManager {
 
       // Header actions & filters
       const libraryControls = [
+        '.xbox-rail-btn',
         '.segmented-tab',
         '#btnSyncAll',
         '#btnRescan',
         '#btnRestoreVault',
         '#btnSettings',
         '.filter-pill',
+        '#btnFilterToggle',
+        '#sortGamesSelect',
+        '#btnViewModeToggle',
         '#emptyState button'
       ].join(',');
       const controls = Array.from(libraryView.querySelectorAll(libraryControls)).filter(el => this.isElementVisible(el));
