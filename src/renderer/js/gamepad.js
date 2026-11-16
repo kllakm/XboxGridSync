@@ -361,6 +361,13 @@ class ControllerNavigationManager {
 
     // 4. Game Library View
     if (libraryView && libraryView.style.display !== 'none') {
+      // If a Sort or View dropdown menu is currently open, trap focus inside its options
+      const openMenu = Array.from(document.querySelectorAll('.xbox-dropdown-menu')).find(m => this.isElementVisible(m));
+      if (openMenu) {
+        const opts = Array.from(openMenu.querySelectorAll('.xbox-dropdown-option')).filter(el => this.isElementVisible(el));
+        if (opts.length > 0) return opts;
+      }
+
       // Top-of-page titlebar & FSE navigation controls (outside #libraryView in DOM)
       const topControlsSelector = [
         '#btnToggleSidebar',
@@ -726,11 +733,37 @@ class ControllerNavigationManager {
     }
 
     // Default: simulate click
+    const parentDropdown = el.closest('.xbox-dropdown-wrapper');
     el.click();
+
+    if (el.id === 'btnSortDropdown' || el.id === 'btnViewModeToggle') {
+      const menu = parentDropdown && parentDropdown.querySelector('.xbox-dropdown-menu');
+      if (menu && this.isElementVisible(menu)) {
+        const firstOpt = menu.querySelector('.xbox-dropdown-option.selected') || menu.querySelector('.xbox-dropdown-option');
+        if (firstOpt) this.setFocus(firstOpt);
+      }
+    } else if (el.classList.contains('xbox-dropdown-option') && parentDropdown) {
+      const trigger = parentDropdown.querySelector('#btnSortDropdown, #btnViewModeToggle');
+      if (trigger) this.setFocus(trigger);
+    }
+
     this.updateHudHints();
   }
 
   handleButtonB() {
+    // 0. If an Xbox dropdown menu (Sort / View) is open, close it and refocus its trigger
+    const openMenu = Array.from(document.querySelectorAll('.xbox-dropdown-menu')).find(m => this.isElementVisible(m));
+    if (openMenu) {
+      openMenu.style.display = 'none';
+      const wrapper = openMenu.closest('.xbox-dropdown-wrapper');
+      const trigger = wrapper && wrapper.querySelector('#btnSortDropdown, #btnViewModeToggle');
+      if (trigger) {
+        trigger.classList.remove('open');
+        trigger.setAttribute('aria-expanded', 'false');
+        this.setFocus(trigger);
+      }
+      return;
+    }
     // 1. If tutorial modal is open, close it
     const tutorialModal = document.getElementById('tutorialModal');
     if (tutorialModal && (tutorialModal.classList.contains('open') || tutorialModal.style.display === 'flex')) {

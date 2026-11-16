@@ -478,6 +478,7 @@ window.ModalManager = {
 
     if (libView) libView.style.display = 'none';
     if (setView) setView.style.display = 'none';
+    document.body.classList.add('in-subview');
     if (ovView) {
       ovView.style.display = 'flex';
       window.scrollTo(0, 0);
@@ -508,6 +509,7 @@ window.ModalManager = {
     const ovView = document.getElementById('overrideView');
     if (ovView) ovView.style.display = 'none';
     if (libView) libView.style.display = 'flex';
+    document.body.classList.remove('in-subview');
     this.currentOverrideGame = null;
   },
 
@@ -1050,6 +1052,7 @@ window.ModalManager = {
     const setView = document.getElementById('settingsView');
     if (libView) libView.style.display = 'none';
     if (setView) setView.style.display = 'flex';
+    document.body.classList.add('in-subview');
   },
 
   async refreshSchedulerBadge() {
@@ -1071,6 +1074,7 @@ window.ModalManager = {
     const setView = document.getElementById('settingsView');
     if (setView) setView.style.display = 'none';
     if (libView) libView.style.display = 'flex';
+    document.body.classList.remove('in-subview');
   },
 
   // Aliases for backward compatibility

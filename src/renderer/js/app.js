@@ -291,7 +291,7 @@ function renderGames() {
     const isSynced = game.status === 'Synced';
     const isReady = game.status === 'Ready to Sync' || (!isSynced && !!game.coverUrl);
     const statusClass = isSynced ? 'synced' : (isReady ? 'ready' : (game.status === 'Needs Review' ? 'review' : 'pending'));
-    const statusText = isSynced ? '✓ Synced' : (isReady ? 'Ready to Sync' : (game.status === 'Needs Review' ? 'Needs Review' : 'Pending'));
+    const statusText = isSynced ? 'Synced' : (isReady ? 'Ready to Sync' : (game.status === 'Needs Review' ? 'Needs Review' : 'Pending'));
 
     const isCustom = (game.launcher || '').toLowerCase() === 'custom' ||
                      (game.launcher || '').toLowerCase() === 'shortcut' ||

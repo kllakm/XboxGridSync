@@ -4424,3 +4424,132 @@ body.controller-mode .games-grid.list-view .game-card.controller-focused .card-p
   transform: none;
   box-shadow: 0 0 0 2px #ffffff, 0 0 14px rgba(255, 255, 255, 0.45) !important;
 }
+
+
+/* ==========================================================================
+   List View Cleanup, 2x Xbox Controller HUD, FSE Right Controls, Synced Badge
+   ========================================================================== */
+/* 1. List View: remove ALL inner backgrounds, borders, and lines */
+.games-grid.list-view .card-info,
+.games-grid.list-view .card-info-main,
+.games-grid.list-view .card-badges {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.games-grid.list-view .game-card:hover .card-info,
+.games-grid.list-view .game-card.controller-focused .card-info {
+  background: transparent !important;
+}
+
+/* 2. Controller Helper HUD: 2x size, rounded rectangle, hollow colored circle badges */
+.controller-hud-overlay {
+  border-radius: 12px !important;
+  padding: 12px 22px !important;
+  gap: 24px !important;
+  background: rgba(14, 15, 18, 0.92) !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  bottom: 26px !important;
+  right: 28px !important;
+}
+
+.controller-hud-item {
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  gap: 10px !important;
+  color: #f3f4f6 !important;
+}
+
+.controller-hud-overlay .btn-badge {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  border-radius: 9999px !important;
+  background: transparent !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: none !important;
+}
+
+.controller-hud-overlay .btn-badge-a {
+  border: 2px solid #22c55e !important;
+  color: #22c55e !important;
+}
+
+.controller-hud-overlay .btn-badge-b {
+  border: 2px solid #ef4444 !important;
+  color: #ef4444 !important;
+}
+
+.controller-hud-overlay .btn-badge-x {
+  border: 2px solid #3b82f6 !important;
+  color: #3b82f6 !important;
+}
+
+.controller-hud-overlay .btn-badge-y {
+  border: 2px solid #eab308 !important;
+  color: #eab308 !important;
+}
+
+.controller-hud-overlay .btn-badge-pill {
+  width: auto !important;
+  height: 28px !important;
+  padding: 0 10px !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.55) !important;
+  color: #ffffff !important;
+  font-size: 12px !important;
+}
+
+/* 3. FSE Top-Right: Hide Clock, Borderless Colored Monitor Icon */
+body.fse-mode .fse-right-status,
+body.fse-mode #fseClock {
+  display: none !important;
+}
+
+body.fse-mode #btnToggleFse {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #00D05E !important;
+}
+
+body.fse-mode #btnToggleFse:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #00FF87 !important;
+}
+
+/* 4. Synced Badge on Grid Cards: Rounded Rectangle Matching Launcher Badge */
+.card-info .status-badge {
+  border-radius: 3px !important;
+  padding: 2px 7px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.3px;
+}
+
+.card-info .launcher-pill {
+  border-radius: 3px !important;
+  padding: 2px 7px !important;
+  font-size: 10px !important;
+}
+
+/* 5. Desktop Padding Between Titlebar & Content, Clean Corner, Hide Sidebar Toggle in Subviews */
+body:not(.fse-mode) .xbox-main-column {
+  border-top-left-radius: 0 !important;
+  background-image: linear-gradient(90deg, rgba(11, 12, 14, 0.92) 0%, rgba(11, 12, 14, 0) 36px) !important;
+}
+
+body:not(.fse-mode) .app-header {
+  padding-top: 16px !important;
+}
+
+body.in-subview .desktop-sidebar-toggle {
+  display: none !important;
+}
