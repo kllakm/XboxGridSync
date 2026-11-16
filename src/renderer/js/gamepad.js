@@ -361,18 +361,23 @@ class ControllerNavigationManager {
 
     // 4. Game Library View
     if (libraryView && libraryView.style.display !== 'none') {
-      const searchEl = document.getElementById('searchGamesInput');
-      if (searchEl && this.isElementVisible(searchEl)) focusables.push(searchEl);
+      // Top-of-page titlebar & FSE navigation controls (outside #libraryView in DOM)
+      const topControlsSelector = [
+        '#btnToggleSidebar',
+        '#fseShieldIcon',
+        '#searchGamesInput',
+        '.fse-nav-icon-btn',
+        '#btnTitlebarDonate',
+        '#btnToggleFse'
+      ].join(',');
+      const topControls = Array.from(document.querySelectorAll(topControlsSelector)).filter(el => this.isElementVisible(el));
+      focusables.push(...topControls);
 
-      // Header actions & filters
+      // Header actions, rail & filters inside #libraryView
       const libraryControls = [
         '.xbox-rail-btn',
-        '.fse-nav-icon-btn',
         '.segmented-tab',
         '#btnAddCustomQuick',
-        '#btnSyncAll',
-        '#btnRescan',
-        '#btnSettings',
         '.filter-pill',
         '#btnFilterToggle',
         '#btnSortDropdown',
@@ -930,10 +935,10 @@ class ControllerNavigationManager {
       `;
     } else if (isCardFocused) {
       hintsHtml = `
-        <div class="controller-hud-item"><span class="btn-badge btn-badge-a">A</span> Studio / Edit</div>
-        <div class="controller-hud-item"><span class="btn-badge btn-badge-x">X</span> Sync Game</div>
-        <div class="controller-hud-item"><span class="btn-badge btn-badge-b">B</span> Top Filter</div>
-        <div class="controller-hud-item"><span class="btn-badge btn-badge-pill">LB/RB</span> Filter</div>
+        <div class="controller-hud-item"><span class="btn-badge btn-badge-a">A</span> Edit Cover</div>
+        <div class="controller-hud-item"><span class="btn-badge btn-badge-x">X</span> Sync Tile</div>
+        <div class="controller-hud-item"><span class="btn-badge btn-badge-b">B</span> Filters</div>
+        <div class="controller-hud-item"><span class="btn-badge btn-badge-pill">LB/RB</span> Category</div>
         <div class="controller-hud-item"><span class="btn-badge btn-badge-pill">Start</span> Settings</div>
         <div class="controller-hud-item"><span class="btn-badge btn-badge-pill">View</span> Guide</div>
       `;
@@ -941,7 +946,7 @@ class ControllerNavigationManager {
       hintsHtml = `
         <div class="controller-hud-item"><span class="btn-badge btn-badge-a">A</span> Select</div>
         <div class="controller-hud-item"><span class="btn-badge btn-badge-x">X</span> Sync All</div>
-        <div class="controller-hud-item"><span class="btn-badge btn-badge-pill">LB/RB</span> Filter</div>
+        <div class="controller-hud-item"><span class="btn-badge btn-badge-pill">LB/RB</span> Category</div>
         <div class="controller-hud-item"><span class="btn-badge btn-badge-pill">Start</span> Settings</div>
         <div class="controller-hud-item"><span class="btn-badge btn-badge-pill">View</span> Guide</div>
       `;

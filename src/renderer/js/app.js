@@ -683,8 +683,12 @@ function initEventListeners() {
         const isList = state.viewMode === 'list';
         const grid = document.getElementById('gamesGrid');
         const listHeader = document.getElementById('listViewHeader');
+        const gridIcon = btnViewMode.querySelector('.view-icon-grid');
+        const listIcon = btnViewMode.querySelector('.view-icon-list');
         if (grid) grid.classList.toggle('list-view', isList);
         if (listHeader) listHeader.style.display = isList ? 'grid' : 'none';
+        if (gridIcon) gridIcon.style.display = isList ? 'none' : 'block';
+        if (listIcon) listIcon.style.display = isList ? 'block' : 'none';
         btnViewMode.classList.toggle('active', isList);
         closeViewMenu();
       });
@@ -768,8 +772,112 @@ function initEventListeners() {
   });
 }
 
+// ============================================================================
+// 32-bit Floating-Point GPU Ambient Mesh Shader (Zero Banding)
+// ============================================================================
+function initAmbientMeshShader() {
+  const canvas = document.getElementById('xboxAmbientShaderCanvas');
+  if (!canvas) return;
+
+  const gl = canvas.getContext('webgl2', { alpha: false, antialias: false, depth: false, stencil: false });
+  if (!gl) return;
+
+  const vsSource = `#version 300 es
+    in vec2 aPos;
+    out vec2 vUv;
+    void main() {
+      vUv = aPos * 0.5 + 0.5;
+      gl_Position = vec4(aPos, 0.0, 1.0);
+    }
+  `;
+
+  const fsSource = `#version 300 es
+    precision highp float;
+    in vec2 vUv;
+    out vec4 fragColor;
+
+    // Interleaved Gradient Noise (32-bit float triangular dither, eliminates 8-bit banding cleanly)
+    float ign(vec2 p) {
+      vec3 magic = vec3(0.06711056, 0.00583715, 52.9829189);
+      return fract(magic.z * fract(dot(p, magic.xy)));
+    }
+
+    void main() {
+      vec2 uv = vec2(vUv.x, 1.0 - vUv.y);
+      vec3 base = vec3(17.0 / 255.0, 18.0 / 255.0, 20.0 / 255.0);
+
+      // Soft Xbox olive-forest ambient mesh lobes
+      vec2 d1 = (uv - vec2(0.42, -0.04)) / vec2(0.58, 0.55);
+      float w1 = exp(-dot(d1, d1) * 1.45);
+
+      vec2 d2 = (uv - vec2(0.18, 0.14)) / vec2(0.45, 0.42);
+      float w2 = exp(-dot(d2, d2) * 1.75);
+
+      vec2 d3 = (uv - vec2(0.75, 0.10)) / vec2(0.52, 0.45);
+      float w3 = exp(-dot(d3, d3) * 1.9);
+
+      vec3 oliveGlow = vec3(44.0 / 255.0, 62.0 / 255.0, 44.0 / 255.0);
+      vec3 mossGlow  = vec3(34.0 / 255.0, 48.0 / 255.0, 35.0 / 255.0);
+      vec3 slateGlow = vec3(28.0 / 255.0, 38.0 / 255.0, 32.0 / 255.0);
+
+      vec3 col = base;
+      col = mix(col, oliveGlow, clamp(w1 * 0.62, 0.0, 1.0));
+      col = mix(col, mossGlow, clamp(w2 * 0.30, 0.0, 1.0));
+      col = mix(col, slateGlow, clamp(w3 * 0.22, 0.0, 1.0));
+
+      // Sub-LSB triangular dithering in 32-bit float
+      float n = ign(gl_FragCoord.xy) - 0.5;
+      col += n / 255.0;
+
+      fragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
+    }
+  `;
+
+  const compile = (type, src) => {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : null;
+  };
+
+  const vs = compile(gl.VERTEX_SHADER, vsSource);
+  const fs = compile(gl.FRAGMENT_SHADER, fsSource);
+  if (!vs || !fs) return;
+
+  const prog = gl.createProgram();
+  gl.attachShader(prog, vs);
+  gl.attachShader(prog, fs);
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return;
+
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+
+  const loc = gl.getAttribLocation(prog, 'aPos');
+  gl.useProgram(prog);
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+  const render = () => {
+    const dpr = window.devicePixelRatio || 1;
+    const w = Math.max(1, Math.floor(window.innerWidth * dpr));
+    const h = Math.max(1, Math.floor(window.innerHeight * dpr));
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
+    gl.viewport(0, 0, w, h);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  };
+
+  render();
+  window.addEventListener('resize', render);
+}
+
 // Startup
 document.addEventListener('DOMContentLoaded', async () => {
+  initAmbientMeshShader();
   initWindowControls();
   initEventListeners();
   try {

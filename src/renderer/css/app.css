@@ -4346,3 +4346,81 @@ body.fse-mode .library-scroll-area {
 .games-grid.list-view .list-col-status {
   font-size: 13.5px;
 }
+
+
+/* ==========================================================================
+   WebGL2 32-Bit Shader Canvas, Clean List View, Single Xbox Focus Ring
+   ========================================================================== */
+/* 1. Remove SVG dither overlay and place 32-bit GPU WebGL2 canvas behind UI */
+body::before {
+  display: none !important;
+  content: none !important;
+}
+
+body,
+body.fse-mode {
+  background-color: #111214 !important;
+  background-image: none !important;
+}
+
+#xboxAmbientShaderCanvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+  display: block;
+}
+
+/* Desktop Mode: #0b0c0e black chrome fading smoothly into the 32-bit WebGL2 shader */
+body:not(.fse-mode) .xbox-workspace {
+  background: transparent !important;
+}
+
+body:not(.fse-mode) .xbox-main-column {
+  background-color: transparent !important;
+  background-image: linear-gradient(90deg, #0b0c0e 0%, rgba(11, 12, 14, 0) 28px) !important;
+}
+
+/* 2. Truly Transparent, Line-Free List View */
+.games-grid.list-view .game-card {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.games-grid.list-view .game-card:hover,
+.games-grid.list-view .game-card.controller-focused {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* 3. Single Crisp Xbox White Focus Ring (NO double border!) */
+body.controller-mode .controller-focused:not(.game-card),
+body.controller-mode :focus-visible:not(.game-card) {
+  outline: none !important;
+  box-shadow: 0 0 0 2px #ffffff, 0 0 18px rgba(255, 255, 255, 0.50) !important;
+  transform: none;
+}
+
+body.controller-mode .game-card.controller-focused,
+body.controller-mode .game-card:focus-visible {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+body.controller-mode .game-card.controller-focused .card-poster-wrapper,
+body.controller-mode .game-card:focus-visible .card-poster-wrapper {
+  border: 2px solid #ffffff !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.92), 0 0 22px rgba(255, 255, 255, 0.58) !important;
+  transform: scale(1.03);
+}
+
+body.controller-mode .games-grid.list-view .game-card.controller-focused .card-poster-wrapper {
+  transform: none;
+  box-shadow: 0 0 0 2px #ffffff, 0 0 14px rgba(255, 255, 255, 0.45) !important;
+}
