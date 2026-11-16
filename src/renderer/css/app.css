@@ -4678,3 +4678,12 @@ body.fse-mode.fse-search-open .titlebar-search-pill .search-icon {
   width: 18px !important;
   height: 18px !important;
 }
+
+/* Ensure FSE Search Overlay sits IN FRONT of all library headers and content */
+body.fse-mode.fse-search-open .titlebar {
+  z-index: 900 !important;
+}
+
+body.fse-mode.fse-search-open .desktop-titlebar-center {
+  z-index: 950 !important;
+}

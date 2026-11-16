@@ -248,6 +248,20 @@ app.on('window-all-closed', () => {
 // 0. App Info
 ipcMain.handle('app:version', () => app.getVersion());
 
+ipcMain.handle('app:openTouchKeyboard', () => {
+  try {
+    const tabTip = path.join(process.env.ProgramFiles || 'C:\\Program Files', 'Common Files', 'microsoft shared', 'ink', 'TabTip.exe');
+    if (fs.existsSync(tabTip)) {
+      const { spawn } = require('child_process');
+      spawn(tabTip, [], { detached: true, stdio: 'ignore' }).unref();
+      return { success: true };
+    }
+    return { success: false, error: 'TabTip.exe not found' };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
 // 1. Scanner
 ipcMain.handle('scanner:scanAll', async (event, options) => {
   return await scanner.scanAll(options);

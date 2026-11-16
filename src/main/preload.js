@@ -57,6 +57,7 @@ contextBridge.exposeInMainWorld('api', {
   toggleFse: () => ipcRenderer.invoke('window:toggleFse'),
   isFse: () => ipcRenderer.invoke('window:isFse'),
   isHandheld: () => ipcRenderer.invoke('system:isHandheld'),
+  openTouchKeyboard: () => ipcRenderer.invoke('app:openTouchKeyboard'),
   onFseChanged: (callback) => {
     const handler = (event, isFse) => callback(isFse);
     ipcRenderer.on('window:fseChanged', handler);

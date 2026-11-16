@@ -560,9 +560,18 @@ function initEventListeners() {
   document.getElementById('fseShieldIcon')?.addEventListener('click', () => window.ModalManager.openSettingsPage());
   document.getElementById('fseNavSearch')?.addEventListener('click', () => {
     const searchEl = document.getElementById('searchGamesInput');
-    document.body.classList.toggle('fse-search-open');
-    if (document.body.classList.contains('fse-search-open') && searchEl) {
-      setTimeout(() => searchEl.focus(), 50);
+    const isOpening = !document.body.classList.contains('fse-search-open');
+    document.body.classList.toggle('fse-search-open', isOpening);
+    if (isOpening && searchEl) {
+      setTimeout(() => {
+        searchEl.focus();
+        if (document.body.classList.contains('controller-mode') && window.ControllerNav) {
+          window.ControllerNav.setFocus(searchEl);
+        }
+        if ((document.body.classList.contains('controller-mode') || document.body.classList.contains('fse-mode')) && window.api && window.api.openTouchKeyboard) {
+          window.api.openTouchKeyboard();
+        }
+      }, 40);
     }
   });
 
