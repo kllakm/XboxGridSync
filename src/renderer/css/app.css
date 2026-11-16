@@ -75,7 +75,7 @@ html {
 body {
   font-family: var(--font-family);
   background-color: #090b0e;
-  background-image: 
+  background-image:
     radial-gradient(circle at 12% 0%, rgba(0, 208, 94, 0.11) 0%, transparent 42%),
     radial-gradient(circle at 88% 95%, rgba(0, 255, 135, 0.07) 0%, transparent 48%),
     radial-gradient(circle at 50% 50%, rgba(18, 22, 30, 0.75) 0%, #090b0e 100%);
@@ -101,13 +101,16 @@ svg {
   width: 6px;
   height: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.15);
   border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 208, 94, 0.4);
 }
@@ -143,6 +146,7 @@ svg {
   justify-content: center;
   filter: drop-shadow(0 0 10px rgba(0, 208, 94, 0.45));
 }
+
 .titlebar-logo svg {
   width: 100%;
   height: 100%;
@@ -194,8 +198,17 @@ svg {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.85); }
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.4;
+    transform: scale(0.85);
+  }
 }
 
 .shield-badge.inactive {
@@ -204,6 +217,7 @@ svg {
   border-color: var(--border-subtle);
   box-shadow: none;
 }
+
 .shield-badge.inactive .pulse-dot {
   background: #737373;
   box-shadow: none;
@@ -227,6 +241,7 @@ svg {
   cursor: pointer;
   transition: all 0.15s ease;
 }
+
 .titlebar-donate-btn:hover {
   background: rgba(255, 221, 0, 0.14);
   color: #ffe633;
@@ -242,6 +257,7 @@ svg {
   cursor: pointer;
   transition: all 0.15s ease;
 }
+
 .titlebar-fse-btn:hover {
   background: rgba(0, 208, 94, 0.15);
   color: #00FF87;
@@ -257,6 +273,7 @@ body.fse-mode .titlebar-fse-btn {
   color: #00FF87;
   background: rgba(0, 208, 94, 0.12);
 }
+
 body.fse-mode .titlebar-fse-btn:hover {
   background: rgba(0, 208, 94, 0.22);
   color: #fff;
@@ -265,6 +282,7 @@ body.fse-mode .titlebar-fse-btn:hover {
 body.fse-mode .titlebar-fse-btn .icon-gamepad {
   display: none !important;
 }
+
 body.fse-mode .titlebar-fse-btn .icon-pc {
   display: block !important;
 }
@@ -272,6 +290,7 @@ body.fse-mode .titlebar-fse-btn .icon-pc {
 body:not(.fse-mode) .titlebar-fse-btn .icon-pc {
   display: none !important;
 }
+
 body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   display: block !important;
 }
@@ -301,10 +320,12 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 }
+
 .win-btn:hover {
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
 }
+
 .win-btn.close-btn:hover {
   background: #c42b1c;
   color: #ffffff;
@@ -353,6 +374,7 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
     transform: translateY(-100%);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -380,9 +402,12 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
 }
 
 @keyframes pulseGlow {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 10px rgba(0, 255, 135, 0.25);
   }
+
   50% {
     box-shadow: 0 0 20px rgba(0, 255, 135, 0.6);
   }
@@ -453,6 +478,7 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   z-index: 50;
   overflow: hidden;
 }
+
 .progress-fill {
   height: 100%;
   width: 0%;
@@ -521,11 +547,13 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   border: 1px solid rgba(255, 255, 255, 0.3);
   box-shadow: 0 4px 16px rgba(0, 208, 94, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
+
 .btn-primary:hover {
   background: linear-gradient(135deg, #05D665 0%, #34f58c 100%);
   box-shadow: 0 6px 22px rgba(0, 208, 94, 0.55), 0 0 16px rgba(0, 255, 135, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.5);
   transform: translateY(-1px);
 }
+
 .btn-primary:active {
   transform: translateY(0);
   box-shadow: 0 2px 8px rgba(0, 208, 94, 0.4);
@@ -538,6 +566,7 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
+
 .btn-secondary:hover {
   background: rgba(255, 255, 255, 0.12);
   border-color: rgba(255, 255, 255, 0.22);
@@ -549,6 +578,7 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   border-color: rgba(245, 158, 11, 0.35);
   color: #f59e0b;
 }
+
 .btn-danger-subtle:hover {
   background: rgba(245, 158, 11, 0.12);
   border-color: rgba(245, 158, 11, 0.5);
@@ -559,6 +589,7 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   border-color: rgba(239, 68, 68, 0.4);
   color: #ef4444;
 }
+
 .btn-danger:hover {
   background: rgba(239, 68, 68, 0.15);
   border-color: rgba(239, 68, 68, 0.6);
@@ -573,6 +604,7 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
+
 .btn-icon:hover {
   color: var(--text-primary);
   background: rgba(255, 255, 255, 0.12);
@@ -611,11 +643,13 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   align-items: center;
   gap: 6px;
 }
+
 .filter-pill:hover {
   color: var(--text-primary);
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.18);
 }
+
 .filter-pill.active {
   background: rgba(0, 208, 94, 0.18);
   color: #00FF87;
@@ -635,6 +669,7 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   position: relative;
   min-width: 230px;
 }
+
 .search-icon {
   position: absolute;
   left: 10px;
@@ -643,6 +678,7 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   color: var(--text-muted);
   pointer-events: none;
 }
+
 .search-input {
   width: 100%;
   background: rgba(255, 255, 255, 0.05);
@@ -657,6 +693,7 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   transition: all 0.2s ease;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
 }
+
 .search-input:focus {
   border-color: var(--xbox-green);
   background: rgba(255, 255, 255, 0.08);
@@ -694,7 +731,9 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
 }
 
 @keyframes spin-scan {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .games-grid {
@@ -727,7 +766,8 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
 .card-poster-wrapper {
   position: relative;
   width: 100%;
-  aspect-ratio: 1 / 1; /* 1:1 Square Aspect Ratio matching Xbox App */
+  aspect-ratio: 1 / 1;
+  /* 1:1 Square Aspect Ratio matching Xbox App */
   background: #101319;
   overflow: hidden;
 }
@@ -741,6 +781,7 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   object-fit: cover;
   transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
+
 .game-card:hover .card-poster-img {
   transform: scale(1.04);
 }
@@ -770,10 +811,26 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   border: 1px solid rgba(255, 255, 255, 0.15);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
-.launcher-pill.steam { color: #66c0f4; border-color: rgba(102, 192, 244, 0.35); }
-.launcher-pill.epic { color: #f5f5f5; border-color: rgba(255, 255, 255, 0.35); }
-.launcher-pill.gog { color: #e879f9; border-color: rgba(232, 121, 249, 0.35); }
-.launcher-pill.shortcut { color: #00FF87; border-color: rgba(0, 255, 135, 0.35); }
+
+.launcher-pill.steam {
+  color: #66c0f4;
+  border-color: rgba(102, 192, 244, 0.35);
+}
+
+.launcher-pill.epic {
+  color: #f5f5f5;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.launcher-pill.gog {
+  color: #e879f9;
+  border-color: rgba(232, 121, 249, 0.35);
+}
+
+.launcher-pill.shortcut {
+  color: #00FF87;
+  border-color: rgba(0, 255, 135, 0.35);
+}
 
 .status-badge {
   font-size: 10px;
@@ -786,20 +843,24 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   gap: 4px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
 }
+
 .status-badge.synced {
   background: rgba(0, 208, 94, 0.88);
   color: #06080a;
   font-weight: 800;
 }
+
 .status-badge.ready {
   background: rgba(14, 165, 233, 0.90);
   color: #ffffff;
   font-weight: 700;
 }
+
 .status-badge.pending {
   background: rgba(217, 119, 6, 0.88);
   color: #ffffff;
 }
+
 .status-badge.review {
   background: rgba(168, 85, 247, 0.88);
   color: #ffffff;
@@ -812,7 +873,7 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(8, 10, 14, 0.85) 100%);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.1) 0%, rgba(8, 10, 14, 0.85) 100%);
   opacity: 0;
   display: flex;
   align-items: flex-end;
@@ -821,6 +882,7 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   transition: opacity 0.25s ease;
   z-index: 3;
 }
+
 .game-card:hover .card-overlay {
   opacity: 1;
 }
@@ -830,6 +892,7 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   gap: 6px;
   width: 100%;
 }
+
 .overlay-btn {
   flex: 1;
   padding: 7px;
@@ -844,22 +907,26 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   gap: 4px;
   transition: all 0.15s ease;
 }
+
 .overlay-btn-primary {
   background: linear-gradient(135deg, #00C853 0%, #00FF87 100%);
   color: #080a0d;
   box-shadow: 0 2px 8px rgba(0, 208, 94, 0.4);
 }
+
 .overlay-btn-primary:hover {
   background: linear-gradient(135deg, #05D665 0%, #34f58c 100%);
   box-shadow: 0 4px 14px rgba(0, 208, 94, 0.6);
   transform: translateY(-1px);
 }
+
 .overlay-btn-secondary {
   background: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(8px);
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.15);
 }
+
 .overlay-btn-secondary:hover {
   background: rgba(255, 255, 255, 0.28);
   transform: translateY(-1px);
@@ -875,8 +942,10 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   flex-direction: column;
   gap: 4px;
 }
-  gap: 4px;
+
+gap: 4px;
 }
+
 .card-title {
   font-size: 13px;
   font-weight: 600;
@@ -885,6 +954,7 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 .card-subtext {
   font-size: 11px;
   color: var(--text-muted);
@@ -904,9 +974,11 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   gap: 16px;
   color: var(--text-secondary);
 }
+
 .empty-state svg {
   color: var(--text-muted);
 }
+
 .empty-state h3 {
   font-size: 18px;
   color: var(--text-primary);
@@ -932,6 +1004,7 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   transition: opacity 0.2s ease;
   padding: 20px;
 }
+
 .modal-backdrop.open {
   opacity: 1;
   pointer-events: auto;
@@ -952,6 +1025,7 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   transform: scale(0.96);
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
+
 .modal-backdrop.open .modal-sheet {
   transform: scale(1);
 }
@@ -963,11 +1037,13 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   align-items: center;
   justify-content: space-between;
 }
+
 .modal-header h2 {
   font-size: 17px;
   font-weight: 800;
   letter-spacing: -0.2px;
 }
+
 .modal-close-btn {
   background: transparent;
   border: none;
@@ -977,6 +1053,7 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   border-radius: var(--radius-sm);
   display: flex;
 }
+
 .modal-close-btn:hover {
   background: rgba(255, 255, 255, 0.1);
   color: var(--text-primary);
@@ -1006,12 +1083,14 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   grid-template-columns: 200px 1fr;
   gap: 24px;
 }
+
 .override-preview-area {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
 }
+
 .override-preview-box {
   width: 100%;
   aspect-ratio: 1 / 1;
@@ -1021,6 +1100,7 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   overflow: hidden;
   box-shadow: var(--shadow-md);
 }
+
 .override-preview-img {
   width: 100%;
   height: 100%;
@@ -1040,6 +1120,7 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   max-height: 180px;
   overflow-y: auto;
 }
+
 .match-item {
   display: flex;
   align-items: center;
@@ -1051,20 +1132,25 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   cursor: pointer;
   transition: all 0.15s ease;
 }
-.match-item:hover, .match-item.selected {
+
+.match-item:hover,
+.match-item.selected {
   border-color: var(--xbox-green);
   background: var(--bg-surface-hover);
 }
+
 .match-thumb {
   width: 44px;
   height: 44px;
   object-fit: cover;
   border-radius: var(--radius-sm);
 }
+
 .match-info {
   flex: 1;
   overflow: hidden;
 }
+
 .match-title {
   font-size: 13px;
   font-weight: 600;
@@ -1072,10 +1158,12 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 .match-appId {
   font-size: 11px;
   color: var(--text-muted);
 }
+
 .match-score {
   font-size: 11px;
   font-weight: 700;
@@ -1096,10 +1184,12 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   cursor: pointer;
   transition: all 0.15s ease;
 }
+
 .btn-source-filter:hover {
   color: var(--text-primary);
   border-color: var(--border-focus);
 }
+
 .btn-source-filter.active {
   background: var(--xbox-green);
   border-color: var(--xbox-green);
@@ -1113,11 +1203,13 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   border-radius: 4px;
   text-transform: uppercase;
 }
+
 .match-source-badge.steam {
   background: rgba(102, 192, 244, 0.2);
   color: #66c0f4;
   border: 1px solid rgba(102, 192, 244, 0.4);
 }
+
 .match-source-badge.sgdb {
   background: rgba(217, 70, 239, 0.2);
   color: #d946ef;
@@ -1139,7 +1231,9 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   cursor: pointer;
   transition: all 0.2s ease;
 }
-.drop-zone:hover, .drop-zone.dragover {
+
+.drop-zone:hover,
+.drop-zone.dragover {
   border-color: #00D05E;
   background: rgba(0, 208, 94, 0.08);
   box-shadow: 0 0 20px rgba(0, 208, 94, 0.2);
@@ -1154,15 +1248,18 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   padding: 12px 0;
   border-bottom: 1px solid var(--border-subtle);
 }
+
 .setting-label {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
+
 .setting-title {
   font-size: 14px;
   font-weight: 600;
 }
+
 .setting-desc {
   font-size: 12px;
   color: var(--text-secondary);
@@ -1176,11 +1273,13 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   height: 24px;
   flex-shrink: 0;
 }
+
 .switch input {
   opacity: 0;
   width: 0;
   height: 0;
 }
+
 .slider {
   position: absolute;
   cursor: pointer;
@@ -1193,6 +1292,7 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   border-radius: 24px;
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
 .slider:before {
   position: absolute;
   content: "";
@@ -1205,12 +1305,14 @@ body:not(.fse-mode) .titlebar-fse-btn .icon-gamepad {
   border-radius: 50%;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
-input:checked + .slider {
+
+input:checked+.slider {
   background: linear-gradient(135deg, #00C853 0%, #00FF87 100%);
   border-color: #00FF87;
   box-shadow: 0 0 14px rgba(0, 208, 94, 0.5);
 }
-input:checked + .slider:before {
+
+input:checked+.slider:before {
   transform: translateX(20px);
 }
 
@@ -1219,11 +1321,13 @@ input:checked + .slider:before {
   flex-direction: column;
   gap: 8px;
 }
+
 .form-label {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-secondary);
 }
+
 .form-input {
   background: var(--bg-surface-elevated);
   border: 1px solid var(--border-subtle);
@@ -1234,6 +1338,7 @@ input:checked + .slider:before {
   font-size: 13px;
   outline: none;
 }
+
 .form-input:focus {
   border-color: var(--xbox-green);
 }
@@ -1480,21 +1585,33 @@ input:checked + .slider:before {
   pointer-events: auto;
   animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
+
 @keyframes slideIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
+
 .toast-icon {
   color: #4ade80;
   display: flex;
 }
+
 .toast-content {
   flex: 1;
 }
+
 .toast-title {
   font-size: 13px;
   font-weight: 700;
 }
+
 .toast-msg {
   font-size: 11px;
   color: var(--text-secondary);
@@ -1669,7 +1786,8 @@ input:checked + .slider:before {
   opacity: 0;
 }
 
-.grid-line-h, .grid-line-v {
+.grid-line-h,
+.grid-line-v {
   position: absolute;
   background: rgba(255, 255, 255, 0.7);
 }
@@ -1680,8 +1798,13 @@ input:checked + .slider:before {
   height: 1px;
 }
 
-.grid-line-h.h1 { top: 33.33%; }
-.grid-line-h.h2 { top: 66.66%; }
+.grid-line-h.h1 {
+  top: 33.33%;
+}
+
+.grid-line-h.h2 {
+  top: 66.66%;
+}
 
 .grid-line-v {
   top: 0;
@@ -1689,8 +1812,13 @@ input:checked + .slider:before {
   width: 1px;
 }
 
-.grid-line-v.v1 { left: 33.33%; }
-.grid-line-v.v2 { left: 66.66%; }
+.grid-line-v.v1 {
+  left: 33.33%;
+}
+
+.grid-line-v.v2 {
+  left: 66.66%;
+}
 
 .crop-loading-spinner {
   position: absolute;
@@ -1982,7 +2110,8 @@ input:checked + .slider:before {
   background: rgba(255, 255, 255, 0.02);
 }
 
-.drop-zone:hover, .drop-zone.dragover {
+.drop-zone:hover,
+.drop-zone.dragover {
   border-color: var(--xbox-green);
   background: rgba(0, 255, 135, 0.05);
 }
@@ -2289,20 +2418,23 @@ body.controller-mode .game-card.controller-focused {
 .switch:focus {
   outline: none;
 }
+
 .switch:focus-visible .slider {
   box-shadow: 0 0 14px rgba(0, 255, 135, 0.6) !important;
   border-color: #00FF87 !important;
 }
+
 body.controller-mode .switch.controller-focused,
 body.controller-mode .switch:focus {
   outline: 2px solid rgba(0, 255, 135, 0.7);
   outline-offset: 3px;
   border-radius: 24px;
 }
+
 body.controller-mode .switch.controller-focused .slider,
 body.controller-mode .switch:focus-within .slider,
-body.controller-mode .switch input:focus + .slider,
-body.controller-mode .switch input.controller-focused + .slider {
+body.controller-mode .switch input:focus+.slider,
+body.controller-mode .switch input.controller-focused+.slider {
   box-shadow: 0 0 18px rgba(0, 255, 135, 0.8), 0 0 6px #00FF87 !important;
   border-color: #00FF87 !important;
 }
@@ -2428,7 +2560,8 @@ body.controller-mode #btnTitlebarDonate.controller-focused {
   --titlebar-height: 46px;
 }
 
-html, body {
+html,
+body {
   background-color: #111214;
 }
 
@@ -2771,10 +2904,25 @@ body.controller-mode .game-card:focus .card-poster-wrapper {
   color: rgba(255, 255, 255, 0.82);
 }
 
-.card-info .launcher-pill.steam { color: #7dd3fc; background: rgba(56, 189, 248, 0.14); }
-.card-info .launcher-pill.epic { color: #e2e8f0; background: rgba(255, 255, 255, 0.12); }
-.card-info .launcher-pill.gog { color: #e879f9; background: rgba(232, 121, 249, 0.14); }
-.card-info .launcher-pill.shortcut { color: #4ade80; background: rgba(74, 222, 128, 0.14); }
+.card-info .launcher-pill.steam {
+  color: #7dd3fc;
+  background: rgba(56, 189, 248, 0.14);
+}
+
+.card-info .launcher-pill.epic {
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.card-info .launcher-pill.gog {
+  color: #e879f9;
+  background: rgba(232, 121, 249, 0.14);
+}
+
+.card-info .launcher-pill.shortcut {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.14);
+}
 
 .card-info .status-badge {
   font-size: 9.5px;
@@ -3019,12 +3167,12 @@ body.fse-mode .games-grid {
   box-shadow: none;
 }
 
-.switch input:checked + .slider {
+.switch input:checked+.slider {
   background-color: #107c10;
   border-color: #107c10;
 }
 
-.switch input:checked + .slider:before {
+.switch input:checked+.slider:before {
   transform: translateX(19px);
   background-color: #ffffff;
 }
@@ -3378,12 +3526,12 @@ body.fse-mode .xbox-workspace {
   background-color: #ffffff;
 }
 
-.switch input:checked + .slider {
+.switch input:checked+.slider {
   background-color: #ffffff;
   border-color: #ffffff;
 }
 
-.switch input:checked + .slider:before {
+.switch input:checked+.slider:before {
   background-color: #18191c;
 }
 
@@ -3434,9 +3582,15 @@ body {
   animation: xboxSpin 1.1s linear infinite;
   color: #00FF87;
 }
+
 @keyframes xboxSpin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Desktop vs FSE Titlebar Switching */
@@ -3947,4 +4101,159 @@ body.fse-mode .games-grid {
 .games-grid.list-view .list-col-platform,
 .games-grid.list-view .list-col-status {
   display: block;
+}
+
+
+/* ==========================================================================
+   FSE Exact Proportions (6-Column Grid + 7vw Margins) & Xbox Action Buttons
+   ========================================================================== */
+/* 1. Flip Sidebar Toggle Chevron when Collapsed */
+.sidebar-chevron-expand {
+  display: none;
+}
+
+body.sidebar-compact .sidebar-chevron-collapse {
+  display: none;
+}
+
+body.sidebar-compact .sidebar-chevron-expand {
+  display: inline;
+}
+
+/* 2. Exact FSE Spacing, Margins, Pill Sizes & 6-Column Grid (matches Xbox FSE) */
+body.fse-mode .titlebar {
+  height: 58px;
+  padding: 0 28px;
+}
+
+body.fse-mode .app-header {
+  padding: 14px clamp(68px, 7vw, 130px) 16px clamp(68px, 7vw, 130px);
+  gap: 20px;
+}
+
+body.fse-mode .library-scroll-area {
+  padding: 6px clamp(68px, 7vw, 130px) 48px clamp(68px, 7vw, 130px);
+}
+
+body.fse-mode .xbox-segmented-bar {
+  height: 56px;
+  padding: 6px;
+}
+
+body.fse-mode .segmented-tab {
+  height: 44px;
+  padding: 0 28px;
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+body.fse-mode .xbox-circle-add-btn {
+  width: 56px;
+  height: 56px;
+}
+
+body.fse-mode .filter-pills {
+  gap: 14px;
+}
+
+body.fse-mode .filter-pill {
+  padding: 7px 18px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+body.fse-mode .xbox-square-btn {
+  width: 40px;
+  height: 38px;
+  border-radius: 9px;
+}
+
+body.fse-mode .xbox-sort-pill {
+  height: 38px;
+  padding: 0 18px;
+  font-size: 13.5px;
+}
+
+body.fse-mode .xbox-view-toggle-btn {
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 9px;
+}
+
+body.fse-mode .library-count-label {
+  font-size: 13.5px;
+}
+
+body.fse-mode .games-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 28px 16px;
+}
+
+@media (max-width: 1120px) {
+  body.fse-mode .games-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+body.fse-mode .games-grid.list-view {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 3. Xbox Action Buttons (matches Xbox Store/Detail Buttons Screenshot) */
+.btn {
+  border-radius: 8px;
+  padding: 10px 22px;
+  min-height: 40px;
+  font-family: var(--font-family);
+  font-size: 13.5px;
+  font-weight: 600;
+  gap: 8px;
+  border: none;
+  box-shadow: none;
+}
+
+.btn-primary {
+  background: #0e7a0d;
+  color: #ffffff;
+  border: none;
+  box-shadow: none;
+}
+
+.btn-primary:hover {
+  background: #139212;
+  box-shadow: none;
+  transform: none;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  border: none;
+  box-shadow: none;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
+.btn-sm {
+  padding: 7px 16px;
+  min-height: 34px;
+  font-size: 12.5px;
+  border-radius: 8px;
+}
+
+.btn-icon {
+  border-radius: 8px;
+  min-height: 40px;
+  min-width: 40px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.14);
+  border: none;
+}
+
+.btn-icon:hover {
+  background: rgba(255, 255, 255, 0.22);
 }
