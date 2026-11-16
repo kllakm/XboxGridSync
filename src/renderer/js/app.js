@@ -12,48 +12,6 @@ const state = {
 };
 window.state = state;
 
-function createDemoGame() {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-    <defs>
-      <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stop-color="#0f3d22"/>
-        <stop offset="52%" stop-color="#14231c"/>
-        <stop offset="100%" stop-color="#0c1015"/>
-      </linearGradient>
-      <radialGradient id="glow" cx="50%" cy="38%" r="48%">
-        <stop offset="0%" stop-color="#107c10" stop-opacity="0.72"/>
-        <stop offset="100%" stop-color="#107c10" stop-opacity="0"/>
-      </radialGradient>
-    </defs>
-    <rect width="512" height="512" fill="url(#bg)"/>
-    <rect width="512" height="512" fill="url(#glow)"/>
-    <circle cx="256" cy="196" r="80" fill="none" stroke="#4ade80" stroke-width="6" stroke-opacity="0.5"/>
-    <path d="M214 166 L298 226 M298 166 L214 226" stroke="#86efac" stroke-width="10" stroke-linecap="round" stroke-opacity="0.8"/>
-    <text x="256" y="346" fill="#ffffff" font-family="Segoe UI, sans-serif" font-size="42" font-weight="800" letter-spacing="3" text-anchor="middle">DEMO GAME</text>
-    <text x="256" y="388" fill="#86efac" font-family="Segoe UI, sans-serif" font-size="18" font-weight="600" letter-spacing="4" text-anchor="middle">XBOX GRID SYNC PREVIEW</text>
-  </svg>`;
-  return {
-    id: 'demo-game-seed',
-    title: 'Demo Game',
-    launcher: 'Xbox',
-    appId: 'DEMO-001',
-    status: 'Synced',
-    inXboxRegistry: true,
-    isDemo: true,
-    installPath: 'Virtual Demo Library',
-    coverUrl: `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
-  };
-}
-
-function ensureDemoGame(games) {
-  const list = Array.isArray(games) ? [...games] : [];
-  const hasDemo = list.some(g => g && (g.id === 'demo-game-seed' || g.isDemo));
-  if (!hasDemo) {
-    list.unshift(createDemoGame());
-  }
-  return list;
-}
-
 // ============================================================================
 // Toast Notification Utility
 // ============================================================================
@@ -186,24 +144,35 @@ window.rescanLibrary = async function () {
   const summaryEl = document.getElementById('gamesCountSummary');
   const loadingIndicator = document.getElementById('gamesLoadingIndicator');
   const emptyState = document.getElementById('emptyState');
+  const btnRescan = document.getElementById('btnRescan');
+  const fseRescan = document.getElementById('fseNavRescan');
 
-  summaryEl.textContent = 'Scanning...';
+  if (summaryEl) summaryEl.textContent = 'Rescanning...';
+  if (btnRescan) btnRescan.classList.add('is-syncing');
+  if (fseRescan) fseRescan.classList.add('is-syncing');
   if (!state.games || state.games.length === 0) {
     if (loadingIndicator) loadingIndicator.style.display = 'flex';
     if (emptyState) emptyState.style.display = 'none';
   }
+  window.showToast('Rescanning Library', 'Checking local launchers and Xbox App cache...', 'info');
 
   try {
-    const games = await window.api.scanAll({ includeSamplesIfEmpty: false });
-    state.games = ensureDemoGame(games);
+    const minDelay = new Promise(resolve => setTimeout(resolve, 2000));
+    const [games] = await Promise.all([
+      window.api.scanAll({ includeSamplesIfEmpty: false }),
+      minDelay
+    ]);
+    state.games = Array.isArray(games) ? games : [];
     updateCounts();
     renderGames();
-    summaryEl.textContent = `${state.games.length} ${state.games.length === 1 ? 'game' : 'games'}`;
+    if (summaryEl) summaryEl.textContent = `${state.games.length} ${state.games.length === 1 ? 'game' : 'games'}`;
   } catch (err) {
-    summaryEl.textContent = 'Error scanning';
+    if (summaryEl) summaryEl.textContent = 'Error scanning';
     window.showToast('Scan Error', err.message, 'error');
   } finally {
     if (loadingIndicator) loadingIndicator.style.display = 'none';
+    if (btnRescan) btnRescan.classList.remove('is-syncing');
+    if (fseRescan) fseRescan.classList.remove('is-syncing');
   }
 };
 
@@ -711,7 +680,13 @@ function initEventListeners() {
     });
   }
 
-  // Titlebar Back Button
+  // Click outside search in FSE dismisses search overlay
+  document.addEventListener('click', (e) => {
+    if (!document.body.classList.contains('fse-mode') || !document.body.classList.contains('fse-search-open')) return;
+    if (!e.target.closest('.titlebar-search-pill') && !e.target.closest('#fseNavSearch')) {
+      document.body.classList.remove('fse-search-open');
+    }
+  });
   const btnTitlebarBack = document.getElementById('btnTitlebarBack');
   if (btnTitlebarBack) {
     btnTitlebarBack.addEventListener('click', () => {
@@ -929,7 +904,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Instant Library Rendering from Cache + Mandatory Demo Game (no auto drive scan on startup)
+  // Instant Library Rendering from Cache
   let initialGames = [];
   try {
     if (window.api && window.api.getCachedLibrary) {
@@ -940,12 +915,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   } catch (e) {}
 
-  state.games = ensureDemoGame(initialGames);
+  state.games = initialGames;
   updateCounts();
   renderGames();
   const summaryEl = document.getElementById('gamesCountSummary');
   if (summaryEl) {
     summaryEl.textContent = `${state.games.length} ${state.games.length === 1 ? 'game' : 'games'}`;
   }
+
+  // Initial scan on startup
+  window.rescanLibrary();
 });
 

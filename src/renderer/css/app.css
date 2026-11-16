@@ -4608,3 +4608,73 @@ h1, h2, h3,
 body.fse-mode .filter-pill {
   padding: 9px 22px !important;
 }
+
+
+/* ==========================================================================
+   Circular Top-Bar Focus Rings, Focus Tooltip, & FSE Search Overlay
+   ========================================================================== */
+/* 1. Circular selection border on top menu items */
+.fse-nav-icon-btn,
+.fse-shield-icon,
+#btnToggleFse,
+#btnTitlebarDonate,
+#btnToggleSidebar {
+  border-radius: 9999px !important;
+}
+
+body.fse-mode .fse-nav-icon-btn,
+body.fse-mode .fse-shield-icon,
+body.fse-mode #btnToggleFse {
+  width: 42px;
+  height: 42px;
+}
+
+/* 2. Delayed Xbox Focus Tooltip under top menu items */
+.xbox-focus-tooltip {
+  position: fixed;
+  z-index: 9998;
+  background: #2b2d31;
+  color: #ffffff;
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 14px;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* 3. FSE Search Field: Larger & positioned over the "My games / Pending sync" bar */
+body.fse-mode.fse-search-open .desktop-titlebar-center {
+  display: flex !important;
+  position: fixed !important;
+  top: 76px !important;
+  left: clamp(72px, 7.5vw, 136px) !important;
+  right: clamp(72px, 7.5vw, 136px) !important;
+  transform: none !important;
+  width: auto !important;
+  z-index: 400 !important;
+  -webkit-app-region: no-drag;
+}
+
+body.fse-mode.fse-search-open .titlebar-search-pill {
+  max-width: none !important;
+  width: 100% !important;
+}
+
+body.fse-mode.fse-search-open .titlebar-search-pill .search-input {
+  height: 56px !important;
+  font-size: 16px !important;
+  padding: 0 24px 0 48px !important;
+  background: #26282c !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.22) !important;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.65) !important;
+}
+
+body.fse-mode.fse-search-open .titlebar-search-pill .search-icon {
+  left: 18px !important;
+  width: 18px !important;
+  height: 18px !important;
+}

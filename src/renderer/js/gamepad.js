@@ -451,6 +451,43 @@ class ControllerNavigationManager {
     this.currentFocusedElement = el;
     el.classList.add('controller-focused');
 
+    // Auto-dismiss FSE search overlay when navigating off the search item/input
+    if (document.body.classList.contains('fse-mode') && document.body.classList.contains('fse-search-open')) {
+      if (el.id !== 'fseNavSearch' && el.id !== 'searchGamesInput') {
+        document.body.classList.remove('fse-search-open');
+      }
+    }
+
+    // Delayed tooltip under top menu items when controller rests on them
+    if (this._tooltipTimer) {
+      clearTimeout(this._tooltipTimer);
+      this._tooltipTimer = null;
+    }
+    const existingTip = document.getElementById('xboxFocusTooltip');
+    if (existingTip) existingTip.remove();
+
+    const isTopItem = el.classList.contains('fse-nav-icon-btn') ||
+      el.id === 'fseShieldIcon' ||
+      el.id === 'btnToggleFse' ||
+      el.id === 'btnToggleSidebar' ||
+      el.id === 'btnTitlebarDonate';
+    const tipText = el.getAttribute('title') || el.getAttribute('aria-label');
+    if (isTopItem && tipText) {
+      this._tooltipTimer = setTimeout(() => {
+        if (this.currentFocusedElement !== el) return;
+        const tip = document.createElement('div');
+        tip.id = 'xboxFocusTooltip';
+        tip.className = 'xbox-focus-tooltip';
+        tip.textContent = tipText;
+        document.body.appendChild(tip);
+        const r = el.getBoundingClientRect();
+        const tipW = tip.offsetWidth;
+        const left = Math.max(12, Math.min(window.innerWidth - tipW - 12, r.left + r.width / 2 - tipW / 2));
+        tip.style.left = `${left}px`;
+        tip.style.top = `${r.bottom + 8}px`;
+      }, 450);
+    }
+
     try {
       el.focus({ preventScroll: true });
     } catch (e) {}
