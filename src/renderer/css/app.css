@@ -3399,3 +3399,314 @@ body.fse-mode .xbox-workspace {
   border: 1px solid rgba(255, 255, 255, 0.10);
   border-radius: 10px;
 }
+
+
+/* ==========================================================================
+   Precision Fixes: Full-Page Gradient, FSE Mode, Circle +, Sort Menu
+   ========================================================================== */
+:root {
+  --font-family: 'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+body {
+  background-color: #111214;
+  background-image:
+    radial-gradient(ellipse 95% 85% at 40% 0%, rgba(44, 64, 44, 0.42) 0%, rgba(22, 31, 24, 0.24) 55%, #111214 100%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
+.app-container,
+.app-view,
+#libraryView,
+.xbox-workspace,
+.xbox-main-column,
+.app-header,
+.library-scroll-area {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  border: none !important;
+}
+
+/* Syncing spin animation for rail / FSE icon */
+.xbox-rail-btn.is-syncing svg,
+.fse-nav-icon-btn.is-syncing svg {
+  animation: xboxSpin 1.1s linear infinite;
+  color: #00FF87;
+}
+@keyframes xboxSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Desktop vs FSE Titlebar Switching */
+.fse-shield-icon,
+.fse-top-nav,
+.fse-right-status {
+  display: none;
+}
+
+.desktop-titlebar-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+body.fse-mode .titlebar {
+  height: 52px;
+  padding: 0 22px;
+}
+
+body.fse-mode .titlebar-brand-meta,
+body.fse-mode .desktop-titlebar-center,
+body.fse-mode .titlebar-donate-btn,
+body.fse-mode .titlebar-separator,
+body.fse-mode .window-controls {
+  display: none !important;
+}
+
+body.fse-mode.fse-search-open .desktop-titlebar-center {
+  display: flex !important;
+  position: absolute;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 340px;
+  z-index: 200;
+}
+
+body.fse-mode .fse-shield-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+  margin-left: 8px;
+  color: rgba(255, 255, 255, 0.5);
+  -webkit-app-region: no-drag;
+}
+
+body.fse-mode .fse-shield-icon.active {
+  color: #00D05E;
+}
+
+body.fse-mode .fse-shield-icon.inactive {
+  color: rgba(255, 255, 255, 0.42);
+}
+
+body.fse-mode .fse-top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  -webkit-app-region: no-drag;
+}
+
+.fse-nav-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.62);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.fse-nav-icon-btn:hover,
+.fse-nav-icon-btn.active {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+body.fse-mode .fse-right-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-right: 6px;
+}
+
+.fse-clock {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Segmented Pill Bar + Circular + Button (Desktop vs FSE Proportions) */
+.app-header {
+  padding: 4px 28px 10px 18px;
+  gap: 10px;
+}
+
+.xbox-segmented-bar {
+  flex: 1;
+  height: 38px;
+  padding: 3px;
+}
+
+.segmented-tab {
+  height: 30px;
+  padding: 0 18px;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.xbox-circle-add-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.075);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.xbox-circle-add-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+.filter-pills {
+  gap: 6px;
+}
+
+.filter-pill {
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* FSE Roomier Pill Proportions (Screenshot 2) */
+body.fse-mode .app-header {
+  padding: 8px 36px 14px 36px;
+  gap: 14px;
+}
+
+body.fse-mode .library-scroll-area {
+  padding: 6px 36px 36px 36px;
+}
+
+body.fse-mode .xbox-segmented-bar {
+  height: 48px;
+  padding: 5px;
+}
+
+body.fse-mode .segmented-tab {
+  height: 36px;
+  padding: 0 24px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+body.fse-mode .xbox-circle-add-btn {
+  width: 48px;
+  height: 48px;
+}
+
+body.fse-mode .filter-pills {
+  gap: 10px;
+}
+
+body.fse-mode .filter-pill {
+  padding: 7px 16px;
+  font-size: 13.5px;
+}
+
+/* Custom Xbox Sort Dropdown Menu (Screenshot 1) */
+.xbox-dropdown-wrapper {
+  position: relative;
+}
+
+.xbox-sort-pill {
+  height: 32px;
+  padding: 0 13px;
+  font-family: var(--font-family);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.xbox-sort-pill:hover {
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.xbox-sort-pill.open {
+  background: #e4e6eb;
+  color: #111214;
+  border-color: transparent;
+}
+
+.xbox-sort-pill .sort-chevron {
+  transition: transform 0.15s ease;
+}
+
+.xbox-sort-pill.open .sort-chevron {
+  transform: rotate(180deg);
+}
+
+.xbox-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 230px;
+  background: #26282c;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.68);
+  padding: 6px 0;
+  z-index: 600;
+}
+
+.xbox-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px 8px 16px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.xbox-dropdown-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.88);
+  font-family: var(--font-family);
+  font-size: 13.5px;
+  font-weight: 400;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.xbox-dropdown-option:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.xbox-dropdown-option .option-check {
+  opacity: 0;
+  color: #ffffff;
+}
+
+.xbox-dropdown-option.selected .option-check {
+  opacity: 1;
+}

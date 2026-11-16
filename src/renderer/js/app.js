@@ -152,6 +152,13 @@ function initWindowControls() {
 window.updateShieldBadge = function (isActive) {
   const badge = document.getElementById('shieldStatusBadge');
   const text = document.getElementById('shieldStatusText');
+  const fseShield = document.getElementById('fseShieldIcon');
+  if (fseShield) {
+    fseShield.className = `win-btn fse-shield-icon ${isActive ? 'active' : 'inactive'}`;
+    fseShield.title = isActive
+      ? 'Automated Update Shield is actively protecting artwork'
+      : 'Automated Update Shield is disabled in Settings';
+  }
   if (!badge) return;
   if (isActive) {
     badge.className = 'shield-badge active';
@@ -163,6 +170,14 @@ window.updateShieldBadge = function (isActive) {
     badge.title = 'Automated Update Shield is disabled in Settings';
   }
 };
+
+function updateFseClock() {
+  const el = document.getElementById('fseClock');
+  if (!el) return;
+  const now = new Date();
+  el.textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+}
+setInterval(updateFseClock, 15000);
 
 // ============================================================================
 // Library Loading & Rendering
@@ -419,15 +434,11 @@ async function syncAllGames() {
   state.isSyncing = true;
 
   const btnSync = document.getElementById('btnSyncAll');
+  const fseSync = document.getElementById('fseNavSyncAll');
   const progressFill = document.getElementById('syncProgressFill');
 
-  btnSync.disabled = true;
-  btnSync.innerHTML = `
-    <svg class="spin-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-      <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
-    </svg>
-    <span>Syncing...</span>
-  `;
+  if (btnSync) { btnSync.disabled = true; btnSync.classList.add('is-syncing'); }
+  if (fseSync) { fseSync.disabled = true; fseSync.classList.add('is-syncing'); }
 
   window.showToast('Sync Started', `Syncing artwork for all ${state.games.length} titles...`, 'info');
 
@@ -460,13 +471,8 @@ async function syncAllGames() {
     window.showToast('Batch Sync Error', err.message, 'error');
   } finally {
     state.isSyncing = false;
-    btnSync.disabled = false;
-    btnSync.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
-      </svg>
-      <span>Sync All Artwork</span>
-    `;
+    if (btnSync) { btnSync.disabled = false; btnSync.classList.remove('is-syncing'); }
+    if (fseSync) { fseSync.disabled = false; fseSync.classList.remove('is-syncing'); }
     setTimeout(() => {
       progressFill.style.width = '0%';
     }, 1500);
@@ -572,25 +578,67 @@ function initEventListeners() {
     });
   }
 
-  // Left Floating Navigation Rail
-  const railMap = [
-    ['railLibrary', () => window.ModalManager.closeSettingsPage()],
-    ['railSyncAll', syncAllGames],
-    ['railRescan', window.rescanLibrary],
-    ['railSettings', () => window.ModalManager.openSettingsPage()],
-    ['railRestoreVault', () => document.getElementById('btnRestoreVault').click()]
-  ];
-  railMap.forEach(([id, fn]) => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener('click', fn);
+  // Left Floating Navigation Rail & FSE Top-Center Navigation
+  document.getElementById('railLibrary')?.addEventListener('click', () => window.ModalManager.closeSettingsPage());
+  document.getElementById('fseNavLibrary')?.addEventListener('click', () => window.ModalManager.closeSettingsPage());
+  document.getElementById('fseNavSyncAll')?.addEventListener('click', syncAllGames);
+  document.getElementById('fseNavRescan')?.addEventListener('click', window.rescanLibrary);
+  document.getElementById('fseNavSettings')?.addEventListener('click', () => window.ModalManager.openSettingsPage());
+  document.getElementById('fseShieldIcon')?.addEventListener('click', () => window.ModalManager.openSettingsPage());
+  document.getElementById('fseNavSearch')?.addEventListener('click', () => {
+    const searchEl = document.getElementById('searchGamesInput');
+    document.body.classList.toggle('fse-search-open');
+    if (document.body.classList.contains('fse-search-open') && searchEl) {
+      setTimeout(() => searchEl.focus(), 50);
+    }
   });
 
-  // Sort Dropdown
-  const sortSelect = document.getElementById('sortGamesSelect');
-  if (sortSelect) {
-    sortSelect.addEventListener('change', () => {
-      state.sortBy = sortSelect.value;
-      renderGames();
+  document.getElementById('btnAddCustomQuick')?.addEventListener('click', () => {
+    if (window.ModalManager && window.ModalManager.openAddGameModal) {
+      window.ModalManager.openAddGameModal();
+    }
+  });
+
+  updateFseClock();
+
+  // Custom Xbox Sort Dropdown
+  const sortWrapper = document.getElementById('sortDropdownWrapper');
+  const sortTrigger = document.getElementById('btnSortDropdown');
+  const sortMenu = document.getElementById('sortDropdownMenu');
+  const sortLabel = document.getElementById('sortDropdownLabel');
+  if (sortTrigger && sortMenu && sortWrapper) {
+    const closeSortMenu = () => {
+      sortMenu.style.display = 'none';
+      sortTrigger.classList.remove('open');
+      sortTrigger.setAttribute('aria-expanded', 'false');
+    };
+    sortTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = sortMenu.style.display !== 'none';
+      if (isOpen) {
+        closeSortMenu();
+      } else {
+        sortMenu.style.display = 'block';
+        sortTrigger.classList.add('open');
+        sortTrigger.setAttribute('aria-expanded', 'true');
+      }
+    });
+    sortMenu.querySelectorAll('.xbox-dropdown-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        sortMenu.querySelectorAll('.xbox-dropdown-option').forEach(o => {
+          o.classList.remove('selected');
+          o.setAttribute('aria-selected', 'false');
+        });
+        opt.classList.add('selected');
+        opt.setAttribute('aria-selected', 'true');
+        state.sortBy = opt.dataset.sort || 'alpha';
+        if (sortLabel) sortLabel.textContent = opt.querySelector('span')?.textContent || 'Alphabetical';
+        closeSortMenu();
+        renderGames();
+      });
+    });
+    document.addEventListener('click', (e) => {
+      if (!sortWrapper.contains(e.target)) closeSortMenu();
     });
   }
 

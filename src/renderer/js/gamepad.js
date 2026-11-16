@@ -367,14 +367,15 @@ class ControllerNavigationManager {
       // Header actions & filters
       const libraryControls = [
         '.xbox-rail-btn',
+        '.fse-nav-icon-btn',
         '.segmented-tab',
+        '#btnAddCustomQuick',
         '#btnSyncAll',
         '#btnRescan',
-        '#btnRestoreVault',
         '#btnSettings',
         '.filter-pill',
         '#btnFilterToggle',
-        '#sortGamesSelect',
+        '#btnSortDropdown',
         '#btnViewModeToggle',
         '#emptyState button'
       ].join(',');
