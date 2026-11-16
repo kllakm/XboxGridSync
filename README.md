@@ -16,7 +16,11 @@
 
 ---
 
-![App Image](./docs/xboxgridsync1.png "Main App Screen")
+![Desktop Library](./docs/xboxgridsync1.jpg "Desktop Library View")
+
+![Fullscreen Experience (FSE) & Controller Mode](./docs/xboxgridsync-fse.jpg "Fullscreen Experience (FSE) & Controller Mode")
+
+![List View](./docs/xboxgridsync-list.jpg "List View")
 
 ---
 
@@ -64,7 +68,7 @@ It mirrors your Xbox PC App's authoritative library (`ThirdPartyLibraries` & `Ex
 
 ---
 
-![App Image](./docs/xboxgridsync2.png "Image Sync Screen")
+![Customize Artwork 1:1 Crop Studio](./docs/xboxgridsync2.jpg "Customize Artwork 1:1 Crop Studio")
 
 ---
 
