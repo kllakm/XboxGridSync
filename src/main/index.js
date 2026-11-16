@@ -248,13 +248,12 @@ app.on('window-all-closed', () => {
 // 0. App Info
 ipcMain.handle('app:version', () => app.getVersion());
 
-ipcMain.handle('app:openTouchKeyboard', () => {
+ipcMain.handle('app:openTouchKeyboard', async () => {
   try {
     const tabTip = path.join(process.env.ProgramFiles || 'C:\\Program Files', 'Common Files', 'microsoft shared', 'ink', 'TabTip.exe');
     if (fs.existsSync(tabTip)) {
-      const { spawn } = require('child_process');
-      spawn(tabTip, [], { detached: true, stdio: 'ignore' }).unref();
-      return { success: true };
+      const errMsg = await shell.openPath(tabTip);
+      return errMsg ? { success: false, error: errMsg } : { success: true };
     }
     return { success: false, error: 'TabTip.exe not found' };
   } catch (e) {
