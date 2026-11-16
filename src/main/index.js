@@ -252,10 +252,33 @@ ipcMain.handle('app:openTouchKeyboard', async () => {
   try {
     const tabTip = path.join(process.env.ProgramFiles || 'C:\\Program Files', 'Common Files', 'microsoft shared', 'ink', 'TabTip.exe');
     if (fs.existsSync(tabTip)) {
-      const errMsg = await shell.openPath(tabTip);
-      return errMsg ? { success: false, error: errMsg } : { success: true };
+      await shell.openPath(tabTip);
     }
-    return { success: false, error: 'TabTip.exe not found' };
+
+    // Invoke Windows 11 ITipInvocation::Toggle(GetDesktopWindow()) so the Touch/Gamepad keyboard actually opens even when TabTip is already running in background
+    const psScript = `
+Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public class WinTip {
+  [ComImport, Guid("4ce576fa-83dc-4f88-951c-9d0782b4e376")]
+  class UIHostNoLaunch {}
+  [ComImport, Guid("37c994e7-432b-4834-a2f7-dce1f13b834b"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+  interface ITipInvocation { void Toggle(IntPtr hwnd); }
+  [DllImport("user32.dll")]
+  static extern IntPtr GetDesktopWindow();
+  public static void Show() {
+    var tip = (ITipInvocation)new UIHostNoLaunch();
+    tip.Toggle(GetDesktopWindow());
+  }
+}
+"@
+[WinTip]::Show()
+`;
+    const encoded = Buffer.from(psScript, 'utf16le').toString('base64');
+    const { execFile } = require('child_process');
+    execFile('powershell.exe', ['-NoProfile', '-WindowStyle', 'Hidden', '-EncodedCommand', encoded], { windowsHide: true }, () => {});
+    return { success: true };
   } catch (e) {
     return { success: false, error: e.message };
   }

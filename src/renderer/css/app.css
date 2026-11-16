@@ -4687,3 +4687,8 @@ body.fse-mode.fse-search-open .titlebar {
 body.fse-mode.fse-search-open .desktop-titlebar-center {
   z-index: 950 !important;
 }
+
+/* Hide top bar completely in FSE when inside Settings or Cover Studio */
+body.fse-mode.in-subview .titlebar {
+  display: none !important;
+}
