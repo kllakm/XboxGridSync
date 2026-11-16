@@ -3710,3 +3710,241 @@ body.fse-mode .filter-pill {
 .xbox-dropdown-option.selected .option-check {
   opacity: 1;
 }
+
+
+/* ==========================================================================
+   Final Xbox Fidelity Fixes: Drag Region, Expanded Rail, List View, FSE Spacing
+   ========================================================================== */
+/* 1. Remove drop shadow under .app-header and background on .override-page-header */
+.app-header {
+  box-shadow: none !important;
+}
+
+.override-page-header {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+}
+
+/* 2. Full top bar window dragging without breaking any button */
+.titlebar,
+.titlebar-left,
+.titlebar-center,
+.desktop-titlebar-center,
+.titlebar-right,
+.fse-top-nav {
+  -webkit-app-region: drag;
+}
+
+.titlebar button,
+.titlebar input,
+.titlebar .win-btn,
+.titlebar .titlebar-search-pill,
+.titlebar .fse-nav-icon-btn,
+.titlebar .fse-shield-icon,
+.titlebar .desktop-sidebar-toggle {
+  -webkit-app-region: no-drag;
+}
+
+/* 3. Desktop Black Titlebar & Left Sidebar with Gradient Fade to Main App */
+body:not(.fse-mode) {
+  background-color: #0b0c0e;
+  background-image: none;
+}
+
+body:not(.fse-mode) .titlebar {
+  background: #0b0c0e;
+}
+
+body:not(.fse-mode) .xbox-workspace {
+  padding: 0;
+  gap: 0;
+  background: #0b0c0e;
+}
+
+body:not(.fse-mode) .xbox-nav-rail {
+  background: #0b0c0e;
+  padding: 8px 10px 16px 12px;
+}
+
+body:not(.fse-mode) .xbox-main-column {
+  background-color: #111214 !important;
+  background-image:
+    linear-gradient(90deg, #0b0c0e 0%, rgba(11, 12, 14, 0) 28px),
+    radial-gradient(ellipse 90% 80% at 45% 0%, rgba(44, 64, 44, 0.42) 0%, rgba(20, 29, 22, 0.24) 55%, #111214 100%) !important;
+  border-top-left-radius: 16px;
+}
+
+/* Shield icon visible in BOTH Desktop and FSE modes */
+.fse-shield-icon {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9999px;
+  margin-left: 4px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.fse-shield-icon.active {
+  color: #00D05E;
+}
+
+.fse-shield-icon.inactive {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.desktop-sidebar-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  margin-left: 6px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.desktop-sidebar-toggle:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+body.fse-mode .desktop-sidebar-toggle {
+  display: none !important;
+}
+
+/* 4. Expanded Desktop Sidebar by Default + Compact Mode */
+.xbox-nav-rail {
+  width: 215px;
+  transition: width 0.18s ease;
+}
+
+.xbox-rail-group {
+  width: 100%;
+  align-items: stretch;
+  padding: 8px;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 14px;
+}
+
+.xbox-rail-btn {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  justify-content: flex-start;
+  gap: 12px;
+  border-radius: 8px;
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.rail-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body.sidebar-compact .xbox-nav-rail {
+  width: 68px;
+  padding: 8px 8px 16px 10px;
+}
+
+body.sidebar-compact .xbox-rail-btn {
+  padding: 0;
+  justify-content: center;
+}
+
+body.sidebar-compact .rail-label {
+  display: none;
+}
+
+/* 5. FSE Mode Spacing & Edge Padding (Screenshot 3) */
+body.fse-mode .app-header {
+  padding: 16px 68px 18px 68px;
+  gap: 18px;
+}
+
+body.fse-mode .library-scroll-area {
+  padding: 4px 68px 40px 68px;
+}
+
+body.fse-mode .games-grid {
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 28px 18px;
+}
+
+/* 6. Xbox List View & "View as" Dropdown (Screenshot 4) */
+.xbox-dropdown-menu-right {
+  left: auto;
+  right: 0;
+  min-width: 165px;
+}
+
+.list-col-platform,
+.list-col-status {
+  display: none;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.list-view-header {
+  display: grid;
+  grid-template-columns: 1fr 160px 140px;
+  padding: 6px 14px 10px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.games-grid.list-view {
+  gap: 2px;
+}
+
+.games-grid.list-view .game-card {
+  background: transparent;
+  padding: 6px 14px;
+  border-radius: 8px;
+  gap: 14px;
+}
+
+.games-grid.list-view .game-card:hover {
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.games-grid.list-view .card-poster-wrapper {
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  box-shadow: none;
+  border-width: 1px;
+}
+
+.games-grid.list-view .card-info {
+  display: grid;
+  grid-template-columns: 1fr 160px 140px;
+  align-items: center;
+  width: 100%;
+}
+
+.games-grid.list-view .card-info-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.games-grid.list-view .card-subtext,
+.games-grid.list-view .status-badge {
+  display: none;
+}
+
+.games-grid.list-view .list-col-platform,
+.games-grid.list-view .list-col-status {
+  display: block;
+}

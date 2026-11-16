@@ -330,14 +330,18 @@ function renderGames() {
       </div>
 
       <div class="card-info">
-        <div class="card-badges">
-          <span class="launcher-pill ${launcherClass}">${game.launcher}</span>
-          <span class="status-badge ${statusClass}" id="badge-${game.id}">${statusText}</span>
+        <div class="card-info-main">
+          <div class="card-badges">
+            <span class="launcher-pill ${launcherClass}">${game.launcher}</span>
+            <span class="status-badge ${statusClass}" id="badge-${game.id}">${statusText}</span>
+          </div>
+          <div class="card-title" title="${game.title}">${game.title}</div>
+          <div class="card-subtext">
+            <span id="subtext-status-${game.id}" style="color: ${isSynced ? '#4ade80' : (isReady ? '#60a5fa' : 'var(--text-muted)')}; font-weight: ${isSynced || isReady ? '600' : '400'};">${isSynced ? 'Protected' : (isReady ? 'Artwork Ready' : 'Needs Art')}</span>
+          </div>
         </div>
-        <div class="card-title" title="${game.title}">${game.title}</div>
-        <div class="card-subtext">
-          <span id="subtext-status-${game.id}" style="color: ${isSynced ? '#4ade80' : (isReady ? '#60a5fa' : 'var(--text-muted)')}; font-weight: ${isSynced || isReady ? '600' : '400'};">${isSynced ? 'Protected' : (isReady ? 'Artwork Ready' : 'Needs Art')}</span>
-        </div>
+        <div class="list-col-platform">${game.launcher || 'Custom'}</div>
+        <div class="list-col-status">${isSynced ? 'Protected' : (isReady ? 'Artwork Ready' : 'Needs Art')}</div>
       </div>
     `;
 
@@ -642,14 +646,51 @@ function initEventListeners() {
     });
   }
 
-  // Grid / List View Toggle
+  // Desktop Sidebar Collapse / Expand Toggle
+  document.getElementById('btnToggleSidebar')?.addEventListener('click', () => {
+    document.body.classList.toggle('sidebar-compact');
+  });
+
+  // Grid / List View Dropdown (matches Xbox "View as" menu)
+  const viewWrapper = document.getElementById('viewDropdownWrapper');
   const btnViewMode = document.getElementById('btnViewModeToggle');
-  if (btnViewMode) {
-    btnViewMode.addEventListener('click', () => {
-      state.viewMode = state.viewMode === 'grid' ? 'list' : 'grid';
-      const grid = document.getElementById('gamesGrid');
-      if (grid) grid.classList.toggle('list-view', state.viewMode === 'list');
-      btnViewMode.classList.toggle('active', state.viewMode === 'list');
+  const viewMenu = document.getElementById('viewDropdownMenu');
+  if (btnViewMode && viewMenu && viewWrapper) {
+    const closeViewMenu = () => {
+      viewMenu.style.display = 'none';
+      btnViewMode.classList.remove('open');
+      btnViewMode.setAttribute('aria-expanded', 'false');
+    };
+    btnViewMode.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = viewMenu.style.display !== 'none';
+      if (isOpen) closeViewMenu();
+      else {
+        viewMenu.style.display = 'block';
+        btnViewMode.classList.add('open');
+        btnViewMode.setAttribute('aria-expanded', 'true');
+      }
+    });
+    viewMenu.querySelectorAll('.xbox-dropdown-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        viewMenu.querySelectorAll('.xbox-dropdown-option').forEach(o => {
+          o.classList.remove('selected');
+          o.setAttribute('aria-selected', 'false');
+        });
+        opt.classList.add('selected');
+        opt.setAttribute('aria-selected', 'true');
+        state.viewMode = opt.dataset.view === 'list' ? 'list' : 'grid';
+        const isList = state.viewMode === 'list';
+        const grid = document.getElementById('gamesGrid');
+        const listHeader = document.getElementById('listViewHeader');
+        if (grid) grid.classList.toggle('list-view', isList);
+        if (listHeader) listHeader.style.display = isList ? 'grid' : 'none';
+        btnViewMode.classList.toggle('active', isList);
+        closeViewMenu();
+      });
+    });
+    document.addEventListener('click', (e) => {
+      if (!viewWrapper.contains(e.target)) closeViewMenu();
     });
   }
 
