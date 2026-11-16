@@ -4553,3 +4553,58 @@ body:not(.fse-mode) .app-header {
 body.in-subview .desktop-sidebar-toggle {
   display: none !important;
 }
+
+
+/* ==========================================================================
+   List View Blur Fix, Unclipped 4-Side Grid Focus Ring, Pill Padding, Xbox Fonts
+   ========================================================================== */
+/* 1. Xbox Fonts: Segoe UI for body/UI, Bahnschrift for headings & display titles */
+:root {
+  --font-family: 'Segoe UI', 'Segoe UI Variable Text', system-ui, -apple-system, sans-serif;
+  --font-family-display: 'Bahnschrift', 'Segoe UI Semibold', 'Segoe UI', sans-serif;
+}
+
+body {
+  font-family: var(--font-family);
+}
+
+h1, h2, h3,
+.settings-main-header h1,
+.override-title-group h1,
+.segmented-tab,
+.xbox-dropdown-header,
+.card-title,
+.donate-title,
+.settings-profile-name {
+  font-family: var(--font-family-display);
+  letter-spacing: 0.25px;
+}
+
+/* 2. Unclip 4-Side Grid Selection Glow Ring & Remove List View Inner Box */
+.games-grid {
+  padding: 10px 8px;
+}
+
+.game-card {
+  overflow: visible !important;
+  backdrop-filter: none !important;
+}
+
+.card-info {
+  backdrop-filter: none !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+.games-grid.list-view {
+  padding: 6px 4px;
+}
+
+/* 3. Roomier Filter Pill Padding (All, Steam, Epic, GOG, Shortcuts, Pending Sync) */
+.filter-pill {
+  padding: 6px 16px !important;
+}
+
+body.fse-mode .filter-pill {
+  padding: 9px 22px !important;
+}
