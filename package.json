@@ -1,7 +1,7 @@
 {
   "name": "xboxgridsync",
   "productName": "Xbox Grid Sync",
-  "version": "1.9.2",
+  "version": "1.10.0",
   "description": "XboxGridSync",
   "main": "src/main/index.js",
   "author": "Antigravity",

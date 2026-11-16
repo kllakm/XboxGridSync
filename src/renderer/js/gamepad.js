@@ -338,6 +338,8 @@ class ControllerNavigationManager {
     // 3. Settings View
     if (settingsView && settingsView.style.display !== 'none' && settingsView.style.display !== '') {
       const settingsSelector = [
+        '.settings-nav-item',
+        '#btnCloseSettingsX',
         '#btnBackToLibrary',
         '#btnSaveSettingsTop',
         '.switch',
@@ -345,6 +347,8 @@ class ControllerNavigationManager {
         '#btnRestartXboxApp',
         '#btnTestScheduler',
         '#btnOpenTaskSchedulerGui',
+        '#btnCleanOrphans',
+        '#btnCheckUpdates',
         '#btnClearXboxCache',
         '#btnFullReset',
         '#btnSettingsDonate',
@@ -357,14 +361,17 @@ class ControllerNavigationManager {
 
     // 4. Game Library View
     if (libraryView && libraryView.style.display !== 'none') {
+      const searchEl = document.getElementById('searchGamesInput');
+      if (searchEl && this.isElementVisible(searchEl)) focusables.push(searchEl);
+
       // Header actions & filters
       const libraryControls = [
+        '.segmented-tab',
         '#btnSyncAll',
         '#btnRescan',
         '#btnRestoreVault',
         '#btnSettings',
         '.filter-pill',
-        '#searchGamesInput',
         '#emptyState button'
       ].join(',');
       const controls = Array.from(libraryView.querySelectorAll(libraryControls)).filter(el => this.isElementVisible(el));

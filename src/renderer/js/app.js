@@ -128,7 +128,7 @@ window.rescanLibrary = async function () {
   const loadingIndicator = document.getElementById('gamesLoadingIndicator');
   const emptyState = document.getElementById('emptyState');
 
-  summaryEl.textContent = '(Scanning...)';
+  summaryEl.textContent = 'Scanning...';
   if (!state.games || state.games.length === 0) {
     if (loadingIndicator) loadingIndicator.style.display = 'flex';
     if (emptyState) emptyState.style.display = 'none';
@@ -139,9 +139,9 @@ window.rescanLibrary = async function () {
     state.games = games;
     updateCounts();
     renderGames();
-    summaryEl.textContent = `(${games.length} titles discovered)`;
+    summaryEl.textContent = `${games.length} ${games.length === 1 ? 'game' : 'games'}`;
   } catch (err) {
-    summaryEl.textContent = '(Error scanning)';
+    summaryEl.textContent = 'Error scanning';
     window.showToast('Scan Error', err.message, 'error');
   } finally {
     if (loadingIndicator) loadingIndicator.style.display = 'none';
@@ -174,6 +174,8 @@ function filterGames() {
     if (state.activeFilter !== 'all') {
       if (state.activeFilter === 'pending') {
         if (game.status === 'Synced') return false;
+      } else if (state.activeFilter === 'synced') {
+        if (game.status !== 'Synced') return false;
       } else if (state.activeFilter === 'shortcut') {
         const gameLauncher = (game.launcher || '').toLowerCase();
         if (gameLauncher !== 'shortcut' && gameLauncher !== 'custom') return false;
@@ -229,12 +231,7 @@ function renderGames() {
 
     card.innerHTML = `
       <div class="card-poster-wrapper">
-        <img class="card-poster-img" id="img-${game.id}" src="${posterSrc}" alt="${game.title}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'200\\' height=\\'300\\' fill=\\'%231a1a1a\\'><rect width=\\'200\\' height=\\'300\\' fill=\\'%231a1a1a\\'/><text x=\\'50%\\' y=\\'50%\\' fill=\\'%23666\\' font-family=\\'sans-serif\\' font-size=\\'14\\' text-anchor=\\'middle\\'>No Artwork</text></svg>'">
-        
-        <div class="card-badges">
-          <span class="launcher-pill ${launcherClass}">${game.launcher}</span>
-          <span class="status-badge ${statusClass}" id="badge-${game.id}">${statusText}</span>
-        </div>
+        <img class="card-poster-img" id="img-${game.id}" src="${posterSrc}" alt="${game.title}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'300\\' height=\\'300\\' fill=\\'%231c1e21\\'><rect width=\\'300\\' height=\\'300\\' fill=\\'%231c1e21\\'/><text x=\\'50%\\' y=\\'50%\\' fill=\\'%2364748b\\' font-family=\\'sans-serif\\' font-size=\\'16\\' text-anchor=\\'middle\\'>No Artwork</text></svg>'">
 
         <div class="card-overlay">
           <div class="overlay-btn-group">
@@ -261,10 +258,13 @@ function renderGames() {
       </div>
 
       <div class="card-info">
+        <div class="card-badges">
+          <span class="launcher-pill ${launcherClass}">${game.launcher}</span>
+          <span class="status-badge ${statusClass}" id="badge-${game.id}">${statusText}</span>
+        </div>
         <div class="card-title" title="${game.title}">${game.title}</div>
         <div class="card-subtext">
-          <span>${game.appId ? `AppID: ${game.appId}` : (game.inXboxRegistry ? 'Xbox Registered' : 'Discovered')}</span>
-          <span id="subtext-status-${game.id}" style="color: ${isSynced ? '#4ade80' : (isReady ? '#38bdf8' : 'var(--text-muted)')}; font-weight: ${isSynced || isReady ? '600' : '400'};">${isSynced ? 'Protected' : (isReady ? 'Best Artwork Selected' : 'Unsynced')}</span>
+          <span id="subtext-status-${game.id}" style="color: ${isSynced ? '#4ade80' : (isReady ? '#60a5fa' : 'var(--text-muted)')}; font-weight: ${isSynced || isReady ? '600' : '400'};">${isSynced ? 'Protected' : (isReady ? 'Artwork Ready' : 'Needs Art')}</span>
         </div>
       </div>
     `;
@@ -484,12 +484,50 @@ function initEventListeners() {
     window.ModalManager.openSettingsPage();
   });
 
+  // Settings Sidebar Category Navigation
+  document.querySelectorAll('#settingsView .settings-nav-item[data-section]').forEach(navBtn => {
+    navBtn.addEventListener('click', () => {
+      const target = navBtn.dataset.section;
+      document.querySelectorAll('#settingsView .settings-nav-item[data-section]').forEach(b => b.classList.remove('active'));
+      navBtn.classList.add('active');
+      document.querySelectorAll('#settingsView .settings-section').forEach(sec => {
+        sec.classList.toggle('active', sec.dataset.section === target);
+      });
+      const titleEl = document.getElementById('settingsSectionTitle');
+      if (titleEl) titleEl.textContent = navBtn.textContent.trim();
+    });
+  });
+
+  const btnCloseSettingsX = document.getElementById('btnCloseSettingsX');
+  if (btnCloseSettingsX) {
+    btnCloseSettingsX.addEventListener('click', () => {
+      window.ModalManager.closeSettingsPage();
+    });
+  }
+
+  // Top Segmented Quick Tabs
+  document.querySelectorAll('#libraryQuickTabs .segmented-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('#libraryQuickTabs .segmented-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const qf = tab.dataset.quickFilter || 'all';
+      state.activeFilter = qf;
+      document.querySelectorAll('.filter-pill').forEach(b => {
+        b.classList.toggle('active', b.dataset.filter === qf);
+      });
+      renderGames();
+    });
+  });
+
   // Filters
   document.querySelectorAll('.filter-pill').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       state.activeFilter = btn.dataset.filter;
+      document.querySelectorAll('#libraryQuickTabs .segmented-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.quickFilter === state.activeFilter);
+      });
       renderGames();
     });
   });

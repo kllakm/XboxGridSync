@@ -40,12 +40,24 @@
       </div>
       <span class="titlebar-title">
         Xbox Grid Sync
-        <span class="version-badge" id="appVersionBadge">v1.9.2</span>
+        <span class="version-badge" id="appVersionBadge">v1.10.0</span>
         <span class="shield-badge" id="shieldStatusBadge" title="Automated Update Shield status">
           <span class="pulse-dot"></span>
           <span id="shieldStatusText">Shield Active</span>
         </span>
       </span>
+    </div>
+
+    <div class="titlebar-center">
+      <div class="titlebar-search-pill">
+        <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" class="search-input" id="searchGamesInput" placeholder="Search for games, apps..."
+          autocomplete="off">
+      </div>
     </div>
 
     <div class="titlebar-right">
@@ -149,22 +161,19 @@
         <div class="progress-fill" id="syncProgressFill"></div>
       </div>
 
-      <!-- Header & Controls Toolbar -->
+      <!-- Header & Controls Toolbar (Xbox App Style) -->
       <section class="app-header">
         <div class="header-top">
-          <div class="header-title-area">
-            <h1 id="headerMainTitle">
-              Xbox Library
-              <span style="font-size: 13px; font-weight: 500; color: var(--text-muted);" id="gamesCountSummary">
-                (Scanning...)
-              </span>
-            </h1>
+          <div class="xbox-segmented-bar" id="libraryQuickTabs" role="tablist" aria-label="Library Views">
+            <button type="button" class="segmented-tab active" data-quick-filter="all">My games</button>
+            <button type="button" class="segmented-tab" data-quick-filter="pending">Pending sync</button>
+            <button type="button" class="segmented-tab" data-quick-filter="synced">Protected</button>
           </div>
 
           <div class="header-actions">
             <button class="btn btn-primary" id="btnSyncAll"
               title="Automated artwork discovery and Xbox injection for all titles">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                 stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
               </svg>
@@ -214,15 +223,7 @@
                 id="countPending">0</span></button>
           </div>
 
-          <div class="search-box-wrapper">
-            <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-            <input type="text" class="search-input" id="searchGamesInput" placeholder="Filter games..."
-              autocomplete="off">
-          </div>
+          <div class="library-count-label" id="gamesCountSummary">Scanning...</div>
         </div>
       </section>
 
@@ -250,326 +251,328 @@
       </section>
     </section>
 
-    <!-- View 2: Full-App Size Settings View -->
+    <!-- View 2: Full-App Size Settings View (Xbox App Master-Detail Style) -->
     <section class="app-view" id="settingsView" style="display: none;">
-      <div class="settings-page-header">
-        <div class="settings-header-left">
-          <button class="btn btn-secondary btn-back-nav" id="btnBackToLibrary" title="Return to Game Library">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-              stroke-linecap="round" stroke-linejoin="round">
-              <line x1="19" y1="12" x2="5" y2="12"></line>
-              <polyline points="12 19 5 12 12 5"></polyline>
-            </svg>
-            <span>Back to Library</span>
-          </button>
-          <div class="settings-title-group">
-            <h1>Settings</h1>
-            <span class="version-badge" id="settingsPageVersion">v1.9.2</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="settings-scroll-content">
-        <div class="settings-layout-container">
-
-          <!-- Section: Automated Update Shield -->
-          <div class="settings-group">
-            <div class="settings-group-header">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00FF87" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+      <div class="settings-shell">
+        <!-- Left Sidebar Navigation -->
+        <aside class="settings-sidebar">
+          <div class="settings-sidebar-profile">
+            <div class="settings-profile-avatar">
+              <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" width="24" height="24">
+                <rect x="13" y="4.5" width="18.5" height="18.5" rx="4.5" fill="#00A846" />
+                <rect x="4.5" y="13" width="18.5" height="18.5" rx="4.5" fill="#00FF87" />
               </svg>
-              <h2>Background Update Shield</h2>
             </div>
-
-            <div class="settings-card">
-              <div class="setting-row">
-                <div class="setting-label">
-                  <span class="setting-title">Auto-Restore on Xbox App Updates</span>
-                  <span class="setting-desc">Instantly shields artwork against Microsoft Store package updates and
-                    resets</span>
-                </div>
-                <label class="switch" tabindex="0" aria-label="Auto-Restore on Xbox App Updates">
-                  <input type="checkbox" id="settingAutoRestore" checked>
-                  <span class="slider"></span>
-                </label>
-              </div>
-
-              <div class="setting-row">
-                <div class="setting-label">
-                  <span class="setting-title">Windows Task Scheduler Update Shield</span>
-                  <span class="setting-desc">Registers <strong>"Xbox Grid Sync - Automated Artwork Update
-                      Shield"</strong> in Task Scheduler Library for headless recovery</span>
-                  <div class="scheduler-actions-bar">
-                    <span class="shield-badge" id="schedulerLiveStatusBadge">
-                      <span class="pulse-dot"></span>
-                      Active in Windows
-                    </span>
-                    <button type="button" class="btn btn-secondary btn-sm" id="btnTestScheduler">Test Background
-                      Trigger</button>
-                    <button type="button" class="btn btn-secondary btn-sm" id="btnOpenTaskSchedulerGui">View in Task
-                      Scheduler</button>
-                  </div>
-                </div>
-                <label class="switch" tabindex="0" aria-label="Windows Task Scheduler Update Shield">
-                  <input type="checkbox" id="settingTaskScheduler" checked>
-                  <span class="slider"></span>
-                </label>
-              </div>
-
-              <div class="setting-row">
-                <div class="setting-label">
-                  <span class="setting-title">Live FileSystemWatcher Daemon</span>
-                  <span class="setting-desc">Real-time cache watcher that silently restores deleted covers within
-                    seconds</span>
-                </div>
-                <label class="switch" tabindex="0" aria-label="Live FileSystemWatcher Daemon">
-                  <input type="checkbox" id="settingLiveWatcher" checked>
-                  <span class="slider"></span>
-                </label>
-              </div>
+            <div class="settings-profile-meta">
+              <span class="settings-profile-name">Xbox Grid Sync</span>
+              <span class="version-badge" id="settingsPageVersion">v1.10.0</span>
             </div>
           </div>
 
-          <!-- Section: System & Window Behavior -->
-          <div class="settings-group">
-            <div class="settings-group-header">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          <nav class="settings-nav-list" aria-label="Settings Categories">
+            <button type="button" class="settings-nav-item active" data-section="shield">
+              <span>Update Shield</span>
+            </button>
+            <button type="button" class="settings-nav-item" data-section="system">
+              <span>System</span>
+            </button>
+            <button type="button" class="settings-nav-item" data-section="vault">
+              <span>Vault &amp; Diagnostics</span>
+            </button>
+            <button type="button" class="settings-nav-item" data-section="updates">
+              <span>App Updates</span>
+            </button>
+            <button type="button" class="settings-nav-item" data-section="donate">
+              <span>Support &amp; Donate</span>
+            </button>
+          </nav>
+
+          <div class="settings-sidebar-footer">
+            <button class="settings-nav-item settings-back-item" id="btnBackToLibrary" title="Return to Game Library">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                <line x1="8" y1="21" x2="16" y2="21"></line>
-                <line x1="12" y1="17" x2="12" y2="21"></line>
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
               </svg>
-              <h2>Window & System</h2>
-            </div>
+              <span>Back to Library</span>
+            </button>
+          </div>
+        </aside>
 
-            <div class="settings-card">
-              <div class="setting-row">
-                <div class="setting-label">
-                  <span class="setting-title">Minimize to System Tray on Close</span>
-                  <span class="setting-desc">Keep running quietly in Windows system tray when main window is
-                    closed</span>
-                </div>
-                <label class="switch" tabindex="0" aria-label="Minimize to System Tray on Close">
-                  <input type="checkbox" id="settingCloseToTray" checked>
-                  <span class="slider"></span>
-                </label>
-              </div>
-
-              <div class="setting-row">
-                <div class="setting-label">
-                  <span class="setting-title">Launch in Fullscreen Mode (FSE)</span>
-                  <span class="setting-desc" id="settingFseDesc">Automatically start in Exclusive Fullscreen
-                    (auto-enabled on ROG Ally & handheld gaming PCs)</span>
-                </div>
-                <label class="switch" tabindex="0" aria-label="Launch in Fullscreen Mode (FSE)">
-                  <input type="checkbox" id="settingFseDefault">
-                  <span class="slider"></span>
-                </label>
-              </div>
-            </div>
+        <!-- Right Content Pane -->
+        <div class="settings-main">
+          <div class="settings-main-header">
+            <h1 id="settingsSectionTitle">Update Shield</h1>
+            <button type="button" class="settings-close-x" id="btnCloseSettingsX" title="Close Settings">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
           </div>
 
-          <!-- Section: Artwork Vault & Diagnostics -->
-          <div class="settings-group">
-            <div class="settings-group-header">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-              </svg>
-              <h2>Artwork Vault & Diagnostics</h2>
-            </div>
+          <div class="settings-scroll-content">
+            <div class="settings-layout-container">
 
-            <div class="settings-card">
-              <div class="tools-grid">
-                <div class="tool-box">
-                  <div class="tool-text">
-                    <span class="setting-title">Artwork Vault Directory</span>
-                    <span class="setting-desc">Open the persistent local master cover repository on disk</span>
+              <!-- Section: Automated Update Shield -->
+              <div class="settings-group settings-section active" data-section="shield">
+                <div class="settings-card">
+                  <div class="settings-card-subheader">Protection</div>
+                  <div class="setting-row">
+                    <div class="setting-label">
+                      <span class="setting-title">Auto-Restore on Xbox App Updates</span>
+                      <span class="setting-desc">Instantly shields artwork against Microsoft Store package updates and
+                        resets</span>
+                    </div>
+                    <label class="switch" tabindex="0" aria-label="Auto-Restore on Xbox App Updates">
+                      <input type="checkbox" id="settingAutoRestore" checked>
+                      <span class="slider"></span>
+                    </label>
                   </div>
-                  <button class="btn btn-secondary" id="btnOpenVaultFolder">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                    </svg>
-                    <span>Open Vault Folder</span>
-                  </button>
-                </div>
 
-                <div class="tool-box">
-                  <div class="tool-text">
-                    <span class="setting-title">Quick Start Tutorial</span>
-                    <span class="setting-desc">Reopen the guide explaining how Xbox Grid Sync and update protection
-                      work</span>
+                  <div class="setting-row">
+                    <div class="setting-label">
+                      <span class="setting-title">Live FileSystemWatcher Daemon</span>
+                      <span class="setting-desc">Real-time cache watcher that silently restores deleted covers within
+                        seconds</span>
+                    </div>
+                    <label class="switch" tabindex="0" aria-label="Live FileSystemWatcher Daemon">
+                      <input type="checkbox" id="settingLiveWatcher" checked>
+                      <span class="slider"></span>
+                    </label>
                   </div>
-                  <button class="btn btn-secondary" id="btnOpenTutorial">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                      <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                    </svg>
-                    <span>View Tutorial</span>
-                  </button>
                 </div>
 
-                <div class="tool-box">
-                  <div class="tool-text">
-                    <span class="setting-title">Restart Xbox PC App</span>
-                    <span class="setting-desc">Force cleanly restarts the Xbox App process to refresh cached thumbnail
-                      tiles</span>
-                  </div>
-                  <button class="btn btn-secondary" id="btnRestartXboxApp">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <polyline points="23 4 23 10 17 10"></polyline>
-                      <polyline points="1 20 1 14 7 14"></polyline>
-                      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-                    </svg>
-                    <span>Restart Xbox PC App</span>
-                  </button>
-                </div>
-
-                <div class="tool-box">
-                  <div class="tool-text">
-                    <span class="setting-title">Clean Orphaned Vault Folders</span>
-                    <span class="setting-desc">Prunes cached artwork folders whose corresponding titles or shortcuts no
-                      longer exist in any launcher or Xbox cache.</span>
-                  </div>
-                  <button class="btn btn-secondary" id="btnCleanOrphans">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                      stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M3 6h18"></path>
-                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                    </svg>
-                    <span>Clean Orphaned Folders</span>
-                  </button>
-                </div>
-
-                <div class="tool-box">
-                  <div class="tool-text">
-                    <span class="setting-title">Clear Xbox App Thumbnails</span>
-                    <span class="setting-desc">Removes all injected artwork from the Xbox App cache. Your Vault backups
-                      are kept.</span>
-                  </div>
-                  <button class="btn btn-secondary btn-danger-subtle" id="btnClearXboxCache">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                      stroke-linecap="round" stroke-linejoin="round">
-                      <polyline points="3 6 5 6 21 6"></polyline>
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    </svg>
-                    <span>Clear Xbox Thumbnails</span>
-                  </button>
-                </div>
-
-                <div class="tool-box">
-                  <div class="tool-text">
-                    <span class="setting-title">Full Factory Reset</span>
-                    <span class="setting-desc">Deletes ALL vault covers, local cache, AND Xbox App thumbnails. Start
-                      completely fresh.</span>
-                  </div>
-                  <button class="btn btn-secondary btn-danger" id="btnFullReset">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                      stroke-linecap="round" stroke-linejoin="round">
-                      <path
-                        d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z">
-                      </path>
-                      <line x1="12" y1="9" x2="12" y2="13"></line>
-                      <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                    </svg>
-                    <span>Full Factory Reset</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Section: App Updates & GitHub Releases -->
-          <div class="settings-group">
-            <div class="settings-group-header">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00FF87" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
-              <h2>App Updates</h2>
-            </div>
-
-            <div class="settings-card">
-              <div class="setting-row">
-                <div class="setting-label">
-                  <span class="setting-title">Check for Updates</span>
-                  <span class="setting-desc" id="settingsUpdateDesc">Currently on v1.9.2. Queries GitHub releases for
-                    the latest versions.</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 12px;">
-                  <span id="updateCheckStatus" style="font-size: 13px; color: var(--text-muted);"></span>
-                  <button class="btn btn-secondary" id="btnCheckUpdates">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                      stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
-                    </svg>
-                    <span>Check for Updates</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Section: Support & Buy Me a Coffee (QR code already visible!) -->
-          <div class="settings-group">
-            <div class="settings-group-header">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffdd00" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
-                <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
-                <line x1="6" y1="2" x2="6" y2="4"></line>
-                <line x1="10" y1="2" x2="10" y2="4"></line>
-                <line x1="14" y1="2" x2="14" y2="4"></line>
-              </svg>
-              <h2 style="color: #ffdd00;">Support & Donate</h2>
-            </div>
-
-            <div class="settings-card full-donate-card">
-              <div class="donate-card-body">
-                <!-- QR code already visible directly in the section -->
-                <div class="donate-qr-pane">
-                  <img src="../assets/donate-qr.png" alt="Buy Me A Coffee QR Code" class="donate-qr-img" width="140"
-                    height="140" />
-                  <span class="donate-qr-subtext">Scan with phone camera</span>
-                </div>
-
-                <div class="donate-info-pane">
-                  <div class="donate-title">Enjoying Xbox Grid Sync?</div>
-                  <p class="donate-text">
-                    If this tool fixed your missing or blurry Xbox PC App covers, consider buying a coffee! Your
-                    donations help maintain compatibility with future Microsoft Store updates.
-                  </p>
-                  <div class="donate-action-row">
-                    <button type="button" class="btn btn-donate-large" id="btnSettingsDonate">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
-                        <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
-                        <line x1="6" y1="2" x2="6" y2="4"></line>
-                        <line x1="10" y1="2" x2="10" y2="4"></line>
-                        <line x1="14" y1="2" x2="14" y2="4"></line>
-                      </svg>
-                      <span>Buy Me a Coffee</span>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2.5">
-                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                        <polyline points="15 3 21 3 21 9"></polyline>
-                        <line x1="10" y1="14" x2="21" y2="3"></line>
-                      </svg>
-                    </button>
-                    <a href="https://buymeacoffee.com/enufstyle" class="donate-direct-link"
-                      target="_blank">buymeacoffee.com/enufstyle</a>
+                <div class="settings-card">
+                  <div class="settings-card-subheader">Windows Task Scheduler</div>
+                  <div class="setting-row">
+                    <div class="setting-label">
+                      <span class="setting-title">Windows Task Scheduler Update Shield</span>
+                      <span class="setting-desc">Registers <strong>"Xbox Grid Sync - Automated Artwork Update
+                          Shield"</strong> in Task Scheduler Library for headless recovery</span>
+                      <div class="scheduler-actions-bar">
+                        <span class="shield-badge" id="schedulerLiveStatusBadge">
+                          <span class="pulse-dot"></span>
+                          Active in Windows
+                        </span>
+                        <button type="button" class="btn btn-secondary btn-sm" id="btnTestScheduler">Test Background
+                          Trigger</button>
+                        <button type="button" class="btn btn-secondary btn-sm" id="btnOpenTaskSchedulerGui">View in Task
+                          Scheduler</button>
+                      </div>
+                    </div>
+                    <label class="switch" tabindex="0" aria-label="Windows Task Scheduler Update Shield">
+                      <input type="checkbox" id="settingTaskScheduler" checked>
+                      <span class="slider"></span>
+                    </label>
                   </div>
                 </div>
               </div>
+
+              <!-- Section: System & Window Behavior -->
+              <div class="settings-group settings-section" data-section="system">
+                <div class="settings-card">
+                  <div class="settings-card-subheader">Window &amp; Startup</div>
+                  <div class="setting-row">
+                    <div class="setting-label">
+                      <span class="setting-title">Minimize to System Tray on Close</span>
+                      <span class="setting-desc">Keep running quietly in Windows system tray when main window is
+                        closed</span>
+                    </div>
+                    <label class="switch" tabindex="0" aria-label="Minimize to System Tray on Close">
+                      <input type="checkbox" id="settingCloseToTray" checked>
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+
+                  <div class="setting-row">
+                    <div class="setting-label">
+                      <span class="setting-title">Launch in Fullscreen Mode (FSE)</span>
+                      <span class="setting-desc" id="settingFseDesc">Automatically start in Exclusive Fullscreen
+                        (auto-enabled on ROG Ally &amp; handheld gaming PCs)</span>
+                    </div>
+                    <label class="switch" tabindex="0" aria-label="Launch in Fullscreen Mode (FSE)">
+                      <input type="checkbox" id="settingFseDefault">
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Section: Artwork Vault & Diagnostics -->
+              <div class="settings-group settings-section" data-section="vault">
+                <div class="settings-card">
+                  <div class="settings-card-subheader">Vault &amp; Cache Tools</div>
+                  <div class="tools-grid">
+                    <div class="tool-box">
+                      <div class="tool-text">
+                        <span class="setting-title">Artwork Vault Directory</span>
+                        <span class="setting-desc">Open the persistent local master cover repository on disk</span>
+                      </div>
+                      <button class="btn btn-secondary" id="btnOpenVaultFolder">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        <span>Open Vault Folder</span>
+                      </button>
+                    </div>
+
+                    <div class="tool-box">
+                      <div class="tool-text">
+                        <span class="setting-title">Quick Start Tutorial</span>
+                        <span class="setting-desc">Reopen the guide explaining how Xbox Grid Sync and update protection
+                          work</span>
+                      </div>
+                      <button class="btn btn-secondary" id="btnOpenTutorial">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        <span>View Tutorial</span>
+                      </button>
+                    </div>
+
+                    <div class="tool-box">
+                      <div class="tool-text">
+                        <span class="setting-title">Restart Xbox PC App</span>
+                        <span class="setting-desc">Force cleanly restarts the Xbox App process to refresh cached thumbnail
+                          tiles</span>
+                      </div>
+                      <button class="btn btn-secondary" id="btnRestartXboxApp">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <polyline points="23 4 23 10 17 10"></polyline>
+                          <polyline points="1 20 1 14 7 14"></polyline>
+                          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                        </svg>
+                        <span>Restart Xbox PC App</span>
+                      </button>
+                    </div>
+
+                    <div class="tool-box">
+                      <div class="tool-text">
+                        <span class="setting-title">Clean Orphaned Vault Folders</span>
+                        <span class="setting-desc">Prunes cached artwork folders whose corresponding titles or shortcuts no
+                          longer exist in any launcher or Xbox cache.</span>
+                      </div>
+                      <button class="btn btn-secondary" id="btnCleanOrphans">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                          stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M3 6h18"></path>
+                          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                        </svg>
+                        <span>Clean Orphaned Folders</span>
+                      </button>
+                    </div>
+
+                    <div class="tool-box">
+                      <div class="tool-text">
+                        <span class="setting-title">Clear Xbox App Thumbnails</span>
+                        <span class="setting-desc">Removes all injected artwork from the Xbox App cache. Your Vault backups
+                          are kept.</span>
+                      </div>
+                      <button class="btn btn-secondary btn-danger-subtle" id="btnClearXboxCache">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                          stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="3 6 5 6 21 6"></polyline>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                        <span>Clear Xbox Thumbnails</span>
+                      </button>
+                    </div>
+
+                    <div class="tool-box">
+                      <div class="tool-text">
+                        <span class="setting-title">Full Factory Reset</span>
+                        <span class="setting-desc">Deletes ALL vault covers, local cache, AND Xbox App thumbnails. Start
+                          completely fresh.</span>
+                      </div>
+                      <button class="btn btn-secondary btn-danger" id="btnFullReset">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                          stroke-linecap="round" stroke-linejoin="round">
+                          <path
+                            d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z">
+                          </path>
+                          <line x1="12" y1="9" x2="12" y2="13"></line>
+                          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        <span>Full Factory Reset</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Section: App Updates & GitHub Releases -->
+              <div class="settings-group settings-section" data-section="updates">
+                <div class="settings-card">
+                  <div class="settings-card-subheader">GitHub Releases</div>
+                  <div class="setting-row">
+                    <div class="setting-label">
+                      <span class="setting-title">Check for Updates</span>
+                      <span class="setting-desc" id="settingsUpdateDesc">Currently on v1.10.0. Queries GitHub releases for
+                        the latest versions.</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                      <span id="updateCheckStatus" style="font-size: 13px; color: var(--text-muted);"></span>
+                      <button class="btn btn-secondary" id="btnCheckUpdates">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                          stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+                        </svg>
+                        <span>Check for Updates</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Section: Support & Buy Me a Coffee -->
+              <div class="settings-group settings-section" data-section="donate">
+                <div class="settings-card full-donate-card">
+                  <div class="donate-card-body">
+                    <div class="donate-qr-pane">
+                      <img src="../assets/donate-qr.png" alt="Buy Me A Coffee QR Code" class="donate-qr-img" width="140"
+                        height="140" />
+                      <span class="donate-qr-subtext">Scan with phone camera</span>
+                    </div>
+
+                    <div class="donate-info-pane">
+                      <div class="donate-title">Enjoying Xbox Grid Sync?</div>
+                      <p class="donate-text">
+                        If this tool fixed your missing or blurry Xbox PC App covers, consider buying a coffee! Your
+                        donations help maintain compatibility with future Microsoft Store updates.
+                      </p>
+                      <div class="donate-action-row">
+                        <button type="button" class="btn btn-donate-large" id="btnSettingsDonate">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+                            <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+                            <line x1="6" y1="2" x2="6" y2="4"></line>
+                            <line x1="10" y1="2" x2="10" y2="4"></line>
+                            <line x1="14" y1="2" x2="14" y2="4"></line>
+                          </svg>
+                          <span>Buy Me a Coffee</span>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                            <polyline points="15 3 21 3 21 9"></polyline>
+                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                          </svg>
+                        </button>
+                        <a href="https://buymeacoffee.com/enufstyle" class="donate-direct-link"
+                          target="_blank">buymeacoffee.com/enufstyle</a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
-
         </div>
       </div>
     </section>

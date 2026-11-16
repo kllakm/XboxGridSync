@@ -2408,3 +2408,623 @@ body.controller-mode #btnTitlebarDonate.controller-focused {
   outline-offset: -2px !important;
   box-shadow: 0 0 16px rgba(0, 255, 135, 0.5) !important;
 }
+
+
+/* ==========================================================================
+   2026 Xbox PC App ("New Experience") Fluent UI Overhaul
+   ========================================================================== */
+:root {
+  --xbox-green: #107c10;
+  --xbox-green-hover: #139213;
+  --xbox-green-active: #0d6a0d;
+  --xbox-green-bright: #00D05E;
+  --bg-primary: #111214;
+  --bg-surface: rgba(255, 255, 255, 0.045);
+  --bg-surface-elevated: rgba(255, 255, 255, 0.07);
+  --bg-surface-hover: rgba(255, 255, 255, 0.11);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-glass: rgba(255, 255, 255, 0.10);
+  --font-family: 'Segoe UI Variable', 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
+  --titlebar-height: 46px;
+}
+
+html, body {
+  background-color: #111214;
+}
+
+body {
+  background-color: #111214;
+  background-image:
+    radial-gradient(ellipse 72% 45% at 32% 0%, rgba(44, 66, 44, 0.34) 0%, transparent 72%),
+    radial-gradient(ellipse 50% 40% at 85% 100%, rgba(22, 34, 24, 0.22) 0%, transparent 70%);
+}
+
+/* Titlebar with Centered Xbox Search Pill */
+.titlebar {
+  height: var(--titlebar-height);
+  background: transparent;
+  border-bottom: none;
+  padding: 0 8px 0 16px;
+  justify-content: space-between;
+}
+
+.titlebar-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.titlebar-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.version-badge {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 9999px;
+}
+
+.titlebar-center {
+  flex: 1.2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-search-pill {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  align-items: center;
+}
+
+.titlebar-search-pill .search-icon {
+  position: absolute;
+  left: 14px;
+  color: rgba(255, 255, 255, 0.55);
+  pointer-events: none;
+}
+
+.titlebar-search-pill .search-input {
+  width: 100%;
+  height: 32px;
+  padding: 0 16px 0 38px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font-size: 12.5px;
+  font-family: var(--font-family);
+  outline: none;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.titlebar-search-pill .search-input::placeholder {
+  color: rgba(255, 255, 255, 0.52);
+}
+
+.titlebar-search-pill .search-input:focus {
+  background: rgba(255, 255, 255, 0.11);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.titlebar-right {
+  flex: 1;
+  justify-content: flex-end;
+}
+
+/* Library Header & Xbox Segmented Pill Bar */
+.app-header {
+  padding: 10px 28px 14px 28px;
+  background: transparent;
+  border-bottom: none;
+  gap: 12px;
+}
+
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.xbox-segmented-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 9999px;
+  backdrop-filter: blur(12px);
+}
+
+.segmented-tab {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.72);
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 18px;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.segmented-tab:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.segmented-tab.active {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-actions .btn {
+  border-radius: 9999px;
+  height: 36px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.header-actions .btn-primary {
+  background: #107c10;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 2px 10px rgba(16, 124, 16, 0.35);
+  padding: 0 16px;
+}
+
+.header-actions .btn-primary:hover {
+  background: #149414;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(16, 124, 16, 0.45);
+}
+
+.header-actions .btn-secondary {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #f3f4f6;
+  padding: 0 14px;
+}
+
+.header-actions .btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.header-actions .btn-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.header-actions .btn-icon:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.toolbar-lower {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.filter-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.filter-pill {
+  border-radius: 9999px;
+  padding: 5px 13px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.filter-pill:hover {
+  background: rgba(255, 255, 255, 0.10);
+  color: #ffffff;
+}
+
+.filter-pill.active {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.filter-count {
+  background: rgba(255, 255, 255, 0.10);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 10.5px;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  margin-left: 4px;
+}
+
+.library-count-label {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.58);
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   1:1 Square Xbox App Preview Game Tiles
+   ========================================================================== */
+.library-scroll-area {
+  padding: 6px 28px 36px 28px;
+}
+
+.games-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 22px 16px;
+}
+
+.game-card {
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  padding: 0;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.game-card:hover {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  transform: translateY(-2px);
+}
+
+.card-poster-wrapper {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #1c1e21;
+  position: relative;
+  border: 2px solid transparent;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.game-card:hover .card-poster-wrapper {
+  border-color: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.6);
+}
+
+.game-card.controller-focused .card-poster-wrapper,
+body.controller-mode .game-card:focus .card-poster-wrapper {
+  border-color: #00FF87;
+  box-shadow: 0 0 0 2px rgba(0, 255, 135, 0.35), 0 10px 26px rgba(0, 0, 0, 0.65);
+}
+
+.card-poster-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.game-card:hover .card-poster-img {
+  transform: scale(1.035);
+}
+
+.card-info {
+  padding: 8px 2px 0 2px;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.card-info .card-badges {
+  position: static;
+  padding: 0;
+  margin-bottom: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.card-info .launcher-pill {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.10);
+  backdrop-filter: none;
+  border: none;
+  box-shadow: none;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.card-info .launcher-pill.steam { color: #7dd3fc; background: rgba(56, 189, 248, 0.14); }
+.card-info .launcher-pill.epic { color: #e2e8f0; background: rgba(255, 255, 255, 0.12); }
+.card-info .launcher-pill.gog { color: #e879f9; background: rgba(232, 121, 249, 0.14); }
+.card-info .launcher-pill.shortcut { color: #4ade80; background: rgba(74, 222, 128, 0.14); }
+
+.card-info .status-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 9999px;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+.card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f3f4f6;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-subtext {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+}
+
+/* FSE Handheld Mode Enhancements */
+body.fse-mode .games-grid {
+  grid-template-columns: repeat(auto-fill, minmax(195px, 1fr));
+  gap: 24px 18px;
+}
+
+/* ==========================================================================
+   Xbox App 2-Column Master-Detail Settings View
+   ========================================================================== */
+#settingsView {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.settings-shell {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  background: rgba(17, 18, 20, 0.65);
+}
+
+.settings-sidebar {
+  width: 248px;
+  flex-shrink: 0;
+  background: rgba(26, 27, 30, 0.72);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 12px 16px 12px;
+}
+
+.settings-sidebar-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px 20px 10px;
+}
+
+.settings-profile-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.settings-profile-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-profile-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.settings-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.settings-nav-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.72);
+  font-family: var(--font-family);
+  font-size: 13.5px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.settings-nav-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+
+.settings-nav-item.active {
+  background: rgba(255, 255, 255, 0.10);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.settings-sidebar-footer {
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.settings-back-item {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.settings-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.settings-main-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 36px 12px 36px;
+}
+
+.settings-main-header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.2px;
+}
+
+.settings-close-x {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.settings-close-x:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.settings-scroll-content {
+  padding: 8px 36px 36px 36px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.settings-layout-container {
+  max-width: 780px;
+  margin: 0;
+}
+
+.settings-section {
+  display: none;
+}
+
+.settings-section.active {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.settings-card {
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 16px 20px;
+  box-shadow: none;
+}
+
+.settings-card-subheader {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 10px;
+}
+
+.setting-row {
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.setting-row:last-child {
+  padding-bottom: 2px;
+  border-bottom: none;
+}
+
+/* Xbox App Pill Switch */
+.switch {
+  width: 42px;
+  height: 22px;
+}
+
+.switch .slider {
+  background-color: transparent;
+  border: 1.5px solid rgba(255, 255, 255, 0.55);
+  border-radius: 9999px;
+}
+
+.switch .slider:before {
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 2.5px;
+  background-color: #ffffff;
+  box-shadow: none;
+}
+
+.switch input:checked + .slider {
+  background-color: #107c10;
+  border-color: #107c10;
+}
+
+.switch input:checked + .slider:before {
+  transform: translateX(19px);
+  background-color: #ffffff;
+}

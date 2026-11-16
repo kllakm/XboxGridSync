@@ -209,6 +209,12 @@ npm run pack
 
 ## Changelog
 
+### [v1.10.0] - 2026-11-16
+- **2026 Xbox PC App ("New Experience") Fluent UI Overhaul:**
+  - Redesigned the app chrome with the modern Xbox PC App dark obsidian & subtle olive-green ambient gradient, centered pill search bar in the titlebar, and segmented navigation pill bar (`My games`, `Pending sync`, `Protected`).
+  - Updated game library tiles to match the Xbox PC App's unobstructed 1:1 square artwork preview cards (`aspect-ratio: 1 / 1`) with crisp hover/controller focus rings and clean launcher/status badges and titles stacked neatly underneath.
+  - Overhauled Settings into a 2-column master-detail layout matching the new Xbox App Settings experience, featuring a category sidebar (`Update Shield`, `System`, `Vault & Diagnostics`, `App Updates`, `Support & Donate`), grouped Fluent cards, and Xbox-style pill toggle switches.
+
 ### [v1.9.2] - 2026-11-15
 - **Critical Hotfix for Main Process Startup Syntax Error & Packaged UI Scripts:**
   - Resolved `SyntaxError: Unexpected token '{'` in `src/main/injector.js` at line 693 caused by a duplicate return statement during packaging, which prevented both portable and installer builds from opening.
