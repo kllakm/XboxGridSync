@@ -1,7 +1,7 @@
 {
   "name": "xboxgridsync",
   "productName": "Xbox Grid Sync",
-  "version": "1.10.0",
+  "version": "1.10.1",
   "description": "XboxGridSync",
   "main": "src/main/index.js",
   "author": "Antigravity",
@@ -26,6 +26,16 @@
       "src/**/*",
       "build/**/*",
       "package.json"
+    ],
+    "extraFiles": [
+      {
+        "from": "build/Xbox Grid Sync.VisualElementsManifest.xml",
+        "to": "Xbox Grid Sync.VisualElementsManifest.xml"
+      },
+      {
+        "from": "assets",
+        "to": "Assets"
+      }
     ],
     "win": {
       "target": [

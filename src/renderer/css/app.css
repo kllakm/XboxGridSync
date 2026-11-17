@@ -4692,3 +4692,124 @@ body.fse-mode.fse-search-open .desktop-titlebar-center {
 body.fse-mode.in-subview .titlebar {
   display: none !important;
 }
+
+
+/* ==========================================================================
+   2026 Xbox PC App Aesthetic Overhaul for Tutorial Modal
+   ========================================================================== */
+#tutorialModal .tutorial-sheet {
+  background: #18191c !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.72) !important;
+  overflow: hidden;
+}
+
+#tutorialModal .modal-header {
+  background: rgba(255, 255, 255, 0.025);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 20px 26px;
+}
+
+#tutorialModal .tutorial-logo-wrap {
+  background: #0e7a0d;
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+#tutorialModal .tutorial-logo-wrap svg rect {
+  fill: #0e7a0d;
+}
+
+#tutorialModal .tutorial-logo-wrap svg path {
+  stroke: #ffffff;
+}
+
+#tutorialModal .tutorial-header-title h2 {
+  font-family: var(--font-family-display);
+  font-size: 20px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+#tutorialModal .tutorial-header-sub {
+  font-family: var(--font-family);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+#tutorialModal .tutorial-body {
+  padding: 22px 26px;
+}
+
+#tutorialModal .tutorial-section-title {
+  font-family: var(--font-family-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: 0.3px;
+}
+
+#tutorialModal .tutorial-hint-tag {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.78);
+  border: none;
+  border-radius: 9999px;
+  padding: 3px 10px;
+  font-size: 11px;
+}
+
+#tutorialModal .tutorial-step-card,
+#tutorialModal .protection-option-card {
+  background: rgba(255, 255, 255, 0.045) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+}
+
+#tutorialModal .protection-option-card.recommended {
+  background: rgba(14, 122, 13, 0.14) !important;
+  border-color: rgba(16, 124, 16, 0.45) !important;
+}
+
+#tutorialModal .step-badge {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border: none;
+  font-family: var(--font-family-display);
+}
+
+#tutorialModal .option-tag {
+  background: #0e7a0d;
+  color: #ffffff;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+}
+
+#tutorialModal .option-tag.alt {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+#tutorialModal .step-title,
+#tutorialModal .option-title {
+  font-family: var(--font-family-display);
+  font-size: 14.5px;
+  color: #ffffff;
+}
+
+#tutorialModal .step-desc,
+#tutorialModal .option-desc,
+#tutorialModal .tutorial-subtext,
+#tutorialModal .meta-bullet {
+  font-family: var(--font-family);
+  color: rgba(255, 255, 255, 0.72);
+}
+
+#tutorialModal .tutorial-footer {
+  background: rgba(255, 255, 255, 0.025);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 16px 26px;
+}

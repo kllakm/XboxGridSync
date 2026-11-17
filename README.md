@@ -213,6 +213,13 @@ npm run pack
 
 ## Changelog
 
+### [v1.10.1] - 2026-11-17
+- **Native Xbox App Tile Artwork (`VisualElementsManifest.xml` & High-Res Assets):**
+  - Added `Xbox Grid Sync.VisualElementsManifest.xml` (`ShowNameOnSquare150x150Logo="off"`) and a dedicated `Assets\` folder containing high-resolution `1:1` square PNGs (`Square150x150Logo.png` at `1024×1024`, `Square310x310Logo.png` at `1024×1024`, `Square70x70Logo.png` & `StoreLogo.png` at `256×256`) matching the app's olive-charcoal ambient background and icon with no text.
+  - Bundled the manifest and `Assets\` alongside `Xbox Grid Sync.exe` via `extraFiles` in `package.json` so adding Xbox Grid Sync to the Xbox PC App or Windows Start automatically displays crisp high-resolution tile artwork.
+- **Tutorial Modal Aesthetic Update:**
+  - Restyled `#tutorialModal` with the 2026 Xbox PC App dark charcoal surfaces (`#18191c`), grouped cards, `Bahnschrift` + `Segoe UI` typography, and `#0e7a0d` Xbox Green controls.
+
 ### [v1.10.0] - 2026-11-16
 - **2026 Xbox PC App ("New Experience") High-Fidelity UI Recreation:**
   - Recreated the Xbox PC App Desktop & FSE shell with the dark obsidian & olive-green atmospheric gradient, centered pill search bar, left floating navigation rail, full-width segmented navigation pill bar (`My games`, `Pending sync`, `Protected`), borderless secondary filter tabs, sort dropdown, and grid/list view toggle.
