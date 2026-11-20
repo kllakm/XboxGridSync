@@ -141,7 +141,7 @@ class BackgroundWatcher {
       }
 
       console.log(`[Watcher] Detected ${missingCount} missing covers. Shielding and restoring from Vault...`);
-      const result = injector.restoreAllFromVault();
+      const result = await injector.restoreAllFromVault();
 
       if (result.restored > 0 && this.onRestoreCallback) {
         this.onRestoreCallback({ reason, result, timestamp: new Date().toISOString() });

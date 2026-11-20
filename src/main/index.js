@@ -16,15 +16,17 @@ const updater = require('./updater');
 const isSilentRestore = process.argv.includes('--restore-silent') || process.argv.includes('--headless');
 
 if (isSilentRestore) {
-  console.log('[CLI] Running in silent auto-restore mode...');
-  try {
-    vault.init();
-    const result = injector.restoreAllFromVault();
-    console.log(`[CLI] Silent restore complete: ${result.restored}/${result.total} covers restored.`);
-  } catch (err) {
-    console.error('[CLI] Error during silent restore:', err.message);
-  }
-  process.exit(0);
+  (async () => {
+    console.log('[CLI] Running in silent auto-restore mode...');
+    try {
+      vault.init();
+      const result = await injector.restoreAllFromVault();
+      console.log(`[CLI] Silent restore complete: ${result.restored}/${result.total} covers restored.`);
+    } catch (err) {
+      console.error('[CLI] Error during silent restore:', err.message);
+    }
+    process.exit(0);
+  })();
 }
 
 // 2. High-DPI display awareness & crisp text rendering
@@ -63,25 +65,33 @@ function ensureStartMenuShortcut() {
   }
 }
 
+let _isHandheldCached = null;
 function isHandheldDevice() {
-  if (process.platform !== 'win32') return false;
+  if (_isHandheldCached !== null) return _isHandheldCached;
+  if (process.platform !== 'win32') {
+    _isHandheldCached = false;
+    return false;
+  }
   const { spawnSync } = require('child_process');
 
   // 1. Windows 11 Handheld DeviceForm registry (0x2e = 46 decimal)
   try {
-    const res = spawnSync('reg', ['query', 'HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\OEM', '/v', 'DeviceForm'], { encoding: 'utf8' });
+    const res = spawnSync('reg', ['query', 'HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\OEM', '/v', 'DeviceForm'], { encoding: 'utf8', windowsHide: true });
     if (res.status === 0) {
       const match = res.stdout.match(/DeviceForm\s+REG_DWORD\s+(0x[0-9a-fA-F]+|\d+)/i);
       if (match) {
         const val = parseInt(match[1], 16);
-        if (val === 0x2e || val === 46) return true;
+        if (val === 0x2e || val === 46) {
+          _isHandheldCached = true;
+          return true;
+        }
       }
     }
   } catch (e) {}
 
   // 2. Hardware / BIOS Product Name match for known handheld models (ROG Ally, Legion Go, Claw, etc.)
   try {
-    const biosRes = spawnSync('reg', ['query', 'HKLM\\HARDWARE\\DESCRIPTION\\System\\BIOS', '/v', 'SystemProductName'], { encoding: 'utf8' });
+    const biosRes = spawnSync('reg', ['query', 'HKLM\\HARDWARE\\DESCRIPTION\\System\\BIOS', '/v', 'SystemProductName'], { encoding: 'utf8', windowsHide: true });
     if (biosRes.status === 0) {
       const out = biosRes.stdout.toLowerCase();
       if (
@@ -96,11 +106,13 @@ function isHandheldDevice() {
         out.includes('aokzoe') ||
         out.includes('steam deck')
       ) {
+        _isHandheldCached = true;
         return true;
       }
     }
   } catch (e) {}
 
+  _isHandheldCached = false;
   return false;
 }
 
@@ -188,13 +200,15 @@ function createWindow() {
 
   watcher.start();
 
-  // If Task Scheduler is enabled in config, register silently without UAC prompt
-  if (config.get('taskSchedulerEnabled') && !scheduler.isRegistered()) {
-    scheduler.register(process.execPath, { allowElevation: false });
-  }
-
-  // Ensure official Start Menu shortcut named "Xbox Grid Sync" exists
-  ensureStartMenuShortcut();
+  // Defer Task Scheduler & Start Menu shortcut checks to background so window startup never blocks
+  setTimeout(() => {
+    try {
+      if (config.get('taskSchedulerEnabled') && !scheduler.isRegistered()) {
+        scheduler.register(process.execPath, { allowElevation: false });
+      }
+      ensureStartMenuShortcut();
+    } catch (e) {}
+  }, 2500);
 }
 
 app.on('second-instance', () => {
@@ -329,7 +343,7 @@ ipcMain.handle('art:resolveAll', async (event, games, options = {}) => {
       });
 
       const resolveResult = await artResolver.resolveArtwork(game, options);
-      const injectResult = injector.injectGame(game);
+      const injectResult = injector.injectGame(game, { skipCacheClear: true });
       const coverUrl = vault.getCoverAsDataUrl(game);
 
       results.push({
@@ -347,7 +361,12 @@ ipcMain.handle('art:resolveAll', async (event, games, options = {}) => {
         title: game.title
       });
     }
+    // Yield to Electron main process event loop between games to prevent "Not Responding"
+    await new Promise(r => setImmediate(r));
   }
+
+  // Clear Xbox image cache asynchronously once at the end of batch sync
+  injector.clearImageCache().catch(() => {});
 
   event.sender.send('sync:progress', {
     current: total,
@@ -417,17 +436,17 @@ ipcMain.handle('xbox:restart', async () => {
 
 ipcMain.handle('xbox:status', async () => {
   return {
-    running: injector.isXboxAppRunning(),
+    running: await injector.isXboxAppRunningAsync(),
     processes: injector.getRunningXboxProcesses()
   };
 });
 
 ipcMain.handle('xbox:terminate', async () => {
-  return injector.terminateXboxProcesses();
+  return await injector.terminateXboxProcessesAsync();
 });
 
 ipcMain.handle('xbox:restoreVault', async () => {
-  return injector.restoreAllFromVault();
+  return await injector.restoreAllFromVault();
 });
 
 ipcMain.handle('vault:cleanOrphans', async () => {

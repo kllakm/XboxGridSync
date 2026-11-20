@@ -272,6 +272,10 @@ class VaultManager {
 
       // If already square (within 2px tolerance)
       if (Math.abs(size.width - size.height) <= 2) {
+        // If already a PNG buffer, return directly without expensive synchronous re-encoding
+        if (buffer.length > 8 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
+          return buffer;
+        }
         return img.toPNG();
       }
 
@@ -342,6 +346,8 @@ class VaultManager {
         ...(typeof gameIdOrGame === 'object' ? gameIdOrGame : {}),
         ...metadata
       };
+      // Never persist huge base64 coverUrl strings inside metadata.json
+      delete meta.coverUrl;
 
       fs.writeFileSync(coverPngPath, pngBuffer);
       fs.writeFileSync(coverJpgPath, pngBuffer);
@@ -367,9 +373,15 @@ class VaultManager {
   }
 
   getCoverAsDataUrl(gameIdOrGame) {
-    const buffer = this.getCoverBuffer(gameIdOrGame);
-    if (buffer) {
-      return `data:image/png;base64,${buffer.toString('base64')}`;
+    try {
+      const coverPath = this.getCoverPath(gameIdOrGame);
+      if (coverPath && fs.existsSync(coverPath)) {
+        const { pathToFileURL } = require('url');
+        const stat = fs.statSync(coverPath);
+        return `${pathToFileURL(coverPath).href}?t=${Math.floor(stat.mtimeMs)}`;
+      }
+    } catch (err) {
+      console.error(`[Vault] Error resolving cover URL:`, err.message);
     }
     return null;
   }

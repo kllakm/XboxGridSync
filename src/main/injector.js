@@ -94,23 +94,38 @@ class XboxAppInjector {
 
   isXboxAppRunning() {
     try {
-      const out = execSync('powershell.exe -NoProfile -Command "Get-Process XboxPcApp, Xbox, XboxAppServices, XboxPcTray, XboxPcAppCE -ErrorAction SilentlyContinue | Select-Object -ExpandProperty ProcessName"', {
+      const { spawnSync } = require('child_process');
+      const res = spawnSync('tasklist.exe', ['/FI', 'IMAGENAME eq XboxPcApp.exe', '/NH'], {
         encoding: 'utf8',
-        stdio: ['pipe', 'pipe', 'ignore']
+        windowsHide: true
       });
-      return out.trim().length > 0;
+      return !!(res.stdout && res.stdout.toLowerCase().includes('xboxpcapp.exe'));
     } catch (err) {
       return false;
     }
   }
 
+  async isXboxAppRunningAsync() {
+    return new Promise((resolve) => {
+      const { execFile } = require('child_process');
+      execFile('tasklist.exe', ['/FI', 'IMAGENAME eq XboxPcApp.exe', '/NH'], { windowsHide: true }, (err, stdout) => {
+        if (err || !stdout) return resolve(false);
+        resolve(stdout.toLowerCase().includes('xboxpcapp.exe'));
+      });
+    });
+  }
+
   getRunningXboxProcesses() {
     try {
-      const out = execSync('powershell.exe -NoProfile -Command "Get-Process XboxPcApp, Xbox, XboxAppServices, XboxPcTray, XboxPcAppCE -ErrorAction SilentlyContinue | Select-Object -ExpandProperty ProcessName"', {
+      const { spawnSync } = require('child_process');
+      const targets = ['XboxPcApp.exe', 'XboxAppServices.exe', 'XboxPcTray.exe', 'XboxPcAppCE.exe'];
+      const res = spawnSync('tasklist.exe', ['/FO', 'CSV', '/NH'], {
         encoding: 'utf8',
-        stdio: ['pipe', 'pipe', 'ignore']
+        windowsHide: true
       });
-      return out.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+      if (!res.stdout) return [];
+      const outLower = res.stdout.toLowerCase();
+      return targets.filter(t => outLower.includes(t.toLowerCase())).map(t => t.replace(/\.exe$/i, ''));
     } catch (err) {
       return [];
     }
@@ -119,20 +134,43 @@ class XboxAppInjector {
   terminateXboxProcesses() {
     console.log('[Injector] Terminating Xbox app processes and background services...');
     try {
-      execSync('powershell.exe -NoProfile -Command "Stop-Process -Name XboxPcApp, Xbox, XboxAppServices, XboxPcTray, XboxPcAppCE -Force -ErrorAction SilentlyContinue"', {
-        stdio: ['pipe', 'pipe', 'ignore']
-      });
+      const { spawnSync } = require('child_process');
+      spawnSync('taskkill.exe', [
+        '/F',
+        '/IM', 'XboxPcApp.exe',
+        '/IM', 'Xbox.exe',
+        '/IM', 'XboxAppServices.exe',
+        '/IM', 'XboxPcTray.exe',
+        '/IM', 'XboxPcAppCE.exe'
+      ], { stdio: 'ignore', windowsHide: true });
       return { success: true };
     } catch (err) {
       return { success: false, error: err.message };
     }
   }
 
+  async terminateXboxProcessesAsync() {
+    console.log('[Injector] Terminating Xbox app processes and background services (async)...');
+    return new Promise((resolve) => {
+      const { execFile } = require('child_process');
+      execFile('taskkill.exe', [
+        '/F',
+        '/IM', 'XboxPcApp.exe',
+        '/IM', 'Xbox.exe',
+        '/IM', 'XboxAppServices.exe',
+        '/IM', 'XboxPcTray.exe',
+        '/IM', 'XboxPcAppCE.exe'
+      ], { windowsHide: true }, () => {
+        resolve({ success: true });
+      });
+    });
+  }
+
   async restartXboxApp() {
     console.log('[Injector] Restarting Xbox PC App & background services...');
     try {
-      this.terminateXboxProcesses();
-      await new Promise(r => setTimeout(r, 1200));
+      await this.terminateXboxProcessesAsync();
+      await new Promise(r => setTimeout(r, 1000));
       spawn('cmd.exe', ['/c', 'start', 'xbox:'], {
         detached: true,
         stdio: 'ignore'
@@ -162,21 +200,21 @@ class XboxAppInjector {
     }
   }
 
-  // Invalidate Xbox App's internal image thumbnail cache, WebView2 caches, and database caches
-  clearImageCache(terminateFirst = false) {
-    if (terminateFirst || this.isXboxAppRunning()) {
-      this.terminateXboxProcesses();
-      const end = Date.now() + 600;
-      while (Date.now() < end) {}
+  // Invalidate Xbox App's internal image thumbnail cache, WebView2 caches, and database caches (async, non-blocking)
+  async clearImageCache(terminateFirst = false) {
+    const running = terminateFirst || await this.isXboxAppRunningAsync();
+    if (running) {
+      await this.terminateXboxProcessesAsync();
+      await new Promise(r => setTimeout(r, 300));
     }
 
     // 1. Purge LocalCache\ImageCache (all files + ImageCache.db)
     try {
       if (fs.existsSync(this.imageCacheDir)) {
-        const files = fs.readdirSync(this.imageCacheDir);
+        const files = await fs.promises.readdir(this.imageCacheDir);
         for (const file of files) {
           try {
-            fs.unlinkSync(path.join(this.imageCacheDir, file));
+            await fs.promises.unlink(path.join(this.imageCacheDir, file));
           } catch (e) {}
         }
       }
@@ -184,7 +222,7 @@ class XboxAppInjector {
       console.warn('[Injector] Could not purge ImageCache:', err.message);
     }
 
-    // 2. Purge Edge WebView2 disk caches
+    // 2. Purge Edge WebView2 disk caches asynchronously
     const webViewDirs = [
       this.ebWebViewCacheDir,
       this.ebWebViewCodeCacheDir,
@@ -194,15 +232,11 @@ class XboxAppInjector {
     for (const wDir of webViewDirs) {
       if (fs.existsSync(wDir)) {
         try {
-          const files = fs.readdirSync(wDir);
+          const files = await fs.promises.readdir(wDir);
           for (const f of files) {
             try {
               const fullF = path.join(wDir, f);
-              if (fs.statSync(fullF).isDirectory()) {
-                fs.rmSync(fullF, { recursive: true, force: true });
-              } else {
-                fs.unlinkSync(fullF);
-              }
+              await fs.promises.rm(fullF, { recursive: true, force: true });
             } catch (e) {}
           }
         } catch (e) {}
@@ -218,7 +252,7 @@ class XboxAppInjector {
       ];
       for (const dbf of dbFiles) {
         if (fs.existsSync(dbf)) {
-          try { fs.unlinkSync(dbf); } catch (e) {}
+          try { await fs.promises.unlink(dbf); } catch (e) {}
         }
       }
     } catch (e) {}
@@ -332,8 +366,8 @@ class XboxAppInjector {
     }
   }
 
-  // Write file with retry logic in case Xbox App has a temporary read handle
-  writeFileWithRetry(filePath, buffer, maxRetries = 3) {
+  // Write file with retry logic without busy-wait blocking the main thread
+  writeFileWithRetry(filePath, buffer, maxRetries = 2) {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         fs.writeFileSync(filePath, buffer);
@@ -342,9 +376,6 @@ class XboxAppInjector {
         if (attempt === maxRetries) {
           throw err;
         }
-        // Small wait before retry
-        const end = Date.now() + 300 * attempt;
-        while (Date.now() < end) {}
       }
     }
     return false;
@@ -469,7 +500,8 @@ class XboxAppInjector {
   }
 
   // Inject a single game cover from Vault into Xbox App
-  injectGame(game) {
+  injectGame(game, options = {}) {
+    const { skipCacheClear = false } = options;
     if (!vault.hasCover(game)) {
       throw new Error(`Vault does not contain a cover for game: ${game.title} (${game.id})`);
     }
@@ -485,13 +517,29 @@ class XboxAppInjector {
       fs.mkdirSync(targetDir, { recursive: true });
     }
 
-    // Prepare JPEG buffer variant for preview app compatibility
+    // Prepare JPEG buffer variant (reuse cached real JPEG in Vault if already converted)
     let jpgBuffer = coverBuffer;
     try {
-      const { nativeImage } = require('electron');
-      const nImg = nativeImage.createFromBuffer(coverBuffer);
-      if (!nImg.isEmpty()) {
-        jpgBuffer = nImg.toJPEG(95);
+      const vaultCoverPath = vault.getCoverPath(game);
+      const vaultJpgPath = vaultCoverPath ? path.join(path.dirname(vaultCoverPath), 'cover.jpg') : null;
+      let loadedCachedJpg = false;
+      if (vaultJpgPath && fs.existsSync(vaultJpgPath)) {
+        const rawJpg = fs.readFileSync(vaultJpgPath);
+        // Check JPEG SOI marker (0xFF 0xD8)
+        if (rawJpg.length > 4 && rawJpg[0] === 0xFF && rawJpg[1] === 0xD8) {
+          jpgBuffer = rawJpg;
+          loadedCachedJpg = true;
+        }
+      }
+      if (!loadedCachedJpg) {
+        const { nativeImage } = require('electron');
+        const nImg = nativeImage.createFromBuffer(coverBuffer);
+        if (!nImg.isEmpty()) {
+          jpgBuffer = nImg.toJPEG(95);
+          if (vaultJpgPath) {
+            try { fs.writeFileSync(vaultJpgPath, jpgBuffer); } catch (e) {}
+          }
+        }
       }
     } catch (e) {
       jpgBuffer = coverBuffer;
@@ -604,21 +652,22 @@ class XboxAppInjector {
       }
     }
 
-    // 6. Purge Xbox App internal thumbnail ImageCache & WebView2 cache so artwork refreshes immediately
-    this.clearImageCache();
+    // 6. Purge Xbox App internal thumbnail ImageCache & WebView2 cache asynchronously (unless part of a batch that clears once at the end)
+    if (!skipCacheClear) {
+      this.clearImageCache().catch(() => {});
+    }
 
     console.log(`[Injector] Successfully injected artwork for "${game.title}" -> ${pngPath} / ${v2Path}`);
     return {
       success: true,
       injectedPath: pngPath,
       gameId: game.id,
-      title: game.title,
-      xboxRunning: this.isXboxAppRunning()
+      title: game.title
     };
   }
 
   // Inject all games that exist in the Vault
-  injectAll(games) {
+  async injectAll(games) {
     this.ensureDirectories();
     const results = {
       total: 0,
@@ -631,21 +680,23 @@ class XboxAppInjector {
       if (vault.hasCover(game)) {
         results.total++;
         try {
-          this.injectGame(game);
+          this.injectGame(game, { skipCacheClear: true });
           results.succeeded++;
         } catch (err) {
           results.failed++;
           results.errors.push({ gameId: game.id, title: game.title, error: err.message });
           console.error(`[Injector] Failed to inject "${game.title}":`, err.message);
         }
+        await new Promise(r => setImmediate(r));
       }
     }
 
+    await this.clearImageCache();
     return results;
   }
 
-  // Restore all games directly from Vault directory entries
-  restoreAllFromVault() {
+  // Restore all games directly from Vault directory entries (async, yields between games, clears cache once)
+  async restoreAllFromVault() {
     this.ensureDirectories();
     this.lastWriteTime = Date.now();
 
@@ -668,8 +719,6 @@ class XboxAppInjector {
           const isShortcut = (entry.launcher || '').toLowerCase() === 'shortcut' ||
                              gameStub.source === 'xbox_shortcut';
 
-          // If this was an ExternalAppShortcut, verify the shortcut is still registered in Xbox App!
-          // If the user deleted the shortcut in the Xbox App, do NOT recreate dead files or ghosts!
           if (isShortcut) {
             const shortcutPath = this.findShortcutManifest(gameStub);
             if (!shortcutPath) {
@@ -678,15 +727,16 @@ class XboxAppInjector {
             }
           }
 
-          this.injectGame(gameStub);
+          this.injectGame(gameStub, { skipCacheClear: true });
           restored++;
         }
       } catch (err) {
         console.warn(`[Injector] Failed restoring ${entry.gameId}:`, err.message);
       }
+      await new Promise(r => setImmediate(r));
     }
 
-    this.clearImageCache();
+    await this.clearImageCache();
     console.log(`[Injector] Restored ${restored}/${entries.length} covers.`);
     return { total: entries.length, restored };
   }

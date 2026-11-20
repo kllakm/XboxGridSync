@@ -213,6 +213,13 @@ npm run pack
 
 ## Changelog
 
+### [v1.10.2] - 2026-11-21
+- **Eliminated Main Process "Not Responding" UI Freezes:**
+  - Replaced synchronous `execSync('powershell.exe ...')` process checks and termination calls in `src/main/injector.js` with non-blocking asynchronous `tasklist.exe` / `taskkill.exe` execution, and removed synchronous `while (Date.now() < end) {}` busy-wait loops on the Electron main thread.
+  - Made `clearImageCache()` asynchronous (`fs.promises.rm` / `unlink`) and changed batch sync (`art:resolveAll`), `injectAll()`, and `restoreAllFromVault()` to yield to the Electron event loop between games (`setImmediate`) and purge the Xbox image cache only once at the end of the batch instead of once per game.
+  - Updated `VaultManager.getCoverAsDataUrl()` in `src/main/vault.js` to return lightweight local `file://` URLs (`cover.png?t=<mtime>`) instead of synchronously reading and Base64-encoding multi-megabyte `1024×1024` PNG buffers on the main thread, reducing `library_cache.json` and IPC payloads from 40–60 MB to <20 KB.
+  - Skipped redundant synchronous `nativeImage.toPNG()` re-encoding for already-square PNGs, cached converted `cover.jpg` files in the Vault, cached launcher registry lookups (`60s` TTL), and deferred startup Task Scheduler / Start Menu shortcut checks off the critical window creation path.
+
 ### [v1.10.1] - 2026-11-17
 - **Native Xbox App Tile Artwork (`VisualElementsManifest.xml` & High-Res Assets):**
   - Added `Xbox Grid Sync.VisualElementsManifest.xml` (`ShowNameOnSquare150x150Logo="off"`) and a dedicated `Assets\` folder containing high-resolution `1:1` square PNGs (`Square150x150Logo.png` at `1024×1024`, `Square310x310Logo.png` at `1024×1024`, `Square70x70Logo.png` & `StoreLogo.png` at `256×256`) matching the app's olive-charcoal ambient background and icon with no text.

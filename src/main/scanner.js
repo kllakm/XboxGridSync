@@ -95,6 +95,10 @@ class GameScanner {
 
   // 1. Build local launcher indices for fast offline name and metadata enrichment
   buildLocalEnrichmentIndices() {
+    if (this._launcherMapsCache && this._launcherMapsCacheTime && (Date.now() - this._launcherMapsCacheTime < 60000)) {
+      return this._launcherMapsCache;
+    }
+
     const epicMap = new Map();
     const steamMap = new Map();
     const gogMap = new Map();
@@ -214,7 +218,9 @@ class GameScanner {
       }
     } catch (e) {}
 
-    return { epic: epicMap, steam: steamMap, gog: gogMap };
+    this._launcherMapsCache = { epic: epicMap, steam: steamMap, gog: gogMap };
+    this._launcherMapsCacheTime = Date.now();
+    return this._launcherMapsCache;
   }
 
   // 2. Fetch and cache Ubisoft game list from Haoose repository
@@ -951,6 +957,19 @@ class GameScanner {
         const raw = fs.readFileSync(cachePath, 'utf8');
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length > 0) {
+          let migrated = false;
+          for (const g of parsed) {
+            if (g && g.coverUrl && g.coverUrl.startsWith('data:image/')) {
+              const fastUrl = vault.getCoverAsDataUrl(g);
+              if (fastUrl) {
+                g.coverUrl = fastUrl;
+                migrated = true;
+              }
+            }
+          }
+          if (migrated) {
+            this.saveCachedLibrary(parsed);
+          }
           return parsed;
         }
       }
@@ -960,12 +979,14 @@ class GameScanner {
     return [];
   }
 
-  // Persist library scan results to disk
+  // Persist library scan results to disk asynchronously without blocking the main thread
   saveCachedLibrary(games) {
     try {
       if (!Array.isArray(games)) return;
       const cachePath = path.join(vault.cacheDir, 'library_cache.json');
-      fs.writeFileSync(cachePath, JSON.stringify(games, null, 2), 'utf8');
+      fs.promises.writeFile(cachePath, JSON.stringify(games, null, 2), 'utf8').catch(e => {
+        console.warn('[Scanner] Could not write library cache:', e.message);
+      });
     } catch (e) {
       console.warn('[Scanner] Could not write library cache:', e.message);
     }
