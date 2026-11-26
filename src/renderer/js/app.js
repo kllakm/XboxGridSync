@@ -23,10 +23,10 @@ window.showToast = function (title, message, type = 'info') {
   const iconSvg = type === 'success'
     ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>`
     : type === 'warning'
-    ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`
-    : type === 'error'
-    ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`
-    : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+      ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`
+      : type === 'error'
+        ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`
+        : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
 
   toast.innerHTML = `
     <div class="toast-icon">${iconSvg}</div>
@@ -49,6 +49,13 @@ window.showToast = function (title, message, type = 'info') {
 // ============================================================================
 // Window Controls & Shield Status Badge
 // ============================================================================
+function updateFseScrollState() {
+  const mainCol = document.querySelector('#libraryView .xbox-main-column');
+  const isFse = document.body.classList.contains('fse-mode');
+  const scrolled = !!(isFse && mainCol && mainCol.scrollTop > 6);
+  document.body.classList.toggle('fse-scrolled', scrolled);
+}
+
 function applyFseState(isFse) {
   const fseBtn = document.getElementById('btnToggleFse');
   if (isFse) {
@@ -56,8 +63,10 @@ function applyFseState(isFse) {
     if (fseBtn) fseBtn.title = 'Exit Exclusive Fullscreen (PC Mode)';
   } else {
     document.body.classList.remove('fse-mode');
+    document.body.classList.remove('fse-scrolled');
     if (fseBtn) fseBtn.title = 'Exclusive Fullscreen Experience (Handheld Mode)';
   }
+  updateFseScrollState();
 }
 
 function initWindowControls() {
@@ -88,7 +97,7 @@ function initWindowControls() {
 
   // Query initial FSE status
   if (window.api && window.api.isFse) {
-    window.api.isFse().then(applyFseState).catch(() => {});
+    window.api.isFse().then(applyFseState).catch(() => { });
   }
 
   // Listen for FSE state change notifications
@@ -101,7 +110,7 @@ function initWindowControls() {
     if (e.key === 'F11') {
       e.preventDefault();
       if (window.api && window.api.toggleFse) {
-        window.api.toggleFse().then(applyFseState).catch(() => {});
+        window.api.toggleFse().then(applyFseState).catch(() => { });
       }
     }
   });
@@ -263,10 +272,10 @@ function renderGames() {
     const statusText = isSynced ? 'Synced' : (isReady ? 'Ready to Sync' : (game.status === 'Needs Review' ? 'Needs Review' : 'Pending'));
 
     const isCustom = (game.launcher || '').toLowerCase() === 'custom' ||
-                     (game.launcher || '').toLowerCase() === 'shortcut' ||
-                     game.source === 'xbox_shortcut' ||
-                     game.source === 'custom_manifest' ||
-                     game.source === 'user_custom';
+      (game.launcher || '').toLowerCase() === 'shortcut' ||
+      game.source === 'xbox_shortcut' ||
+      game.source === 'custom_manifest' ||
+      game.source === 'user_custom';
 
     const posterSrc = game.coverUrl || '';
 
@@ -455,7 +464,7 @@ async function syncAllGames() {
 
 let currentUpdateInfo = null;
 
-window.showUpdateBanner = function(updateInfo) {
+window.showUpdateBanner = function (updateInfo) {
   currentUpdateInfo = updateInfo;
   const banner = document.getElementById('updateBanner');
   const versionEl = document.getElementById('updateBannerVersion');
@@ -472,7 +481,7 @@ window.showUpdateBanner = function(updateInfo) {
   banner.style.display = 'flex';
 };
 
-window.hideUpdateBanner = function() {
+window.hideUpdateBanner = function () {
   const banner = document.getElementById('updateBanner');
   if (banner) banner.style.display = 'none';
 };
@@ -743,6 +752,12 @@ function initEventListeners() {
     renderGames();
   });
 
+  // Whole-page library scroll listener for sticky FSE top menu gradient
+  const mainCol = document.querySelector('#libraryView .xbox-main-column');
+  if (mainCol) {
+    mainCol.addEventListener('scroll', updateFseScrollState, { passive: true });
+  }
+
   // Auto-restore event from FileSystemWatcher
   window.api.onAutoRestoreEvent((eventData) => {
     if (eventData && eventData.result && eventData.result.restored > 0) {
@@ -788,25 +803,30 @@ function initAmbientMeshShader() {
 
     void main() {
       vec2 uv = vec2(vUv.x, 1.0 - vUv.y);
-      vec3 base = vec3(17.0 / 255.0, 18.0 / 255.0, 20.0 / 255.0);
+      vec3 base = vec3(11.0 / 255.0, 12.0 / 255.0, 14.0 / 255.0);
 
-      // Soft Xbox olive-forest ambient mesh lobes
-      vec2 d1 = (uv - vec2(0.42, -0.04)) / vec2(0.58, 0.55);
-      float w1 = exp(-dot(d1, d1) * 1.45);
+      // Horizontal and vertical edge vignette so left/right/bottom fade cleanly into deep black
+      float edgeX = smoothstep(0.03, 0.30, uv.x) * smoothstep(0.97, 0.70, uv.x);
+      float edgeY = smoothstep(0.92, 0.28, uv.y);
+      float vignette = edgeX * edgeY;
 
-      vec2 d2 = (uv - vec2(0.18, 0.14)) / vec2(0.45, 0.42);
-      float w2 = exp(-dot(d2, d2) * 1.75);
+      // Top-center Xbox olive-forest atmospheric glow
+      vec2 d1 = (uv - vec2(0.50, -0.06)) / vec2(0.42, 0.48);
+      float w1 = exp(-dot(d1, d1) * 1.45) * vignette;
 
-      vec2 d3 = (uv - vec2(0.75, 0.10)) / vec2(0.52, 0.45);
-      float w3 = exp(-dot(d3, d3) * 1.9);
+      vec2 d2 = (uv - vec2(0.48, 0.06)) / vec2(0.32, 0.36);
+      float w2 = exp(-dot(d2, d2) * 1.75) * vignette;
+
+      vec2 d3 = (uv - vec2(0.56, 0.02)) / vec2(0.48, 0.40);
+      float w3 = exp(-dot(d3, d3) * 1.85) * vignette;
 
       vec3 oliveGlow = vec3(44.0 / 255.0, 62.0 / 255.0, 44.0 / 255.0);
-      vec3 mossGlow  = vec3(34.0 / 255.0, 48.0 / 255.0, 35.0 / 255.0);
-      vec3 slateGlow = vec3(28.0 / 255.0, 38.0 / 255.0, 32.0 / 255.0);
+      vec3 mossGlow  = vec3(34.0 / 255.0, 49.0 / 255.0, 35.0 / 255.0);
+      vec3 slateGlow = vec3(26.0 / 255.0, 36.0 / 255.0, 30.0 / 255.0);
 
       vec3 col = base;
-      col = mix(col, oliveGlow, clamp(w1 * 0.62, 0.0, 1.0));
-      col = mix(col, mossGlow, clamp(w2 * 0.30, 0.0, 1.0));
+      col = mix(col, oliveGlow, clamp(w1 * 0.68, 0.0, 1.0));
+      col = mix(col, mossGlow, clamp(w2 * 0.34, 0.0, 1.0));
       col = mix(col, slateGlow, clamp(w3 * 0.22, 0.0, 1.0));
 
       // Sub-LSB triangular dithering in 32-bit float
@@ -922,7 +942,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         initialGames = cached;
       }
     }
-  } catch (e) {}
+  } catch (e) { }
 
   state.games = initialGames;
   updateCounts();

@@ -493,8 +493,9 @@ class ControllerNavigationManager {
     } catch (e) {}
 
     // Precise container-aware scrolling: ensures full padding and zero clipping
-    const libraryScroll = el.closest('.library-scroll-area');
+    const libraryScroll = el.closest('.xbox-main-column') || el.closest('.library-scroll-area');
     const settingsScroll = el.closest('.settings-scroll-content');
+    const isFse = document.body.classList.contains('fse-mode');
 
     if (libraryScroll && el.classList.contains('game-card')) {
       const cards = Array.from(libraryScroll.querySelectorAll('.game-card'));
@@ -506,29 +507,43 @@ class ControllerNavigationManager {
         const isBottomRow = Math.abs(el.offsetTop - lastCard.offsetTop) < 15;
 
         if (isTopRow) {
-          // Navigating to top row: scroll ALL the way to the top so top padding is fully visible
+          // Navigating to top row: scroll ALL the way to the top so top header & padding are visible
           libraryScroll.scrollTo({ top: 0, behavior: 'smooth' });
         } else if (isBottomRow) {
           // Navigating to last row: scroll ALL the way to the bottom so bottom padding is fully visible
           libraryScroll.scrollTo({ top: libraryScroll.scrollHeight, behavior: 'smooth' });
         } else {
-          // Middle rows: ensure generous margin so cards, borders, and halo glows are never clipped
+          // Middle rows: keep clear of sticky FSE header & ensure borders/halos are never clipped
           const containerRect = libraryScroll.getBoundingClientRect();
           const elRect = el.getBoundingClientRect();
-          const margin = 36;
+          const topMargin = isFse ? 104 : 36;
+          const bottomMargin = 36;
 
-          if (elRect.top < containerRect.top + margin) {
+          if (elRect.top < containerRect.top + topMargin) {
             libraryScroll.scrollBy({
-              top: elRect.top - containerRect.top - margin,
+              top: elRect.top - (containerRect.top + topMargin),
               behavior: 'smooth'
             });
-          } else if (elRect.bottom > containerRect.bottom - margin) {
+          } else if (elRect.bottom > containerRect.bottom - bottomMargin) {
             libraryScroll.scrollBy({
-              top: elRect.bottom - containerRect.bottom + margin,
+              top: elRect.bottom - containerRect.bottom + bottomMargin,
               behavior: 'smooth'
             });
           }
         }
+      }
+    } else if (libraryScroll) {
+      // Header tabs/filters/sort controls inside scrolling .xbox-main-column: bring back into view cleanly
+      const containerRect = libraryScroll.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      const topMargin = isFse ? 88 : 16;
+      if (elRect.top < containerRect.top + topMargin) {
+        libraryScroll.scrollTo({ top: 0, behavior: 'smooth' });
+      } else if (elRect.bottom > containerRect.bottom - 24) {
+        libraryScroll.scrollBy({
+          top: elRect.bottom - containerRect.bottom + 24,
+          behavior: 'smooth'
+        });
       }
     } else if (settingsScroll) {
       const containerRect = settingsScroll.getBoundingClientRect();
@@ -853,7 +868,7 @@ class ControllerNavigationManager {
       const activeFilter = document.querySelector('.filter-pill.active') || document.querySelector('.filter-pill');
       if (activeFilter) {
         this.setFocus(activeFilter);
-        const libraryScroll = document.querySelector('.library-scroll-area');
+        const libraryScroll = document.querySelector('.xbox-main-column') || document.querySelector('.library-scroll-area');
         if (libraryScroll) libraryScroll.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }

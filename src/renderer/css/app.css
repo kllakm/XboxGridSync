@@ -4813,3 +4813,698 @@ body.fse-mode.in-subview .titlebar {
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   padding: 16px 26px;
 }
+
+
+/* ==========================================================================
+   v1.10.3: Whole-Page Library Scroll & Sticky FSE Top Menu with Soft Gradient
+   ========================================================================== */
+.xbox-workspace {
+  height: 100%;
+  min-height: 0;
+}
+
+.xbox-main-column {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.xbox-main-column .app-header {
+  flex-shrink: 0;
+}
+
+.xbox-main-column .library-scroll-area {
+  flex: none !important;
+  overflow: visible !important;
+  height: auto !important;
+}
+
+/* FSE Mode: Library fills full 100vh and scrolls under sticky top menu bar */
+body.fse-mode:not(.in-subview) .app-container {
+  height: 100vh !important;
+}
+
+body.fse-mode .titlebar {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 80px !important;
+  padding: 16px 42px 8px 42px !important;
+  z-index: 300 !important;
+  background: transparent !important;
+  pointer-events: auto;
+}
+
+/* Soft black-to-transparent gradient behind sticky FSE top menu items when scrolled */
+body.fse-mode .titlebar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 118px;
+  pointer-events: none;
+  z-index: -1;
+  background: linear-gradient(
+    180deg,
+    rgba(8, 9, 11, 0.96) 0%,
+    rgba(8, 9, 11, 0.80) 45%,
+    rgba(8, 9, 11, 0.36) 76%,
+    rgba(8, 9, 11, 0) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+
+body.fse-mode.fse-scrolled .titlebar::before {
+  opacity: 1;
+}
+
+body.fse-mode .app-header {
+  padding-top: 90px !important;
+}
+
+
+/* ==========================================================================
+   v1.10.3+: Xbox PC App Scale, Padding, FSE Top Bar & Header Row Refinements
+   ========================================================================== */
+/* 1. Desktop Titlebar & Sidebar Scale */
+body:not(.fse-mode) .titlebar {
+  height: 52px;
+  padding: 0 12px 0 20px;
+}
+
+body:not(.fse-mode) .titlebar-logo,
+body:not(.fse-mode) .titlebar-logo svg {
+  width: 24px;
+  height: 24px;
+}
+
+.desktop-sidebar-toggle {
+  width: 34px;
+  height: 34px;
+  margin-left: 10px;
+}
+
+.desktop-sidebar-toggle svg {
+  width: 20px;
+  height: 20px;
+}
+
+.xbox-nav-rail {
+  width: 232px;
+  padding: 12px 12px 16px 14px !important;
+}
+
+body.sidebar-compact .xbox-nav-rail {
+  width: 82px !important;
+  padding: 12px 10px 16px 12px !important;
+}
+
+.xbox-rail-group {
+  border-radius: 12px !important;
+  padding: 10px 8px !important;
+  gap: 12px !important;
+  background: rgba(255, 255, 255, 0.038) !important;
+  border: 1px solid rgba(255, 255, 255, 0.045) !important;
+}
+
+.xbox-rail-btn {
+  height: 46px !important;
+  padding: 0 14px !important;
+  gap: 14px !important;
+  border-radius: 8px !important;
+  font-size: 14px !important;
+}
+
+body.sidebar-compact .xbox-rail-btn {
+  height: 48px !important;
+  padding: 0 !important;
+  border-radius: 8px !important;
+}
+
+.xbox-rail-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* 2. FSE Top Menu Sizing & Spacing */
+body.fse-mode .titlebar {
+  height: 92px !important;
+  padding: 24px 56px 12px 56px !important;
+}
+
+body.fse-mode .titlebar::before {
+  height: 132px !important;
+}
+
+body.fse-mode .titlebar-logo,
+body.fse-mode .titlebar-logo svg {
+  width: 26px;
+  height: 26px;
+}
+
+body.fse-mode .fse-shield-icon {
+  width: 44px !important;
+  height: 44px !important;
+  margin-left: 14px !important;
+}
+
+body.fse-mode .fse-shield-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+body.fse-mode .fse-top-nav {
+  gap: 32px !important;
+}
+
+body.fse-mode .fse-nav-icon-btn {
+  width: 48px !important;
+  height: 48px !important;
+}
+
+body.fse-mode .fse-nav-icon-btn svg {
+  width: 24px;
+  height: 24px;
+}
+
+body.fse-mode .fse-nav-icon-btn.active {
+  background: transparent;
+  color: #ffffff;
+}
+
+body.fse-mode .fse-nav-icon-btn:hover,
+body.fse-mode .fse-nav-icon-btn.controller-focused {
+  background: rgba(255, 255, 255, 0.10);
+  color: #ffffff;
+}
+
+body.fse-mode #btnToggleFse {
+  width: 44px !important;
+  height: 44px !important;
+}
+
+body.fse-mode #btnToggleFse svg {
+  width: 22px;
+  height: 22px;
+}
+
+body.fse-mode.fse-search-open .desktop-titlebar-center {
+  top: 108px !important;
+}
+
+/* 3. Top Three Library Header Rows Spacing, Typography & Row 1 Drop Shadow */
+body:not(.fse-mode) .app-header {
+  padding: 28px 44px 18px 36px !important;
+  gap: 20px !important;
+}
+
+body:not(.fse-mode) .library-scroll-area {
+  padding: 6px 44px 40px 36px !important;
+}
+
+body:not(.fse-mode) .header-top {
+  gap: 14px !important;
+}
+
+body:not(.fse-mode) .xbox-segmented-bar {
+  height: 52px !important;
+  padding: 6px !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.42), 0 2px 6px rgba(0, 0, 0, 0.28) !important;
+}
+
+body:not(.fse-mode) .segmented-tab {
+  height: 40px !important;
+  padding: 0 24px !important;
+  font-size: 14.5px !important;
+  font-weight: 600 !important;
+}
+
+body:not(.fse-mode) .xbox-circle-add-btn {
+  width: 52px !important;
+  height: 52px !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.42), 0 2px 6px rgba(0, 0, 0, 0.28) !important;
+}
+
+body:not(.fse-mode) .xbox-circle-add-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+body:not(.fse-mode) .filter-pills {
+  gap: 14px !important;
+}
+
+body:not(.fse-mode) .filter-pill {
+  padding: 8px 18px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+
+.sort-controls-left,
+.sort-controls-right {
+  gap: 12px !important;
+}
+
+body:not(.fse-mode) .xbox-square-btn {
+  width: 40px !important;
+  height: 38px !important;
+  border-radius: 8px !important;
+}
+
+body:not(.fse-mode) .xbox-sort-pill {
+  height: 38px !important;
+  padding: 0 18px !important;
+  font-size: 14px !important;
+  gap: 8px !important;
+}
+
+body:not(.fse-mode) .library-count-label {
+  font-size: 14px !important;
+}
+
+body:not(.fse-mode) .xbox-view-toggle-btn {
+  height: 38px !important;
+  padding: 0 14px !important;
+  border-radius: 8px !important;
+}
+
+/* FSE Header Rows Sizing & Spacing */
+body.fse-mode .app-header {
+  padding: 108px clamp(72px, 7.5vw, 136px) 22px clamp(72px, 7.5vw, 136px) !important;
+  gap: 24px !important;
+}
+
+body.fse-mode .header-top {
+  gap: 16px !important;
+}
+
+body.fse-mode .xbox-segmented-bar {
+  height: 60px !important;
+  padding: 6px !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.46), 0 2px 8px rgba(0, 0, 0, 0.30) !important;
+}
+
+body.fse-mode .segmented-tab {
+  height: 46px !important;
+  padding: 0 28px !important;
+  font-size: 15.5px !important;
+  font-weight: 600 !important;
+}
+
+body.fse-mode .xbox-circle-add-btn {
+  width: 60px !important;
+  height: 60px !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.46), 0 2px 8px rgba(0, 0, 0, 0.30) !important;
+}
+
+body.fse-mode .filter-pills {
+  gap: 16px !important;
+}
+
+body.fse-mode .filter-pill {
+  padding: 9px 22px !important;
+  font-size: 15px !important;
+}
+
+body.fse-mode .xbox-square-btn {
+  width: 44px !important;
+  height: 42px !important;
+}
+
+body.fse-mode .xbox-sort-pill {
+  height: 42px !important;
+  padding: 0 20px !important;
+  font-size: 14.5px !important;
+}
+
+body.fse-mode .library-count-label {
+  font-size: 14.5px !important;
+}
+
+body.fse-mode .xbox-view-toggle-btn {
+  height: 42px !important;
+  padding: 0 16px !important;
+}
+
+
+/* ==========================================================================
+   v1.10.3++: Consistent Floating Sidebar, Settings Layout & Universal Toggle Switch
+   ========================================================================== */
+html,
+body,
+body.fse-mode {
+  background-color: #0b0c0e !important;
+}
+
+body:not(.fse-mode) .xbox-nav-rail {
+  background: transparent !important;
+}
+
+body:not(.fse-mode) .xbox-main-column {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+body:not(.fse-mode) .titlebar {
+  background: linear-gradient(
+    180deg,
+    rgba(11, 12, 14, 0.86) 0%,
+    rgba(11, 12, 14, 0.56) 76%,
+    rgba(11, 12, 14, 0) 100%
+  ) !important;
+  height: 54px !important;
+  padding: 0 12px 0 35px !important;
+}
+
+/* Consistent Sidebar Height, Padding, Gap & Icons Across Expanded & Collapsed States */
+.xbox-nav-rail {
+  width: 224px !important;
+  padding: 12px 12px 16px 14px !important;
+}
+
+body.sidebar-compact .xbox-nav-rail {
+  width: 92px !important;
+  padding: 12px 12px 16px 14px !important;
+}
+
+.xbox-rail-group {
+  border-radius: 14px !important;
+  padding: 9px 8px !important;
+  gap: 14px !important;
+  background: rgba(255, 255, 255, 0.032) !important;
+  border: 1px solid rgba(255, 255, 255, 0.035) !important;
+}
+
+.xbox-rail-btn {
+  height: 48px !important;
+  padding: 0 14px !important;
+  gap: 14px !important;
+  border-radius: 10px !important;
+  font-size: 14px !important;
+}
+
+body.sidebar-compact .xbox-rail-btn {
+  width: 100% !important;
+  height: 48px !important;
+  padding: 0 !important;
+  border-radius: 10px !important;
+}
+
+.xbox-rail-btn svg {
+  width: 19px !important;
+  height: 19px !important;
+  flex-shrink: 0 !important;
+}
+
+/* Desktop Titlebar Logo Aligned Vertically Above Collapsed Sidebar Center (47px) */
+body:not(.fse-mode) .titlebar-logo,
+body:not(.fse-mode) .titlebar-logo svg {
+  width: 24px !important;
+  height: 24px !important;
+}
+
+/* Elongated Landscape Collapse / Expand Icon & Spacing */
+.desktop-sidebar-toggle,
+#btnToggleSidebar {
+  width: 40px !important;
+  height: 32px !important;
+  margin-left: 18px !important;
+  border-radius: 8px !important;
+}
+
+.desktop-sidebar-toggle svg,
+#btnToggleSidebar svg {
+  width: 24px !important;
+  height: 17px !important;
+}
+
+body:not(.fse-mode) .fse-shield-icon {
+  margin-left: 10px !important;
+}
+
+/* ==========================================================================
+   Settings Left Panel, Right Panel & Universal Xbox Toggle Switch
+   ========================================================================== */
+body:not(.fse-mode) .settings-shell {
+  padding: 6px 12px 12px 12px !important;
+  background: transparent !important;
+}
+
+body.fse-mode .settings-shell {
+  padding: 0 !important;
+  background: #141517 !important;
+}
+
+.settings-sidebar {
+  width: 280px !important;
+  padding: 28px 18px 24px 18px !important;
+  background: #1e2023 !important;
+  border-right: none !important;
+  border-radius: 12px 0 0 12px;
+}
+
+body.fse-mode .settings-sidebar {
+  border-radius: 0 !important;
+}
+
+.settings-sidebar-profile {
+  padding: 6px 16px 24px 16px !important;
+  gap: 12px !important;
+}
+
+.settings-profile-avatar {
+  width: 34px !important;
+  height: 34px !important;
+}
+
+.settings-profile-name {
+  font-family: var(--font-family) !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+  color: #ffffff !important;
+}
+
+.settings-nav-list {
+  gap: 10px !important;
+}
+
+.settings-nav-item {
+  height: 48px !important;
+  padding: 0 16px !important;
+  border-radius: 8px !important;
+  font-family: var(--font-family) !important;
+  font-size: 15.5px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.settings-nav-item:hover {
+  background: rgba(255, 255, 255, 0.055) !important;
+  color: #ffffff !important;
+}
+
+.settings-nav-item.active {
+  background: rgba(255, 255, 255, 0.085) !important;
+  color: #ffffff !important;
+  font-weight: 500 !important;
+}
+
+.settings-sidebar-footer {
+  padding-top: 12px !important;
+  border-top: none !important;
+}
+
+.settings-back-item {
+  gap: 14px !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.settings-back-item svg {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.settings-main {
+  background: #17181b !important;
+  border-radius: 0 12px 12px 0;
+}
+
+body.fse-mode .settings-main {
+  border-radius: 0 !important;
+}
+
+.settings-main-header {
+  padding: 32px 44px 20px 44px !important;
+}
+
+.settings-main-header h1 {
+  font-family: var(--font-family) !important;
+  font-size: 26px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.2px !important;
+  color: #ffffff !important;
+}
+
+.settings-close-x {
+  width: 36px !important;
+  height: 36px !important;
+}
+
+.settings-close-x svg {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.settings-scroll-content {
+  padding: 4px 44px 44px 44px !important;
+}
+
+.settings-layout-container {
+  max-width: 820px !important;
+}
+
+.settings-section.active {
+  gap: 16px !important;
+}
+
+.settings-card {
+  background: rgba(255, 255, 255, 0.036) !important;
+  border: 1px solid rgba(255, 255, 255, 0.04) !important;
+  border-radius: 10px !important;
+  padding: 20px 24px !important;
+}
+
+.settings-card-subheader {
+  font-family: var(--font-family) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: rgba(255, 255, 255, 0.92) !important;
+  margin-bottom: 14px !important;
+}
+
+.setting-row {
+  padding: 14px 4px 14px 12px !important;
+  gap: 24px !important;
+  border-bottom: none !important;
+}
+
+.setting-row:last-child {
+  padding-bottom: 6px !important;
+}
+
+.setting-label {
+  gap: 5px !important;
+}
+
+.setting-title {
+  font-family: var(--font-family) !important;
+  font-size: 15px !important;
+  font-weight: 400 !important;
+  color: rgba(255, 255, 255, 0.94) !important;
+}
+
+.setting-desc {
+  font-family: var(--font-family) !important;
+  font-size: 13.5px !important;
+  font-weight: 400 !important;
+  line-height: 1.45 !important;
+  color: rgba(255, 255, 255, 0.62) !important;
+}
+
+.scheduler-actions-bar {
+  margin-top: 12px !important;
+  gap: 10px !important;
+}
+
+.tools-grid {
+  gap: 8px !important;
+}
+
+.tool-box {
+  padding: 14px 4px 14px 12px !important;
+  gap: 20px !important;
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+  border-radius: 0 !important;
+}
+
+.tool-box:last-child {
+  border-bottom: none !important;
+  padding-bottom: 4px !important;
+}
+
+/* Universal Xbox Pill Toggle Switch Across Entire App */
+.switch {
+  width: 38px !important;
+  height: 20px !important;
+  flex-shrink: 0 !important;
+}
+
+.switch .slider {
+  background: transparent !important;
+  background-image: none !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.58) !important;
+  border-radius: 9999px !important;
+  box-shadow: none !important;
+}
+
+.switch:hover .slider {
+  border-color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.switch .slider:before {
+  width: 11px !important;
+  height: 11px !important;
+  left: 2.5px !important;
+  top: 50% !important;
+  bottom: auto !important;
+  transform: translateY(-50%) !important;
+  background-color: rgba(255, 255, 255, 0.88) !important;
+  box-shadow: none !important;
+}
+
+.switch input:checked + .slider {
+  background: #ffffff !important;
+  background-image: none !important;
+  border-color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.switch:hover input:checked + .slider {
+  background: rgba(255, 255, 255, 0.90) !important;
+  border-color: rgba(255, 255, 255, 0.90) !important;
+}
+
+.switch input:checked + .slider:before {
+  width: 12px !important;
+  height: 12px !important;
+  background-color: #18191c !important;
+  transform: translate(18px, -50%) !important;
+}
+
+.switch:focus-visible .slider,
+body.controller-mode .switch.controller-focused .slider,
+body.controller-mode .switch:focus-within .slider,
+body.controller-mode .switch input:focus + .slider,
+body.controller-mode .switch input.controller-focused + .slider {
+  outline: none !important;
+  border-color: #ffffff !important;
+  box-shadow: 0 0 0 2px #ffffff, 0 0 12px rgba(255, 255, 255, 0.45) !important;
+}
+
+body.controller-mode .switch.controller-focused,
+body.controller-mode .switch:focus {
+  outline: none !important;
+}

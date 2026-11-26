@@ -213,6 +213,17 @@ npm run pack
 
 ## Changelog
 
+### [v1.10.3] - 2026-11-26
+- **Whole-Page Library Scrolling & Sticky FSE Top Menu:**
+  - Moved primary library scrolling to the full page container (`.xbox-main-column`) in both Desktop and Fullscreen Experience (FSE) modes so the `My games / Pending sync / Protected` tabs, launcher filters, and sort/view bar scroll cleanly alongside the game grid.
+  - Made the FSE top menu icons sticky at the top of the screen (`position: fixed`) with a soft black-to-transparent vertical gradient fade (`titlebar::before`) that appears as you scroll so top navigation icons remain legible over scrolling tiles.
+  - Updated controller scroll tracking in `src/renderer/js/gamepad.js` for the whole-page scroll container and sticky FSE header clearance.
+- **Xbox PC App Scale, Background Vignette, Floating Sidebar & Settings Polish:**
+  - Refined the WebGL2 ambient mesh shader (`src/renderer/js/app.js`) with a top-center olive-green glow and deep `#0b0c0e` edge vignette, making the desktop sidebar transparent over the unified shader canvas so navigation tiles float cleanly without a harsh vertical seam.
+  - Tuned the desktop navigation sidebar (`224px` expanded, `92px` compact) with consistent `48px` row height, `19px` icons, and `14px` vertical gap across expanded and collapsed states, centered the top-bar XboxGridSync logo directly above the collapsed sidebar center (`47px`), and widened `#btnToggleSidebar` with an elongated landscape collapse/expand icon (`28×20` viewBox).
+  - Overhauled the Settings left navigation sidebar (`280px` wide, `48px` tall items with `10px` gaps), right settings cards, typography (`15.5px` nav items, `26px` header, `15px` row titles), and unified pill toggle switches (`38×20px`, white active pill) across the entire app to match the Xbox PC App.
+  - Matched Xbox PC App sizing, spacing, typography (`Bahnschrift` + `Segoe UI`), and subtle drop shadow on the library segmented bar, FSE top navigation bar, and filter rows.
+
 ### [v1.10.2] - 2026-11-21
 - **Eliminated Main Process "Not Responding" UI Freezes:**
   - Replaced synchronous `execSync('powershell.exe ...')` process checks and termination calls in `src/main/injector.js` with non-blocking asynchronous `tasklist.exe` / `taskkill.exe` execution, and removed synchronous `while (Date.now() < end) {}` busy-wait loops on the Electron main thread.
